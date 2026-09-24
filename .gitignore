@@ -1,0 +1,14 @@
+credentials/*.json
+credentials/*.p12
+data/*.db
+logs/*.log
+__pycache__/
+*.pyc
+.venv/
+
+data/*.db-*
+data/.session_secret
+!credentials/.gitkeep
+!logs/.gitkeep
+tests/__pycache__/
+.pytest_cache/

@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Video Library</title><link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main"><h1>Video Library</h1><div class="toolbar"><div><label>Channel</label><select id="channel"></select></div><div style="min-width:180px"><label>Status</label><select id="statusFilter" onchange="render()"><option value="">All Statuses</option><option value="pending">Pending</option><option value="uploaded">Uploaded</option><option value="failed">Failed</option></select></div><div style="min-width:260px"><label>Search</label><input id="searchInput" placeholder="Filter by filename or path…" oninput="render()" /></div><button class="btn btn-secondary" onclick="load()">Refresh</button></div><div class="table-wrap"><table><thead><tr><th>File</th><th>AI</th><th>Status</th><th>YouTube</th><th>Actions</th></tr></thead><tbody id="body"></tbody></table></div>
+<div id="player" class="modal"><div class="modal-box" style="width:min(1000px,100%)"><div class="row"><h2 id="pTitle">Video Preview</h2><button class="btn btn-secondary" onclick="closePlayer()">Close</button></div><video id="video" controls playsinline style="width:100%;max-height:70vh;background:#000;border-radius:10px"></video></div></div>
+<div id="analytics" class="modal"><div class="modal-box" style="width:min(1000px,100%)"><div class="row"><h2 id="aTitle">Performance</h2><button class="btn btn-secondary" onclick="closeAnalytics()">Close</button></div><div id="aBody">Loading…</div></div></div>
+</main></div></div></div><script src="/static/common.js?v=24"></script><script>
+let libraryVideos = [];
+async function init(){
+  await loadChannels('channel');
+  const params = new URLSearchParams(window.location.search);
+  const st = params.get('status');
+  if(st && ['pending','uploaded','failed'].includes(st)) document.getElementById('statusFilter').value = st;
+  const q = params.get('search');
+  if(q) document.getElementById('searchInput').value = q;
+  document.getElementById('channel').onchange=load;
+  await load();
+}
+async function load(){
+  const c=document.getElementById('channel').value;if(!c)return;
+  const d=await api('/api/library?channel_id='+encodeURIComponent(c));
+  libraryVideos = d.videos || [];
+  render();
+}
+function render(){
+  const st = document.getElementById('statusFilter').value;
+  const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  let vids = libraryVideos;
+  if(st) vids = vids.filter(v => v.status === st);
+  if(q) vids = vids.filter(v => (v.filename||'').toLowerCase().includes(q) || (v.file_path||'').toLowerCase().includes(q) || (v.title||'').toLowerCase().includes(q));
+  document.getElementById('body').innerHTML=vids.map(v=>`<tr><td><strong>${esc(v.filename)}</strong><br><span class="muted">${esc(v.file_path)}</span></td><td><span class="badge">${esc(v.ai_status||'not_analyzed')}</span></td><td><span class="badge ${esc(v.status)}">${esc(v.status)}</span></td><td>${v.youtube_video_id?`<a href="https://www.youtube.com/watch?v=${encodeURIComponent(v.youtube_video_id)}" target="_blank">${esc(v.youtube_video_id)}</a>`:'—'}</td><td><button class="btn btn-secondary" onclick="playVideo(${v.id},'${esc(v.filename)}')">▶ Play</button> ${v.status==='uploaded'?`<button class="btn btn-primary" onclick="showAnalytics(${v.id},'${esc(v.filename)}')">📊 Analytics</button>`:''}</td></tr>`).join('')||`<tr><td colspan="5">No matching videos found.</td></tr>`;
+}
+function playVideo(id,name){document.getElementById('pTitle').textContent=name;const v=document.getElementById('video');v.src='/api/video/'+id+'/stream';document.getElementById('player').classList.add('open');v.play().catch(()=>{});}
+function closePlayer(){const v=document.getElementById('video');v.pause();v.removeAttribute('src');v.load();document.getElementById('player').classList.remove('open');}
+async function showAnalytics(id,name){document.getElementById('aTitle').textContent=name+' — YouTube Performance';document.getElementById('aBody').innerHTML='Loading analytics…';document.getElementById('analytics').classList.add('open');try{const d=await api('/api/video/'+id+'/analytics?days=28');renderAnalytics(d.analytics,d.video);}catch(e){document.getElementById('aBody').innerHTML=`<div class="notice error">${esc(e.message)}<br><br>Tip: reconnect this YouTube channel from YouTube Channels so the Analytics permission is granted.</div>`;}}
+function fmtSec(x){x=Number(x||0);const m=Math.floor(x/60),s=Math.round(x%60);return m+':'+String(s).padStart(2,'0');}
+function renderAnalytics(a,v){const s=a.summary||{};const trend=a.trend||[];const cards=[['Views',s.views],['Likes',s.likes],['Comments',s.comments],['Watch time',Number(s.estimatedMinutesWatched||0).toFixed(1)+' min'],['Avg duration',fmtSec(s.averageViewDuration)],['Avg viewed',Number(s.averageViewPercentage||0).toFixed(1)+'%'],['Subscribers +',s.subscribersGained],['Shares',s.shares]];let max=Math.max(1,...trend.map(x=>Number(x.views||0)));document.getElementById('aBody').innerHTML=`<div class="grid" style="grid-template-columns:repeat(4,1fr)">${cards.map(c=>`<div class="card"><div class="muted">${c[0]}</div><div class="metric" style="font-size:22px">${esc(c[1]??0)}</div></div>`).join('')}</div><div class="card" style="margin-top:16px"><h3>Views — Last ${esc(a.trend.length||0)} days</h3><div style="display:flex;align-items:end;gap:4px;height:180px">${trend.map(x=>`<div title="${esc(x.day)}: ${esc(x.views)} views" style="flex:1;height:${Math.max(3,(Number(x.views||0)/max)*150)}px;background:#2563eb;border-radius:4px 4px 0 0"></div>`).join('')}</div><div class="muted" style="margin-top:8px">${esc(a.start_date)} → ${esc(a.end_date)}</div></div><div style="margin-top:16px"><a class="btn btn-secondary" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.youtube_video_id)}" target="_blank">↗ Open YouTube</a></div>`;}
+function closeAnalytics(){document.getElementById('analytics').classList.remove('open');}
+init().catch(e=>setMessage('body',e.message,'error'));
+</script></body></html>
