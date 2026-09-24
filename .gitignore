@@ -12,3 +12,4 @@ data/.session_secret
 !logs/.gitkeep
 tests/__pycache__/
 .pytest_cache/
+run.py
