@@ -108,7 +108,7 @@ def get_local_ip():
         return "127.0.0.1"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 8081))
     host = os.environ.get("HOST", "0.0.0.0")
     #host = os.environ.get("HOST", "127.0.0.1")
     local_ip = get_local_ip()
