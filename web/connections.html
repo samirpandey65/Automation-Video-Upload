@@ -1,0 +1,147 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Connections</title>
+<link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main"><h1>🔌 Connections</h1>
+<p class="muted">All external services are managed here. YouTube and Gemini accounts are completely independent, so different Google accounts can be used.</p><div id="msg"></div>
+<div class="card" style="margin-top:18px"><h2>📺 YouTube Accounts</h2><p class="muted">Each connected account has its own client_secret.json, credentials, channel mapping, folder and scheduler.</p><button class="btn btn-primary" onclick="openAdd()">+ Add YouTube Account</button><div id="yt" style="margin-top:16px"></div></div>
+<div id="addAccountModal" class="modal"><div class="modal-box"><h2>Add YouTube Account</h2><p class="muted">Give this OAuth client a clear name, choose its client_secret.json, then connect with Google. Reconnecting a logged-out account keeps its existing channel, folder, inventory and scheduler data.</p><label>Account Name</label><input id="accountNameInput" placeholder="e.g. Chalaak Kahaniya" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">Client Secret JSON</label><div style="display:flex;gap:8px;margin-top:6px"><input id="secretPath" readonly style="flex:1" placeholder="Select client_secret.json"><input id="secretFile" type="file" accept=".json,application/json" style="display:none" onchange="uploadSecret(this,'youtube')"><button class="btn btn-secondary" onclick="document.getElementById('secretFile').click()">Browse</button></div><div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeAdd()">Cancel</button><button class="btn btn-primary" onclick="connectYouTube()">Connect with Google</button></div></div></div>
+<div id="ytModal" class="modal"><div class="modal-box"><h2>Select YouTube Channel</h2><p class="muted">Choose which channel from this Google account should be stored.</p><select id="ytChoice"></select><div class="row" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeYT()">Cancel</button><button class="btn btn-primary" onclick="completeSelectedChannel()">Connect Selected Channel</button></div></div></div>
+<div class="card" style="margin-top:18px"><h2>📘 Meta — Facebook + Instagram</h2><p class="muted">Connect your Facebook Page and linked Instagram Professional account for publishing.</p><button class="btn btn-primary" onclick="openMetaAdd()">+ Connect Meta Account</button><div id="meta" style="margin-top:16px"></div></div>
+<div id="metaModal" class="modal"><div class="modal-box"><h2>Connect Meta Account</h2><p class="muted">Enter your Meta App details and Facebook Login for Business Configuration ID.</p><label>Account Name</label><input id="metaName" placeholder="e.g. DealDhoondo Social" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">Meta App ID</label><input id="metaAppId" placeholder="123456789012345" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">Meta App Secret</label><input id="metaAppSecret" type="password" placeholder="Paste App Secret" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">Facebook Login for Business Configuration ID</label><input id="metaConfigId" value="1806950670655110" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">OAuth Redirect URI</label><input id="metaRedirect" readonly value="http://localhost:8080/api/meta/oauth/callback" style="width:100%;margin-top:6px"><div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeMetaAdd()">Cancel</button><button class="btn btn-primary" onclick="connectMeta()">Continue with Meta</button></div></div></div>
+<div id="metaPageModal" class="modal"><div class="modal-box"><h2>Select Facebook Page</h2><p class="muted">Choose the Facebook Page this uploader should use.</p><select id="metaPageChoice" style="width:100%"></select><div id="metaPageInfo" class="notice" style="margin-top:12px"></div><div class="row" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeMetaPage()">Cancel</button><button class="btn btn-primary" onclick="completeMeta()">Save Connection</button></div></div></div>
+<div class="card" style="margin-top:18px"><h2>✨ Gemini</h2><p class="muted">Separate Google OAuth connection used for direct video understanding and English/Roman Hinglish metadata generation. Multiple Gemini accounts are supported.</p>
+<button class="btn btn-primary" onclick="openGeminiAdd()">+ Add Gemini Account</button><div id="gemini" style="margin-top:16px"></div>
+<div id="geminiModal" class="modal"><div class="modal-box"><h2 id="geminiModalTitle">Add Gemini Account</h2><p class="muted">Each Gemini account can use its own Google OAuth client_secret.json. Give it a clear name, choose the JSON file, then sign in with the Google account you want to use.</p><label>Account Name</label><input id="geminiName" placeholder="e.g. Gemini Production" style="width:100%;margin-top:6px"><label style="display:block;margin-top:14px">Gemini OAuth Client Secret JSON</label><div style="display:flex;gap:8px;margin-top:6px"><input id="geminiSecretPath" readonly style="flex:1" placeholder="Select client_secret.json"><input id="geminiSecretFile" type="file" accept=".json,application/json" style="display:none" onchange="uploadSecret(this,'gemini')"><button class="btn btn-secondary" onclick="document.getElementById('geminiSecretFile').click()">Browse</button></div><div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeGeminiAdd()">Cancel</button><button class="btn btn-primary" onclick="connectGemini()">Connect with Google</button></div></div></div>
+<div class="notice" style="margin-top:16px"><strong>Google Cloud:</strong> Enable the Generative Language API in the project shown by your OAuth client. If the OAuth app is in Testing mode, add each Gemini Google account under Test Users.</div></div>
+<div class="card" style="margin-top:18px"><h2>🧠 Gemini</h2><p class="muted">Cloud Gemini is used for video analysis and metadata generation.</p><a class="btn btn-secondary" href="/settings" style="text-decoration:none">Configure Gemini</a></div>
+<div class="card" style="margin-top:18px"><h2>🔵 OpenAI</h2><p class="muted">Provider slot reserved for a future independent OpenAI connection. It will never reuse YouTube or Gemini credentials.</p><span class="badge">NOT CONNECTED</span></div>
+</main></div></div></div><script src="/static/common.js?v=24"></script><script>
+let ytCandidates=[];
+function closeYT(){document.getElementById('ytModal').classList.remove('open')}
+function openAdd(){window.youtubeReconnectAccountId=null;document.getElementById('accountNameInput').value='';document.getElementById('secretPath').value='';document.getElementById('addAccountModal').classList.add('open')}
+function closeAdd(){document.getElementById('addAccountModal').classList.remove('open')}
+async function uploadSecret(input,kind){const f=input.files&&input.files[0];if(!f)return;try{setMessage('msg','Uploading OAuth client_secret.json…');const b=await f.arrayBuffer();let bin='';const bytes=new Uint8Array(b);for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));const content_base64=btoa(bin);const endpoint=kind==='gemini'?'/api/connections/gemini/client-secret/upload':'/api/youtube/accounts/client-secret/upload';const d=await api(endpoint,{method:'POST',body:JSON.stringify({filename:f.name,content_base64})});document.getElementById(kind==='gemini'?'geminiSecretPath':'secretPath').value=d.path;setMessage('msg','OAuth client file uploaded to the server.','success')}catch(e){setMessage('msg',e.message,'error')}finally{input.value=''}}
+async function refresh(){
+  try{
+    const [a,ac]=await Promise.all([api('/api/youtube/accounts'),api('/api/connections')]);
+    document.getElementById('yt').innerHTML=(a.accounts||[]).map(x=>{
+      const ch=(x.channels||[]).map(c=>esc(c.channel_name)).join(', ')||'No channel';
+      const status=String(x.status||'connected').toLowerCase();
+      const days=x.days_remaining==null?null:Number(x.days_remaining);
+      const required=status==='reauth_required'||String(x.reauth_status||'').toLowerCase()==='required';
+      const dueSoon=days!=null && days<=2 && !required;
+      const label=status==='logged_out'?'LOGGED OUT':required?'RE-AUTH REQUIRED':dueSoon?'RE-AUTH SOON':status.toUpperCase();
+      const badgeClass=required||status==='error'?'error':dueSoon?'error':status==='connected'?'uploaded':'';
+      const reminder=days!=null ? (required?'Re-authentication required now':`Re-auth reminder in ${Math.max(0,Math.ceil(days))} day${Math.ceil(days)===1?'':'s'}`) : 'Re-auth reminder not scheduled';
+      const actions=(status==='logged_out'||required)
+        ? `<button class="btn btn-primary" onclick="reconnectYouTube(${x.id})">↻ Reconnect</button> <button class="btn btn-secondary" onclick="deleteYouTube(${x.id})">Delete</button>`
+        : `<button class="btn btn-secondary" onclick="testYouTube(${x.id},this)">⚡ Test Connection</button> <button class="btn btn-danger" onclick="logoutYouTube(${x.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="deleteYouTube(${x.id})">Delete</button>`;
+      return `<div class="row" style="padding:15px 0;border-bottom:1px solid #eee;justify-content:space-between;align-items:center;gap:14px"><div style="min-width:0"><strong>${esc(x.account_name)}</strong><div class="muted">Google: ${esc(x.account_email||'Email not available')}</div><div class="muted">Channels: ${ch}</div><div class="muted" style="font-size:11px;word-break:break-all">OAuth client: ${esc(x.client_secret_path||'')}</div><div class="muted" style="font-size:12px">Last verified: ${x.last_verified_at?esc(x.last_verified_at.replace('T',' ').slice(0,19)):'Never'} · ${esc(reminder)}</div></div><div style="white-space:nowrap"><span class="badge ${badgeClass}">${label}</span> ${actions}</div></div>`
+    }).join('')||'<p class="muted">No YouTube accounts connected.</p>';
+    const rows=(ac.connections||[]).filter(x=>x.provider==='gemini');
+    document.getElementById('gemini').innerHTML=rows.map(x=>{
+      const status=String(x.status||'connected').toLowerCase();
+      const label=status==='logged_out'?'LOGGED OUT':status.toUpperCase();
+      const badgeClass=status==='connected'?'uploaded':(status==='error'?'error':'');
+      const actions=status==='logged_out'
+        ? `<button class="btn btn-primary" onclick="reconnectGemini(${x.id})">↻ Reconnect</button>`
+        : `<button class="btn btn-secondary" onclick="testGemini(${x.id},this)">⚡ Test Connection</button> <button class="btn btn-danger" onclick="logoutGemini(${x.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="removeGemini(${x.id})">Remove</button>`;
+      return `<div class="row" style="padding:15px 0;border-bottom:1px solid #eee;justify-content:space-between;align-items:center;gap:14px"><div style="min-width:0"><strong>${esc(x.account_name||x.account_email)}</strong><div class="muted">Google: ${esc(x.account_email)}</div><div class="muted">Model: ${esc(x.model||'auto-detect')} · Project: ${esc(x.project_id||'')}</div><div class="muted" style="font-size:11px;word-break:break-all">OAuth client: ${esc(x.client_secret_path||'')}</div><div class="muted" style="font-size:12px">Last verified: ${x.last_verified_at?esc(x.last_verified_at.replace('T',' ').slice(0,19)):'Never'}</div></div><div style="white-space:nowrap"><span class="badge ${badgeClass}">${label}</span> ${actions}</div></div>`;
+    }).join('')||'<p class="muted">No Gemini accounts connected.</p>';
+  }catch(e){setMessage('msg',e.message,'error')}
+}
+async function testYouTube(id,btn){
+  const old=btn.textContent;btn.disabled=true;btn.textContent='Testing…';
+  try{const r=await api('/api/youtube/accounts/'+id+'/test',{method:'POST'});setMessage('msg',`YouTube connection test passed for ${r.account_name}. ${r.channels.length} channel${r.channels.length===1?'':'s'} verified.`,'success');await refresh()}
+  catch(e){setMessage('msg','YouTube connection test failed: '+e.message,'error');await refresh()}
+  finally{btn.disabled=false;btn.textContent=old}
+}
+async function logoutYouTube(id){
+  const a=(await api('/api/youtube/accounts')).accounts||[];const row=a.find(x=>String(x.id)===String(id));
+  if(!confirm(`Log out ${row?row.account_name:'this YouTube account'}?\n\nThe account, channel, folder, inventory and scheduler will be preserved. You can reconnect later.`))return;
+  try{await api('/api/youtube/accounts/'+id+'/logout',{method:'POST'});await refresh();setMessage('msg','YouTube account logged out. Its data and settings were preserved.','success')}catch(e){setMessage('msg',e.message,'error')}
+}
+async function deleteYouTube(id){
+  const a=(await api('/api/youtube/accounts')).accounts||[];const row=a.find(x=>String(x.id)===String(id));
+  if(!row)return;
+  const ok=confirm(`Delete ${row.account_name||'this YouTube account'} from the uploader?\n\nThis removes the saved Google OAuth credentials and connection. The YouTube channel, uploaded-video history, inventory, folders and schedules are preserved locally, but the channel will no longer be authenticated until you reconnect it.`);
+  if(!ok)return;
+  try{await api('/api/youtube/accounts/'+id,{method:'DELETE'});await refresh();setMessage('msg','YouTube connection deleted. Channel history and local data were preserved.','success')}catch(e){setMessage('msg','Delete failed: '+e.message,'error')}
+}
+
+async function reconnectYouTube(id){
+  const a=(await api('/api/youtube/accounts')).accounts||[];const row=a.find(x=>String(x.id)===String(id));
+  if(!row)return;
+  window.youtubeReconnectAccountId=Number(row.id);document.getElementById('accountNameInput').value=row.account_name||'';document.getElementById('secretPath').value=row.client_secret_path||'';
+  document.getElementById('addAccountModal').classList.add('open');
+  setMessage('msg','Account details loaded. Click “Connect with Google” to sign in again.','notice');
+}
+
+async function connectYouTube(){
+  const name=document.getElementById('accountNameInput').value.trim(),path=document.getElementById('secretPath').value.trim();
+  if(!name||!path)return setMessage('msg','Account name and client_secret.json are required.','error');
+  closeAdd();
+  setMessage('msg','Opening Google sign-in…');
+  try{
+    const d=await api('/api/connect',{method:'POST',body:JSON.stringify({account_name:name,client_secret_path:path,account_id:window.youtubeReconnectAccountId||null})});
+    if(d.reconnected){ window.youtubeReconnectAccountId=null; await refresh(); setMessage('msg',`YouTube account reconnected successfully. ${d.channels_saved||0} existing channel${(d.channels_saved||0)===1?'':'s'} re-authenticated.`,'success'); return; }
+    ytCandidates=d.channels||[];
+    if(ytCandidates.length===1){
+      await completeYouTube(0);
+    }else if(ytCandidates.length>1){
+      document.getElementById('ytChoice').innerHTML=ytCandidates.map((c,i)=>`<option value="${i}">${esc(c.channel_name)} (${esc(c.channel_id)})</option>`).join('');
+      document.getElementById('ytModal').classList.add('open');
+      setMessage('msg','Multiple channels found. Select which channel to store.','success');
+    }else{
+      setMessage('msg','No YouTube channels found for this account.','error');
+    }
+  }catch(e){setMessage('msg',e.message,'error')}
+}
+async function completeSelectedChannel(){
+  const idx=Number(document.getElementById('ytChoice').value);
+  closeYT();
+  await completeYouTube(idx);
+}
+async function completeYouTube(i){
+  const c=ytCandidates[i];
+  if(!c)return setMessage('msg','Invalid channel selection.','error');
+  try{
+    await api('/api/connect/complete',{method:'POST',body:JSON.stringify(c)});
+    await refresh();
+    setMessage('msg','YouTube account connected successfully.','success');
+  }catch(e){setMessage('msg',e.message,'error')}
+}
+function openGeminiAdd(row=null){document.getElementById('geminiModalTitle').textContent=row?'Reconnect Gemini Account':'Add Gemini Account';document.getElementById('geminiName').value=row?.account_name||'';document.getElementById('geminiSecretPath').value=row?.client_secret_path||'';document.getElementById('geminiModal').classList.add('open')}
+function closeGeminiAdd(){document.getElementById('geminiModal').classList.remove('open')}
+
+async function connectGemini(){const name=document.getElementById('geminiName').value.trim(),path=document.getElementById('geminiSecretPath').value.trim();if(!name||!path)return setMessage('msg','Account name and Gemini client_secret.json are required.','error');closeGeminiAdd();setMessage('msg','Opening Google sign-in for Gemini…');try{const d=await api('/api/connections/gemini/connect',{method:'POST',body:JSON.stringify({account_name:name,client_secret_path:path})});await refresh();setMessage('msg','Gemini connected: '+d.connection.account_name+' ('+d.connection.account_email+')','success')}catch(e){setMessage('msg','Gemini connection failed: '+e.message,'error')}}
+async function testGemini(id,btn){const old=btn.textContent;btn.disabled=true;btn.textContent='Testing…';try{const r=await api('/api/connections/gemini/test/'+id,{method:'POST'});setMessage('msg',`Gemini test passed for ${r.email}. Active model: ${r.default_model}`,'success');await refresh()}catch(e){setMessage('msg','Gemini test failed: '+e.message,'error');await refresh()}finally{btn.disabled=false;btn.textContent=old}}
+async function logoutGemini(id){const rows=(await api('/api/connections')).connections||[];const row=rows.find(x=>Number(x.id)===Number(id));if(!confirm(`Log out ${row?.account_name||row?.account_email||'this Gemini account'}?\n\nThe account, project, model and settings will be preserved. You can reconnect later.`))return;try{await api('/api/connections/gemini/logout/'+id,{method:'POST'});await refresh();setMessage('msg','Gemini account logged out. Its settings were preserved.','success')}catch(e){setMessage('msg',e.message,'error')}}
+async function reconnectGemini(id){const rows=(await api('/api/connections')).connections||[];const row=rows.find(x=>Number(x.id)===Number(id));if(!row)return;openGeminiAdd(row);setMessage('msg','Account details loaded. Click “Connect with Google” to sign in again.','notice')}
+async function removeGemini(id){if(!confirm('Remove this Gemini account permanently from the uploader? Its saved token will also be deleted.'))return;try{await api('/api/connections/'+id,{method:'DELETE'});await refresh();setMessage('msg','Gemini connection removed.','success')}catch(e){setMessage('msg',e.message,'error')}}
+let metaPages=[];
+function openMetaAdd(){document.getElementById('metaName').value='DealDhoondo Social';document.getElementById('metaAppId').value='';document.getElementById('metaAppSecret').value='';document.getElementById('metaConfigId').value='1806950670655110';document.getElementById('metaModal').classList.add('open')}
+function closeMetaAdd(){document.getElementById('metaModal').classList.remove('open')}
+function closeMetaPage(){document.getElementById('metaPageModal').classList.remove('open')}
+async function connectMeta(){const account_name=document.getElementById('metaName').value.trim(),app_id=document.getElementById('metaAppId').value.trim(),app_secret=document.getElementById('metaAppSecret').value.trim(),config_id=document.getElementById('metaConfigId').value.trim(),redirect_uri=document.getElementById('metaRedirect').value.trim();if(!account_name||!app_id||!app_secret||!config_id)return setMessage('msg','Account name, Meta App ID, App Secret and Configuration ID are required.','error');try{const d=await api('/api/meta/oauth/start',{method:'POST',body:JSON.stringify({account_name,app_id,app_secret,config_id,redirect_uri})});closeMetaAdd();window.addEventListener('message',onMetaOAuth);const w=window.open(d.auth_url,'metaOAuth','width=620,height=760');if(!w)setMessage('msg','Popup was blocked. Allow popups for this uploader and try again.','error');else setMessage('msg','Complete Meta authorization in the new window, then return here.','notice')}catch(e){setMessage('msg',e.message,'error')}}
+async function onMetaOAuth(ev){if(!['meta-oauth-success','meta-oauth-complete'].includes(ev.data?.type))return;window.removeEventListener('message',onMetaOAuth);try{if(ev.data?.type==='meta-oauth-complete'){await refreshMeta();setMessage('msg','Meta account connected successfully.','success');return;} const d=await api('/api/meta/oauth/pages');metaPages=d.pages||[];document.getElementById('metaPageChoice').innerHTML=metaPages.map((x,i)=>`<option value="${i}">${esc(x.name)}${x.instagram_business_account?.username?' — Instagram @'+esc(x.instagram_business_account.username):' — No linked Instagram'}</option>`).join('')||'<option value="">No Pages available</option>';updateMetaPageInfo();document.getElementById('metaPageChoice').onchange=updateMetaPageInfo;document.getElementById('metaPageModal').classList.add('open')}catch(e){setMessage('msg',e.message,'error')}}
+function updateMetaPageInfo(){const p=metaPages[Number(document.getElementById('metaPageChoice').value)]||{};const ig=p.instagram_business_account||{};document.getElementById('metaPageInfo').textContent=ig.id?`Linked Instagram Professional account: @${ig.username||ig.id}`:'No linked Instagram Professional account detected. Facebook publishing will still work.'}
+async function completeMeta(){const p=metaPages[Number(document.getElementById('metaPageChoice').value)];if(!p)return;try{await api('/api/meta/oauth/complete',{method:'POST',body:JSON.stringify({page_id:p.id,account_name:document.getElementById('metaName').value.trim()})});closeMetaPage();await refreshMeta();setMessage('msg','Meta account connected successfully.','success')}catch(e){setMessage('msg',e.message,'error')}}
+async function refreshMeta(){try{const d=await api('/api/meta/connections');document.getElementById('meta').innerHTML=(d.connections||[]).map(x=>{const status=String(x.status||'connected').toLowerCase();const badge=status==='connected'?'uploaded':(status==='error'?'error':'');const ig=x.instagram_username?`Instagram: @${esc(x.instagram_username)}`:'Instagram: not linked';const actions=status==='logged_out'?`<button class="btn btn-primary" onclick="openMetaAdd()">↻ Reconnect</button>`:`<button class="btn btn-secondary" onclick="testMeta(${x.id},this)">⚡ Test Connection</button> <button class="btn btn-danger" onclick="logoutMeta(${x.id})">↪ Logout</button>`;return `<div class="row" style="padding:15px 0;border-bottom:1px solid #eee;justify-content:space-between;align-items:center;gap:14px"><div style="min-width:0"><strong>${esc(x.account_name)}</strong><div class="muted">Facebook Page: ${esc(x.page_name)}</div><div class="muted">${ig}</div><div class="muted" style="font-size:12px">Last verified: ${x.last_verified_at?esc(x.last_verified_at.replace('T',' ').slice(0,19)):'Never'}</div></div><div style="white-space:nowrap"><span class="badge ${badge}">${status.toUpperCase()}</span> ${actions}</div></div>`}).join('')||'<p class="muted">No Meta accounts connected.</p>'}catch(e){setMessage('msg',e.message,'error')}}
+async function testMeta(id,btn){const old=btn.textContent;btn.disabled=true;btn.textContent='Testing…';try{const r=await api('/api/meta/connections/'+id+'/test',{method:'POST'});setMessage('msg',`Meta connection test passed for ${r.page_name}. ${r.instagram_username?'Instagram @'+r.instagram_username+' is linked.':'No Instagram account linked.'}`,'success');await refreshMeta()}catch(e){setMessage('msg','Meta connection test failed: '+e.message,'error');await refreshMeta()}finally{btn.disabled=false;btn.textContent=old}}
+async function logoutMeta(id){if(!confirm('Log out this Meta connection? Its Page mapping will be preserved.'))return;try{await api('/api/meta/connections/'+id+'/logout',{method:'POST'});await refreshMeta();setMessage('msg','Meta account logged out.','success')}catch(e){setMessage('msg',e.message,'error')}}
+refresh();refreshMeta();
+</script></body></html>

@@ -1,0 +1,241 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · YouTube Local Auto Uploader</title><link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main">
+<div class="page-head"><div><div class="eyebrow">Workspace overview</div><h1>Dashboard</h1><p>Everything important at a glance — local library, YouTube sync, uploads and performance.</p></div><div class="actions"><button id="syncBtn" class="btn btn-primary" onclick="syncYouTube()">☁️ Sync YouTube</button></div></div>
+<div id="syncMsg"></div>
+<div id="reauthAlerts" style="display:none;margin:0 0 18px"></div>
+<div class="grid dashboard-kpis">
+<div class="card stat-card" onclick="showDetails('')"><div class="stat-top"><div class="muted">Total Videos</div><div class="stat-icon">🎬</div></div><div id="total" class="metric">0</div><div class="muted tiny">In your library · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('pending')"><div class="stat-top"><div class="muted">Pending</div><div class="stat-icon">⏳</div></div><div id="pending" class="metric">0</div><div class="muted tiny">Yet to upload · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('uploaded')"><div class="stat-top"><div class="muted">Uploaded</div><div class="stat-icon">✓</div></div><div id="uploaded" class="metric">0</div><div class="muted tiny">Successfully uploaded · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('failed')"><div class="stat-top"><div class="muted">Failed</div><div class="stat-icon">✕</div></div><div id="failed" class="metric">0</div><div class="muted tiny">Failed uploads · View details →</div></div>
+<div class="card stat-card" onclick="openFirstChannelOrPage()"><div class="stat-top"><div class="muted">YouTube Channels</div><div class="stat-icon">👥</div></div><div id="remoteCount" class="metric">0</div><div class="muted tiny">Connected / indexed videos →</div></div>
+</div>
+
+<div class="channel-hero card"><div class="channel-hero-copy"><div class="eyebrow" style="color:#b9b2ff">YouTube Channels</div><h2>One dashboard. Every channel separated.</h2><p>Manage uploads, videos, sync and performance independently from one creator workspace.</p></div><div class="channel-hero-status"><span class="sync-dot"></span><strong id="syncStatus">Ready</strong><div id="syncError" class="tiny"></div></div></div>
+
+<div class="dashboard-content-grid">
+  <div class="dashboard-left">
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>YouTube Channels</h2><div class="muted tiny">Manage each connected channel independently.</div></div><button id="channelSyncBtn" class="btn btn-primary" onclick="syncYouTube()">☁️ Sync YouTube</button></div><div id="channelCards" class="channel-card-grid"></div></div>
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>Upcoming Uploads</h2><div class="muted tiny">Scheduled uploads for the next 24 hours</div></div><a class="btn btn-ghost" href="/scheduler">Manage schedules →</a></div><div id="upcoming" class="upcoming-list">Loading…</div></div>
+    <div class="card dashboard-panel dashboard-health"><div class="section-head"><div><h2>System Health</h2><div class="muted tiny">Application services</div></div><a class="btn btn-ghost" href="/logs">📜 Logs</a></div><div id="health" class="health-grid">Checking…</div></div>
+  </div>
+  <aside class="dashboard-right">
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>Quick Actions</h2><div class="muted tiny">Shortcuts</div></div></div><div class="quick-actions"><a href="/upload">⬆️ <span>Upload New Video</span></a><a href="/scheduler">⏰ <span>Open Scheduler</span></a><a href="/analytics">📊 <span>View Performance</span></a><a href="/library">📁 <span>Video Library</span></a></div></div>
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>Recent Activity</h2><div class="muted tiny">Latest workspace events</div></div></div><div id="activity" class="recent-activity"><div class="activity-item"><i class="activity-dot"></i><div><strong>Workspace ready</strong><span>Local creator control center is online</span></div></div><div class="activity-item"><i class="activity-dot"></i><div><strong>Channel sync</strong><span id="activitySync">Waiting for the latest sync</span></div></div><div class="activity-item"><i class="activity-dot"></i><div><strong>Channel isolation</strong><span>Each connected YouTube channel is managed separately</span></div></div></div></div>
+  </aside>
+</div>
+
+<!-- Stat card details modal -->
+<div id="detailsModal" class="modal"><div class="modal-box details-modal-box"><div class="channel-modal-header"><div class="channel-modal-title-wrap"><div id="detailsModalIcon" class="channel-modal-avatar">🎬</div><div><div class="eyebrow" id="detailsModalEyebrow">Library Details</div><h2 id="detailsModalTitle">Videos</h2><div id="detailsModalSub" class="muted tiny">Loading…</div></div></div><div class="modal-header-actions"><span id="detailsModalCount" class="modal-sync-pill">0 videos</span><button class="modal-close" onclick="closeDetailsModal()" title="Close (Esc)">×</button></div></div><div class="details-modal-toolbar"><div class="global-search" style="flex:1;max-width:380px">⌕ <input id="detailsSearch" placeholder="Filter by title, channel, or path…" oninput="filterDetailsTable()" /></div><div class="actions"><button id="detailsRefreshBtn" class="btn btn-ghost btn-sm" onclick="showDetails(currentDetailsStatus)">↻ Refresh</button><a id="detailsOpenLibraryBtn" class="btn btn-primary btn-sm" href="/library">▣ Open in Video Library →</a></div></div><div class="table-wrap" style="margin:0 22px 22px;max-height:460px;overflow:auto"><table><thead><tr><th>Video / File</th><th>Channel</th><th>Status</th><th>AI</th><th>Privacy</th><th>YouTube</th></tr></thead><tbody id="detailsModalBody"><tr><td colspan="6" class="muted" style="text-align:center;padding:36px">Loading video data…</td></tr></tbody></table></div></div></div>
+
+<!-- Channel details modal -->
+<div id="channelModal" class="modal"><div class="modal-box channel-modal-box"><div class="channel-modal-header"><div class="channel-modal-title-wrap"><div id="channelModalAvatar" class="channel-modal-avatar">C</div><div><div class="eyebrow">Channel workspace</div><h2 id="channelModalTitle">Channel Details</h2><div id="channelModalSub" class="muted tiny"></div></div></div><div class="modal-header-actions"><span id="channelModalSync" class="modal-sync-pill">● Synced</span><button class="modal-close" onclick="closeChannelModal()">×</button></div></div><div id="channelModalStats" class="channel-modal-stats"></div><div class="channel-toolbar"><div><strong>Channel videos</strong><div class="muted tiny">Only videos belonging to the selected channel.</div></div><div class="actions"><button id="modalSyncBtn" class="btn btn-ghost btn-sm">↻ Refresh</button><button id="modalOpenChannelBtn" class="btn btn-primary btn-sm">↗ YouTube</button></div></div><div class="table-wrap channel-video-table"><table><thead><tr><th>Video</th><th>Status</th><th>Published</th><th>Views</th><th>Likes</th><th>Comments</th><th>Actions</th></tr></thead><tbody id="channelVideoBody"></tbody></table></div></div></div>
+
+<!-- Video analytics modal -->
+<div id="analyticsModal" class="modal modal-front"><div class="modal-box analytics-modal-box"><div class="channel-modal-header"><div><div class="eyebrow">Video analytics</div><h2 id="analyticsModalTitle">Analytics</h2><div id="analyticsModalSub" class="muted tiny">Last 28 days</div></div><button class="modal-close" onclick="closeAnalyticsModal()">×</button></div><div id="analyticsContent" class="analytics-content">Loading…</div></div></div>
+
+</main></div></div><script src="/static/common.js?v=24"></script><script>
+function statNum(x){return Number(x||0).toLocaleString()}
+function ytUrl(id){return 'https://www.youtube.com/watch?v='+encodeURIComponent(id)}
+let currentDetailsVideos = [];
+let currentDetailsStatus = '';
+
+async function showDetails(status) {
+  currentDetailsStatus = status || '';
+  const modal = document.getElementById('detailsModal');
+  modal.classList.add('open');
+
+  const titles = {
+    '': 'All Videos (Library & Remote)',
+    'pending': 'Pending Uploads',
+    'uploaded': 'Uploaded Videos',
+    'failed': 'Failed Uploads'
+  };
+  const icons = {
+    '': '🎬',
+    'pending': '⏳',
+    'uploaded': '✓',
+    'failed': '✕'
+  };
+  const title = titles[currentDetailsStatus] || 'Video Details';
+  const icon = icons[currentDetailsStatus] || '📁';
+
+  document.getElementById('detailsModalTitle').textContent = title;
+  document.getElementById('detailsModalIcon').textContent = icon;
+  document.getElementById('detailsModalEyebrow').textContent = currentDetailsStatus ? (currentDetailsStatus.toUpperCase() + ' VIDEOS') : 'WORKSPACE INVENTORY';
+  document.getElementById('detailsModalSub').textContent = 'Fetching video records from library…';
+  document.getElementById('detailsModalCount').textContent = 'Loading…';
+  document.getElementById('detailsModalBody').innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:36px">Loading video records…</td></tr>';
+  document.getElementById('detailsSearch').value = '';
+  document.getElementById('detailsOpenLibraryBtn').href = currentDetailsStatus ? ('/library?status=' + encodeURIComponent(currentDetailsStatus)) : '/library';
+
+  try {
+    const url = '/api/dashboard/details' + (currentDetailsStatus ? ('?status=' + encodeURIComponent(currentDetailsStatus)) : '');
+    const d = await api(url);
+    currentDetailsVideos = d.videos || [];
+    document.getElementById('detailsModalSub').textContent = `${statNum(currentDetailsVideos.length)} video(s) found in workspace`;
+    document.getElementById('detailsModalCount').textContent = `${statNum(currentDetailsVideos.length)} videos`;
+    renderDetailsTable(currentDetailsVideos);
+  } catch (e) {
+    document.getElementById('detailsModalBody').innerHTML = `<tr><td colspan="6" class="notice error">${esc(e.message)}</td></tr>`;
+    document.getElementById('detailsModalSub').textContent = 'Error loading records';
+  }
+}
+
+function renderDetailsTable(videos) {
+  const tbody = document.getElementById('detailsModalBody');
+  if (!videos.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-table">No matching videos found for this status.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = videos.map(v => {
+    const isRemoteOnly = !v.local_file;
+    const displayName = esc(v.title || v.filename || 'Untitled');
+    const pathOrRemote = isRemoteOnly ? 'Remote YouTube upload' : esc(v.file_path || '');
+    const ytId = v.youtube_video_id;
+    const statusClass = v.status === 'uploaded' ? 'uploaded' : v.status === 'failed' ? 'failed' : 'pending';
+    const ytLink = ytId ? `<a href="${ytUrl(ytId)}" target="_blank" class="btn btn-ghost btn-sm" title="Open on YouTube">↗ ${esc(ytId)}</a>` : '—';
+
+    return `<tr>
+      <td>
+        <div class="video-cell">
+          <div class="video-mini-thumb">${isRemoteOnly ? '☁' : '▶'}</div>
+          <div>
+            <strong title="${displayName}">${displayName}</strong>
+            <span class="muted tiny" title="${pathOrRemote}">${pathOrRemote}</span>
+          </div>
+        </div>
+      </td>
+      <td><strong>${esc(v.channel_name || '—')}</strong></td>
+      <td><span class="badge ${statusClass}">${esc(v.status || 'unknown')}</span></td>
+      <td><span class="badge ${v.ai_status === 'completed' ? 'synced' : ''}">${esc(v.ai_status || 'not_analyzed')}</span></td>
+      <td><span class="tiny muted">${esc(v.privacy_status || '—')}</span></td>
+      <td>${ytLink}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDetailsTable() {
+  const q = (document.getElementById('detailsSearch').value || '').trim().toLowerCase();
+  if (!q) {
+    renderDetailsTable(currentDetailsVideos);
+    document.getElementById('detailsModalCount').textContent = `${statNum(currentDetailsVideos.length)} videos`;
+    return;
+  }
+  const filtered = currentDetailsVideos.filter(v => {
+    return (v.title || '').toLowerCase().includes(q) ||
+           (v.filename || '').toLowerCase().includes(q) ||
+           (v.file_path || '').toLowerCase().includes(q) ||
+           (v.channel_name || '').toLowerCase().includes(q) ||
+           (v.youtube_video_id || '').toLowerCase().includes(q);
+  });
+  renderDetailsTable(filtered);
+  document.getElementById('detailsModalCount').textContent = `${statNum(filtered.length)} of ${statNum(currentDetailsVideos.length)}`;
+}
+
+function closeDetailsModal() {
+  document.getElementById('detailsModal').classList.remove('open');
+}
+
+function openFirstChannelOrPage() {
+  const firstCard = document.querySelector('.channel-card');
+  if (firstCard && firstCard.dataset.channelId) {
+    openChannel(firstCard.dataset.channelId);
+  } else {
+    window.location.href = '/channels';
+  }
+}
+function safeJson(s){try{return JSON.parse(s||'{}')}catch{return {}}}
+function channelStats(videos){let views=0,likes=0,comments=0;videos.forEach(v=>{const st=safeJson(v.statistics_json);views+=Number(st.viewCount||0);likes+=Number(st.likeCount||0);comments+=Number(st.commentCount||0)});return {videos:videos.length,views,likes,comments}}
+function syncLabel(c){return c.last_sync_status==='success'?'Synced':c.last_sync_status==='error'?'Sync failed':'Not synced'}
+function syncIcon(c){return c.last_sync_status==='success'?'🟢':c.last_sync_status==='error'?'🔴':'🟡'}
+
+async function loadReauthAlerts(){
+  try{
+    const d=await api('/api/youtube/reauth-alerts'); const rows=d.alerts||[]; const el=document.getElementById('reauthAlerts');
+    if(!rows.length){el.style.display='none';return;}
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:4px solid #c62828;padding:16px 18px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><strong>⚠ Action Required — YouTube authentication</strong><div class="muted tiny">These accounts may stop scheduled work until Google authentication is restored.</div></div><a class="btn btn-primary btn-sm" href="/connections">Open Connections</a></div><div style="margin-top:12px">'+rows.map(x=>{const required=!!x.reauth_required||String(x.status||'').toLowerCase()==='reauth_required';const days=x.days_remaining==null?null:Math.ceil(Number(x.days_remaining));const text=required?'Re-authentication required now':`Re-auth reminder in ${Math.max(0,days)} day${Math.max(0,days)===1?'':'s'}`;return `<div style="padding:9px 0;border-top:1px solid #eee;display:flex;justify-content:space-between;gap:10px"><div><strong>${esc(x.account_name)}</strong><div class="muted tiny">${esc(x.account_email||'')} · ${Number(x.channel_count||0)} channel(s)</div></div><span class="badge ${required?'error':'error'}">${esc(text)}</span></div>`}).join('')+'</div></div>';
+  }catch(e){console.warn('Re-auth alert load failed',e)}
+}
+
+async function load(){
+  const d=await api('/api/dashboard'); const s=d.stats||{};
+  ['total','pending','uploaded','failed'].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent=statNum(s[k])});
+  document.getElementById('remoteCount').textContent=statNum(d.remote_count||0);
+  const channels=d.channels||[], grid=document.getElementById('channelCards');
+  grid.innerHTML=channels.length?channels.map(c=>{
+    const name=esc(c.channel_name||'YouTube Channel'), email=esc(c.google_email||c.channel_id||'');
+    const status=syncLabel(c), initial=esc((c.channel_name||'YT').slice(0,1).toUpperCase());
+    return `<button class="channel-card" data-channel-id="${esc(c.channel_id)}"><div class="channel-card-accent"></div><div class="channel-card-top"><div class="channel-avatar">${initial}</div><div class="channel-card-heading"><div class="channel-card-name">${name}</div><div class="muted tiny">${email}</div></div><span class="channel-arrow">↗</span></div><div class="channel-mini-stats"><div><strong>${statNum(c.remote_video_count||0)}</strong><span>Videos</span></div><div><strong>${status}</strong><span>Sync status</span></div></div><div class="channel-card-footer"><span class="tiny">${c.last_sync_at?'Synced '+esc(new Date(c.last_sync_at).toLocaleString()):'Ready to connect'}</span><strong>Open workspace →</strong></div></button>`;
+  }).join(''):`<div class="empty-channel"><div class="empty-icon">📺</div><strong>No YouTube channel connected</strong><span>Connect a channel from Connections to see it here.</span><a class="btn btn-primary btn-sm" href="/connections">Connect YouTube</a></div>`;
+  const c=channels[0];
+  if(c){document.getElementById('syncStatus').textContent=c.last_sync_status==='success'?'Last sync successful':c.last_sync_status==='error'?'Sync failed':'Ready';document.getElementById('syncError').textContent=c.last_sync_error||''}; const act=document.getElementById('activitySync'); if(act) act.textContent=c.last_sync_at ? ('Last successful sync · '+new Date(c.last_sync_at).toLocaleString()) : 'No sync recorded yet';
+  await loadUpcoming(); await loadHealth(); await loadReauthAlerts();
+}
+
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.channel-card'); if(card){openChannel(card.dataset.channelId);return;}
+  if(e.target===document.getElementById('detailsModal'))closeDetailsModal();
+  if(e.target===document.getElementById('channelModal'))closeChannelModal();
+  if(e.target===document.getElementById('analyticsModal'))closeAnalyticsModal();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closeDetailsModal();
+    closeChannelModal();
+    closeAnalyticsModal();
+  }
+});
+
+async function openChannel(channelId){
+  const modal=document.getElementById('channelModal'); modal.classList.add('open');
+  document.getElementById('channelModalTitle').textContent='Loading…';
+  document.getElementById('channelModalSub').textContent='Loading channel workspace';
+  document.getElementById('channelVideoBody').innerHTML='<tr><td colspan="7" class="muted">Loading channel data…</td></tr>';
+  try{
+    const d=await api('/api/dashboard?channel_id='+encodeURIComponent(channelId)); const c=(d.channels||[])[0]; if(!c)throw new Error('Channel not found');
+    const videos=d.remote_videos||[], st=channelStats(videos), status=syncLabel(c);
+    document.getElementById('channelModalTitle').textContent=c.channel_name||'YouTube Channel';
+    document.getElementById('channelModalSub').textContent=(c.google_email||'')+' · '+(c.channel_id||'');
+    document.getElementById('channelModalAvatar').textContent=(c.channel_name||'YT').slice(0,1).toUpperCase();
+    document.getElementById('channelModalSync').textContent=syncIcon(c)+' '+status;
+    document.getElementById('channelModalStats').innerHTML=`<div class="modal-stat"><span>Videos</span><strong>${statNum(st.videos)}</strong></div><div class="modal-stat"><span>Views</span><strong>${statNum(st.views)}</strong></div><div class="modal-stat"><span>Likes</span><strong>${statNum(st.likes)}</strong></div><div class="modal-stat"><span>Comments</span><strong>${statNum(st.comments)}</strong></div>`;
+    document.getElementById('channelVideoBody').innerHTML=videos.length?videos.map(v=>{const x=safeJson(v.statistics_json);return `<tr><td><div class="video-cell"><div class="video-mini-thumb">▶</div><div><strong>${esc(v.title||'Untitled')}</strong><span class="muted tiny">${esc(v.youtube_video_id||'')}</span></div></div></td><td><span class="badge ${v.privacy_status==='public'?'synced':''}">${esc(v.privacy_status||'unknown')}</span></td><td>${v.published_at?esc(new Date(v.published_at).toLocaleDateString()):'—'}</td><td>${statNum(x.viewCount)}</td><td>${statNum(x.likeCount)}</td><td>${statNum(x.commentCount)}</td><td><div class="table-actions"><button class="btn btn-primary btn-sm video-analytics" data-channel-id="${esc(channelId)}" data-video-id="${esc(v.youtube_video_id)}" data-title="${esc(v.title||'Video')}">📊 Analytics</button><button class="btn btn-ghost btn-sm video-open" data-video-id="${esc(v.youtube_video_id)}">↗</button></div></td></tr>`}).join(''):`<tr><td colspan="7"><div class="empty-table">No YouTube videos indexed for this channel.</div></td></tr>`;
+    document.getElementById('modalSyncBtn').onclick=async()=>{await syncYouTube(channelId);await openChannel(channelId)};
+    document.getElementById('modalOpenChannelBtn').onclick=()=>window.open('https://www.youtube.com/channel/'+encodeURIComponent(channelId),'_blank');
+    modal.querySelectorAll('.video-analytics').forEach(b=>b.addEventListener('click',()=>openAnalytics(b.dataset.channelId,b.dataset.videoId,b.dataset.title)));
+    modal.querySelectorAll('.video-open').forEach(b=>b.addEventListener('click',()=>window.open(ytUrl(b.dataset.videoId),'_blank')));
+  }catch(e){document.getElementById('channelVideoBody').innerHTML='<tr><td colspan="7" class="notice error">'+esc(e.message)+'</td></tr>'}
+}
+function closeChannelModal(){document.getElementById('channelModal').classList.remove('open')}
+
+async function openAnalytics(channelId,videoId,title){
+  const m=document.getElementById('analyticsModal');m.classList.add('open');document.getElementById('analyticsModalTitle').textContent=title;document.getElementById('analyticsContent').innerHTML='<div class="analytics-loading">Loading live analytics…</div>';
+  try{const a=await api('/api/remote/'+encodeURIComponent(channelId)+'/'+encodeURIComponent(videoId)+'/analytics?days=28');const x=a.summary||{};const detailed=a.analytics_available!==false;document.getElementById('analyticsContent').innerHTML=`<div class="analytics-kpis"><div><span>Views</span><strong>${statNum(x.views)}</strong></div><div><span>Likes</span><strong>${statNum(x.likes)}</strong></div><div><span>Comments</span><strong>${statNum(x.comments)}</strong></div><div><span>Watch time</span><strong>${x.estimatedMinutesWatched!=null?statNum(x.estimatedMinutesWatched)+' min':'—'}</strong></div><div><span>Avg viewed</span><strong>${x.averageViewPercentage!=null?x.averageViewPercentage+'%':'—'}</strong></div><div><span>Subscribers</span><strong>${x.subscribersGained!=null?statNum(x.subscribersGained):'—'}</strong></div></div><div class="analytics-note">${detailed?'Detailed YouTube Analytics data is available.':'Basic YouTube statistics are shown. Enable the YouTube Analytics API and reconnect the channel for watch-time and audience metrics.'}</div><div class="analytics-actions"><button class="btn btn-ghost" onclick="closeAnalyticsModal()">Close</button><button class="btn btn-primary" onclick="window.open('${ytUrl(videoId)}','_blank')">↗ Open on YouTube</button></div>`}catch(e){document.getElementById('analyticsContent').innerHTML='<div class="notice error">Analytics unavailable: '+esc(e.message)+'</div>'}
+}
+function closeAnalyticsModal(){document.getElementById('analyticsModal').classList.remove('open')}
+
+async function syncYouTube(channelId){
+  const buttons=[document.getElementById('syncBtn'),document.getElementById('channelSyncBtn')].filter(Boolean);buttons.forEach(b=>{b.disabled=true;b.dataset.old=b.textContent;b.textContent='⟳ Syncing…'});
+  try{const url='/api/youtube/sync'+(channelId?'?channel_id='+encodeURIComponent(channelId):'');const d=await api(url);setMessage('syncMsg',`Sync complete · ${statNum(d.remote_videos)} videos indexed.`,'success');await load();return d}catch(e){setMessage('syncMsg','YouTube sync failed: '+e.message,'error');await load();throw e}finally{buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.old||'☁️ Sync'})}
+}
+async function loadUpcoming(){try{const d=await api('/api/dashboard/upcoming');document.getElementById('upcoming').innerHTML=d.upcoming.length?d.upcoming.map(x=>`<div class="upcoming-item"><strong>${esc(new Date(x.datetime).toLocaleString())}</strong> <span class="badge pending">${esc(x.channel_name)}</span><br><span class="muted tiny">${esc(x.video)} · AI ${esc(x.ai_provider)} · ${esc(x.privacy_status)}</span></div>`).join(''):`<div class="muted">No scheduled upload in the next 24 hours.</div>`}catch(e){document.getElementById('upcoming').innerHTML='<div class="notice error">'+esc(e.message)+'</div>'}}
+async function loadHealth(){try{const d=await api('/api/health');const items=[['Application',d.ok!==false,'Online'],['Database',!!d.database_exists,'Ready'],['FFmpeg',!!d.ffmpeg,'Available'],['FFprobe',!!d.ffprobe,'Available'],['Python',true,d.python||'Running']];document.getElementById('health').innerHTML=items.map(i=>`<div class="health-item"><span class="health-icon ${i[1]?'good':'bad'}">${i[1]?'✓':'!'}</span><div><strong>${i[0]}</strong><span>${esc(String(i[2]))}</span></div></div>`).join('')}catch(e){document.getElementById('health').innerHTML='<div class="health-item"><span class="health-icon bad">!</span><div><strong>Health check</strong><span>Unavailable</span></div></div>'}}
+load();
+</script></body></html>
