@@ -1,15 +1,33 @@
-credentials/*.json
-credentials/*.p12
+cat > .gitignore <<'EOF'
+# Google OAuth credentials and tokens
+credentials/
+**/credentials/
+client_secret_*.json
+**/client_secret_*.json
+*token*.json
+**/*token*.json
+
+# Local application data
 data/*.db
+data/*.db-*
+data/.session_secret
 logs/*.log
+
+# Python
 __pycache__/
 *.pyc
 .venv/
-
-data/*.db-*
-data/.session_secret
-!credentials/.gitkeep
-!logs/.gitkeep
 tests/__pycache__/
 .pytest_cache/
-run.py
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# Keep directory placeholders
+!credentials/.gitkeep
+!logs/.gitkeep
+EOF

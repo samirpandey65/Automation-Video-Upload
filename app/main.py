@@ -27,7 +27,8 @@ from .database import (
     database_health, get_schedule
 )
 from .auth import (
-    start_oauth, discover_channels, save_credentials, delete_credentials, test_youtube_account, logout_youtube_account
+    start_oauth, discover_channels, get_google_account_email, save_credentials,
+    delete_credentials, test_youtube_account, logout_youtube_account
 )
 from .local_auth import ensure_admin, setup_available, create_first_admin, make_session, read_session, verify_password, hash_password, SESSION_COOKIE
 from .video_utils import scan_folder, sha256_file
@@ -637,13 +638,18 @@ async def api_connect(payload: dict, request: Request):
         creds = await asyncio.to_thread(start_oauth, client_secret_path)
         items = discover_channels(creds)
         if not items: raise HTTPException(status_code=400, detail="No YouTube channel was returned for this Google account.")
+        account_email = get_google_account_email(creds)
         app.state.pending_creds = creds
-        app.state.pending_youtube_account = {"account_name":account_name,"client_secret_path":str(Path(client_secret_path).resolve())}
+        app.state.pending_youtube_account = {
+            "account_name": account_name,
+            "account_email": account_email,
+            "client_secret_path": str(Path(client_secret_path).resolve()),
+        }
         candidates=[]
         for item in items:
             snippet=item.get("snippet",{})
             candidates.append({"channel_id":item["id"],"channel_name":snippet.get("title",""),"channel_handle":snippet.get("customUrl","") or ""})
-        return {"channels":candidates,"account_name":account_name}
+        return {"channels":candidates,"account_name":account_name,"account_email":account_email}
     except HTTPException: raise
     except Exception as e:
         logging.exception("OAuth failed")
@@ -655,10 +661,20 @@ async def api_connect_complete(payload: dict, request: Request):
     channel_id=payload.get("channel_id"); channel_name=payload.get("channel_name",""); channel_handle=payload.get("channel_handle","")
     creds=getattr(app.state,"pending_creds",None); meta=getattr(app.state,"pending_youtube_account",None)
     if not creds or not meta: raise HTTPException(status_code=400,detail="No pending Google login. Click Connect again.")
-    account=upsert_youtube_account(meta["account_name"],meta["client_secret_path"])
+    account=upsert_youtube_account(
+        meta["account_name"],
+        meta["client_secret_path"],
+        meta.get("account_email", ""),
+    )
     save_credentials(channel_id,creds)
     token_key=channel_id
-    upsert_channel(channel_id,channel_name,channel_handle,"",token_key)
+    upsert_channel(
+        channel_id,
+        channel_name,
+        channel_handle,
+        meta.get("account_email", ""),
+        token_key,
+    )
     set_channel_account(channel_id,account["id"])
     app.state.pending_creds=None; app.state.pending_youtube_account=None
     return {"ok":True,"account":account}

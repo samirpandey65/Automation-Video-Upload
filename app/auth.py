@@ -11,6 +11,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
 ]
 
 def _key(channel_id):
@@ -147,8 +148,15 @@ def get_youtube_service(channel_id):
             pass
     return build("youtube", "v3", credentials=creds, cache_discovery=False)
 
+def get_google_account_email(creds):
+    """Return the Google account email associated with these OAuth credentials."""
+    oauth2 = build("oauth2", "v2", credentials=creds, cache_discovery=False)
+    info = oauth2.userinfo().get().execute()
+    return str(info.get("email") or "").strip()
+
+
 def discover_channels(creds):
-    youtube = build("youtube", "v3", credentials=creds)
+    youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
     response = youtube.channels().list(
         part="id,snippet",
         mine=True,

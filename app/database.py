@@ -18,6 +18,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS youtube_accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         account_name TEXT NOT NULL UNIQUE,
+        account_email TEXT DEFAULT '',
         client_secret_path TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'connected',
         created_at TEXT NOT NULL,
@@ -261,6 +262,12 @@ def init_db():
         UNIQUE(schedule_id, run_date)
     );
     """)
+    # Migration for existing installations created before Google account
+    # email was persisted at the YouTube-account level.
+    columns = {r["name"] for r in conn.execute("PRAGMA table_info(youtube_accounts)").fetchall()}
+    if "account_email" not in columns:
+        conn.execute("ALTER TABLE youtube_accounts ADD COLUMN account_email TEXT DEFAULT ''")
+
     conn.execute("UPDATE upload_schedules SET ai_provider='gemini' WHERE COALESCE(ai_provider,'') != 'gemini'")
     conn.commit()
     conn.close()
@@ -275,17 +282,29 @@ def list_youtube_accounts():
 def get_youtube_account(account_id):
     conn=get_conn(); row=conn.execute("SELECT * FROM youtube_accounts WHERE id=?", (account_id,)).fetchone(); conn.close(); return dict(row) if row else None
 
-def upsert_youtube_account(account_name, client_secret_path, account_id=None):
+def upsert_youtube_account(account_name, client_secret_path, account_email="", account_id=None):
     conn=get_conn(); now=now_iso()
+    account_email = str(account_email or "").strip()
     if account_id:
-        conn.execute("UPDATE youtube_accounts SET account_name=?,client_secret_path=?,status='connected',last_verified_at=? WHERE id=?", (account_name,client_secret_path,now,int(account_id)))
+        conn.execute(
+            "UPDATE youtube_accounts SET account_name=?,account_email=?,client_secret_path=?,status='connected',last_verified_at=? WHERE id=?",
+            (account_name,account_email,client_secret_path,now,int(account_id))
+        )
         aid=int(account_id)
     else:
         existing=conn.execute("SELECT id FROM youtube_accounts WHERE account_name=?", (account_name,)).fetchone()
         if existing:
-            aid=int(existing["id"]); conn.execute("UPDATE youtube_accounts SET client_secret_path=?,status='connected',last_verified_at=? WHERE id=?", (client_secret_path,now,aid))
+            aid=int(existing["id"])
+            conn.execute(
+                "UPDATE youtube_accounts SET account_email=?,client_secret_path=?,status='connected',last_verified_at=? WHERE id=?",
+                (account_email,client_secret_path,now,aid)
+            )
         else:
-            cur=conn.execute("INSERT INTO youtube_accounts(account_name,client_secret_path,status,created_at,last_verified_at) VALUES(?,?,?,?,?)", (account_name,client_secret_path,'connected',now,now)); aid=cur.lastrowid
+            cur=conn.execute(
+                "INSERT INTO youtube_accounts(account_name,account_email,client_secret_path,status,created_at,last_verified_at) VALUES(?,?,?,?,?,?)",
+                (account_name,account_email,client_secret_path,'connected',now,now)
+            )
+            aid=cur.lastrowid
     conn.commit(); row=conn.execute("SELECT * FROM youtube_accounts WHERE id=?",(aid,)).fetchone(); conn.close(); return dict(row)
 
 def update_youtube_account_status(account_id, status, last_verified_at=None):
