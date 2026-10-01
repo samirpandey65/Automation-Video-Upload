@@ -8,7 +8,7 @@
     <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
     <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
     <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
-    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
     <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
     <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
   </div>
@@ -16,6 +16,7 @@
 </aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main">
 <div class="page-head"><div><div class="eyebrow">Workspace overview</div><h1>Dashboard</h1><p>Everything important at a glance — local library, YouTube sync, uploads and performance.</p></div><div class="actions"><button id="syncBtn" class="btn btn-primary" onclick="syncYouTube()">☁️ Sync YouTube</button></div></div>
 <div id="syncMsg"></div>
+<div id="reauthAlerts" style="display:none;margin:0 0 18px"></div>
 <div class="grid dashboard-kpis">
 <div class="card stat-card" onclick="showDetails('')"><div class="stat-top"><div class="muted">Total Videos</div><div class="stat-icon">🎬</div></div><div id="total" class="metric">0</div><div class="muted tiny">In your library · View details →</div></div>
 <div class="card stat-card" onclick="showDetails('pending')"><div class="stat-top"><div class="muted">Pending</div><div class="stat-icon">⏳</div></div><div id="pending" class="metric">0</div><div class="muted tiny">Yet to upload · View details →</div></div>
@@ -163,6 +164,15 @@ function channelStats(videos){let views=0,likes=0,comments=0;videos.forEach(v=>{
 function syncLabel(c){return c.last_sync_status==='success'?'Synced':c.last_sync_status==='error'?'Sync failed':'Not synced'}
 function syncIcon(c){return c.last_sync_status==='success'?'🟢':c.last_sync_status==='error'?'🔴':'🟡'}
 
+async function loadReauthAlerts(){
+  try{
+    const d=await api('/api/youtube/reauth-alerts'); const rows=d.alerts||[]; const el=document.getElementById('reauthAlerts');
+    if(!rows.length){el.style.display='none';return;}
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:4px solid #c62828;padding:16px 18px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><strong>⚠ Action Required — YouTube authentication</strong><div class="muted tiny">These accounts may stop scheduled work until Google authentication is restored.</div></div><a class="btn btn-primary btn-sm" href="/connections">Open Connections</a></div><div style="margin-top:12px">'+rows.map(x=>{const required=!!x.reauth_required||String(x.status||'').toLowerCase()==='reauth_required';const days=x.days_remaining==null?null:Math.ceil(Number(x.days_remaining));const text=required?'Re-authentication required now':`Re-auth reminder in ${Math.max(0,days)} day${Math.max(0,days)===1?'':'s'}`;return `<div style="padding:9px 0;border-top:1px solid #eee;display:flex;justify-content:space-between;gap:10px"><div><strong>${esc(x.account_name)}</strong><div class="muted tiny">${esc(x.account_email||'')} · ${Number(x.channel_count||0)} channel(s)</div></div><span class="badge ${required?'error':'error'}">${esc(text)}</span></div>`}).join('')+'</div></div>';
+  }catch(e){console.warn('Re-auth alert load failed',e)}
+}
+
 async function load(){
   const d=await api('/api/dashboard'); const s=d.stats||{};
   ['total','pending','uploaded','failed'].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent=statNum(s[k])});
@@ -175,7 +185,7 @@ async function load(){
   }).join(''):`<div class="empty-channel"><div class="empty-icon">📺</div><strong>No YouTube channel connected</strong><span>Connect a channel from Connections to see it here.</span><a class="btn btn-primary btn-sm" href="/connections">Connect YouTube</a></div>`;
   const c=channels[0];
   if(c){document.getElementById('syncStatus').textContent=c.last_sync_status==='success'?'Last sync successful':c.last_sync_status==='error'?'Sync failed':'Ready';document.getElementById('syncError').textContent=c.last_sync_error||''}; const act=document.getElementById('activitySync'); if(act) act.textContent=c.last_sync_at ? ('Last successful sync · '+new Date(c.last_sync_at).toLocaleString()) : 'No sync recorded yet';
-  await loadUpcoming(); await loadHealth();
+  await loadUpcoming(); await loadHealth(); await loadReauthAlerts();
 }
 
 document.addEventListener('click',e=>{

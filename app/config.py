@@ -46,6 +46,10 @@ GEMINI_SCOPES = [
 GEMINI_DEFAULT_MODEL = "gemini-3.8-flash"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
+# Meta Graph API version used by the Facebook/Instagram connection flow.
+# Keep this overridable so deployments can upgrade independently.
+META_GRAPH_VERSION = os.getenv("YLA_META_GRAPH_VERSION", "v23.0").strip() or "v23.0"
+
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"}
 MAX_TITLE_LENGTH = 100
 MAX_DESCRIPTION_LENGTH = 5000

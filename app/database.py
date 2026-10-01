@@ -22,7 +22,11 @@ def init_db():
         client_secret_path TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'connected',
         created_at TEXT NOT NULL,
-        last_verified_at TEXT DEFAULT ''
+        last_verified_at TEXT DEFAULT '',
+        auth_last_success_at TEXT DEFAULT '',
+        reauth_due_at TEXT DEFAULT '',
+        reauth_status TEXT NOT NULL DEFAULT 'monitoring',
+        reauth_reminder_days INTEGER NOT NULL DEFAULT 7
     );
 
     CREATE TABLE IF NOT EXISTS youtube_channels (
@@ -232,6 +236,37 @@ def init_db():
         conn.execute("INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES(4, ?)", (now_iso(),))
     conn.execute("INSERT OR IGNORE INTO app_meta(key,value) VALUES('schema_version','4')")
     conn.execute("UPDATE app_meta SET value='4' WHERE key='schema_version'")
+    # Meta (Facebook Page + linked Instagram Professional account) connection storage.
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS meta_connections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_name TEXT NOT NULL,
+        app_id TEXT NOT NULL,
+        page_id TEXT NOT NULL UNIQUE,
+        page_name TEXT NOT NULL DEFAULT '',
+        instagram_user_id TEXT DEFAULT '',
+        instagram_username TEXT DEFAULT '',
+        token_key TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'connected',
+        token_expires_at TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        last_verified_at TEXT DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS platform_uploads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        video_id INTEGER NOT NULL,
+        platform TEXT NOT NULL,
+        destination_id TEXT NOT NULL DEFAULT '',
+        remote_id TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        error_message TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(video_id, platform, destination_id),
+        FOREIGN KEY(video_id) REFERENCES video_inventory(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_uploads_video ON platform_uploads(video_id, platform);
+    """)
     # Reliability/audit tables. Safe to create on every startup.
     conn.executescript("""
     CREATE TABLE IF NOT EXISTS upload_jobs (
@@ -262,6 +297,21 @@ def init_db():
         UNIQUE(schedule_id, run_date)
     );
     """)
+    # Credential lifecycle / re-authentication tracking. The reminder is a local
+    # tracking policy, not a claim that Google will expire a refresh token on that date.
+    yacols = {r["name"] for r in conn.execute("PRAGMA table_info(youtube_accounts)").fetchall()}
+    for col, definition in [
+        ("auth_last_success_at", "TEXT DEFAULT ''"),
+        ("reauth_due_at", "TEXT DEFAULT ''"),
+        ("reauth_status", "TEXT NOT NULL DEFAULT 'monitoring'"),
+        ("reauth_reminder_days", "INTEGER NOT NULL DEFAULT 7"),
+    ]:
+        if col not in yacols:
+            conn.execute(f"ALTER TABLE youtube_accounts ADD COLUMN {col} {definition}")
+    # Backfill the tracking baseline from the existing verification timestamp.
+    conn.execute("UPDATE youtube_accounts SET auth_last_success_at=COALESCE(NULLIF(auth_last_success_at,''), last_verified_at, created_at) WHERE COALESCE(auth_last_success_at,'')=''")
+    conn.execute("UPDATE youtube_accounts SET reauth_due_at=datetime(auth_last_success_at, '+' || COALESCE(reauth_reminder_days,7) || ' days') WHERE COALESCE(reauth_due_at,'')='' AND COALESCE(auth_last_success_at,'')!=''")
+
     # Migration for existing installations created before Google account
     # email was persisted at the YouTube-account level.
     columns = {r["name"] for r in conn.execute("PRAGMA table_info(youtube_accounts)").fetchall()}
@@ -284,11 +334,13 @@ def get_youtube_account(account_id):
 
 def upsert_youtube_account(account_name, client_secret_path, account_email="", account_id=None):
     conn=get_conn(); now=now_iso()
+    from datetime import timedelta
+    due=(datetime.fromisoformat(now.replace('Z','+00:00')) + timedelta(days=7)).isoformat()
     account_email = str(account_email or "").strip()
     if account_id:
         conn.execute(
-            "UPDATE youtube_accounts SET account_name=?,account_email=?,client_secret_path=?,status='connected',last_verified_at=? WHERE id=?",
-            (account_name,account_email,client_secret_path,now,int(account_id))
+            "UPDATE youtube_accounts SET account_name=?,account_email=?,client_secret_path=?,status='connected',last_verified_at=?,auth_last_success_at=?,reauth_due_at=?,reauth_status='monitoring' WHERE id=?",
+            (account_name,account_email,client_secret_path,now,now,due,int(account_id))
         )
         aid=int(account_id)
     else:
@@ -296,13 +348,13 @@ def upsert_youtube_account(account_name, client_secret_path, account_email="", a
         if existing:
             aid=int(existing["id"])
             conn.execute(
-                "UPDATE youtube_accounts SET account_email=?,client_secret_path=?,status='connected',last_verified_at=? WHERE id=?",
-                (account_email,client_secret_path,now,aid)
+                "UPDATE youtube_accounts SET account_email=?,client_secret_path=?,status='connected',last_verified_at=?,auth_last_success_at=?,reauth_due_at=?,reauth_status='monitoring' WHERE id=?",
+                (account_email,client_secret_path,now,now,due,aid)
             )
         else:
             cur=conn.execute(
-                "INSERT INTO youtube_accounts(account_name,account_email,client_secret_path,status,created_at,last_verified_at) VALUES(?,?,?,?,?,?)",
-                (account_name,account_email,client_secret_path,'connected',now,now)
+                "INSERT INTO youtube_accounts(account_name,account_email,client_secret_path,status,created_at,last_verified_at,auth_last_success_at,reauth_due_at,reauth_status) VALUES(?,?,?,?,?,?,?,?,?)",
+                (account_name,account_email,client_secret_path,'connected',now,now,now,due,'monitoring')
             )
             aid=cur.lastrowid
     conn.commit(); row=conn.execute("SELECT * FROM youtube_accounts WHERE id=?",(aid,)).fetchone(); conn.close(); return dict(row)
@@ -314,6 +366,46 @@ def update_youtube_account_status(account_id, status, last_verified_at=None):
     else:
         conn.execute("UPDATE youtube_accounts SET status=?, last_verified_at=? WHERE id=?", (status, last_verified_at, int(account_id)))
     conn.commit(); conn.close()
+
+def mark_youtube_account_reauth_required(account_id, reason='Credential re-authentication required.'):
+    conn=get_conn(); now=now_iso()
+    conn.execute("UPDATE youtube_accounts SET status='reauth_required', reauth_status='required', reauth_due_at=?, last_verified_at=last_verified_at WHERE id=?", (now, int(account_id)))
+    conn.commit(); conn.close()
+
+def mark_youtube_account_auth_success(account_id, reminder_days=None):
+    conn=get_conn(); now=now_iso()
+    if reminder_days is None:
+        row=conn.execute("SELECT reauth_reminder_days FROM youtube_accounts WHERE id=?", (int(account_id),)).fetchone()
+        reminder_days=int(row['reauth_reminder_days'] if row and row['reauth_reminder_days'] else 7)
+    from datetime import timedelta
+    due=(datetime.fromisoformat(now.replace('Z','+00:00')) + timedelta(days=int(reminder_days))).isoformat()
+    conn.execute("UPDATE youtube_accounts SET status='connected', last_verified_at=?, auth_last_success_at=?, reauth_due_at=?, reauth_status='monitoring' WHERE id=?", (now,now,due,int(account_id)))
+    conn.commit(); conn.close()
+
+def set_youtube_reauth_reminder_days(account_id, days):
+    days=max(1,min(3650,int(days)))
+    conn=get_conn(); conn.execute("UPDATE youtube_accounts SET reauth_reminder_days=? WHERE id=?",(days,int(account_id))); conn.commit(); conn.close()
+    mark_youtube_account_auth_success(account_id, days)
+
+def get_youtube_reauth_alerts(threshold_days=2):
+    conn=get_conn(); rows=conn.execute("SELECT a.*, COUNT(c.id) AS channel_count FROM youtube_accounts a LEFT JOIN youtube_channels c ON c.account_id=a.id GROUP BY a.id ORDER BY a.account_name COLLATE NOCASE").fetchall(); conn.close()
+    out=[]; now=datetime.now(timezone.utc)
+    for r in rows:
+        d=dict(r); due=d.get('reauth_due_at') or ''
+        days_remaining=None
+        if due:
+            try:
+                dt=datetime.fromisoformat(due.replace('Z','+00:00'))
+                if dt.tzinfo is None: dt=dt.replace(tzinfo=timezone.utc)
+                days_remaining=max(0,(dt-now).total_seconds()/86400)
+            except Exception: pass
+        st=str(d.get('status','')).lower()
+        required=(st == 'reauth_required' or str(d.get('reauth_status','')).lower()=='required')
+        due_soon=(st not in {'logged_out'} and int(d.get('channel_count') or 0) > 0 and days_remaining is not None and days_remaining <= int(threshold_days))
+        if required or due_soon:
+            d['reauth_required']=required; d['days_remaining']=days_remaining; d['reauth_due_at']=due
+            out.append(d)
+    return out
 
 def set_channel_account(channel_id, account_id):
     conn=get_conn(); conn.execute("UPDATE youtube_channels SET account_id=? WHERE channel_id=?",(account_id,channel_id)); conn.commit(); conn.close()
@@ -378,6 +470,24 @@ def delete_channel(channel_id):
     conn.execute("DELETE FROM youtube_channels WHERE channel_id=?", (channel_id,))
     conn.commit()
     conn.close()
+
+def delete_youtube_account(account_id):
+    """Remove a YouTube connection and its account record while preserving channel/video history.
+
+    Credentials are removed by auth.logout_youtube_account() before this function is called.
+    Channel rows are retained for history/schedule continuity but detached from the deleted
+    connection so the deletion cannot cascade into video inventory or remote-video history.
+    """
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM youtube_accounts WHERE id=?", (int(account_id),)).fetchone()
+    if not row:
+        conn.close()
+        return None
+    conn.execute("UPDATE youtube_channels SET account_id=NULL, status='logged_out' WHERE account_id=?", (int(account_id),))
+    conn.execute("DELETE FROM youtube_accounts WHERE id=?", (int(account_id),))
+    conn.commit()
+    conn.close()
+    return dict(row)
 
 def set_channel_folder(channel_id, folder):
     conn = get_conn()
@@ -570,6 +680,47 @@ def get_schedule(schedule_id):
     row = conn.execute("SELECT * FROM upload_schedules WHERE id=?", (int(schedule_id),)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+def list_meta_connections():
+    conn=get_conn()
+    rows=conn.execute("SELECT * FROM meta_connections ORDER BY account_name COLLATE NOCASE, id").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_meta_connection(connection_id):
+    conn=get_conn()
+    row=conn.execute("SELECT * FROM meta_connections WHERE id=?", (int(connection_id),)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def upsert_meta_connection(account_name, app_id, page_id, page_name='', instagram_user_id='', instagram_username='', token_key='', last_verified_at=''):
+    conn=get_conn(); now=last_verified_at or now_iso()
+    existing=conn.execute("SELECT id FROM meta_connections WHERE page_id=?", (page_id,)).fetchone()
+    if existing:
+        conn.execute("""UPDATE meta_connections SET account_name=?,app_id=?,page_name=?,instagram_user_id=?,instagram_username=?,token_key=?,status='connected',last_verified_at=? WHERE id=?""",
+                     (account_name,app_id,page_name,instagram_user_id,instagram_username,token_key,now,int(existing['id'])))
+        cid=int(existing['id'])
+    else:
+        conn.execute("""INSERT INTO meta_connections(account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,status,created_at,last_verified_at)
+                       VALUES(?,?,?,?,?,?,?,'connected',?,?)""",
+                     (account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,now,now))
+        cid=int(conn.execute("SELECT last_insert_rowid() AS id").fetchone()['id'])
+    conn.commit()
+    row=conn.execute("SELECT * FROM meta_connections WHERE id=?",(cid,)).fetchone()
+    conn.close()
+    return dict(row)
+
+def update_meta_connection_status(connection_id, status, last_verified_at=None):
+    conn=get_conn()
+    if last_verified_at:
+        conn.execute("UPDATE meta_connections SET status=?,last_verified_at=? WHERE id=?",(status,last_verified_at,int(connection_id)))
+    else:
+        conn.execute("UPDATE meta_connections SET status=? WHERE id=?",(status,int(connection_id)))
+    conn.commit(); conn.close()
+
+def delete_meta_connection(connection_id):
+    conn=get_conn(); conn.execute("DELETE FROM meta_connections WHERE id=?",(int(connection_id),)); conn.commit(); conn.close()
+
 
 def database_health():
     conn = get_conn()

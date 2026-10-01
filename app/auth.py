@@ -12,6 +12,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
+    "openid",
 ]
 
 def _key(channel_id):
@@ -137,15 +138,35 @@ def start_oauth(client_secret_path=None):
 def get_youtube_service(channel_id):
     creds = load_credentials_for_channel(channel_id)
     if not creds:
-        raise RuntimeError("No saved Google credentials for this channel.")
+        from .database import mark_youtube_account_reauth_required, get_channel
+        ch = get_channel(channel_id)
+        if ch and ch.get('account_id'):
+            mark_youtube_account_reauth_required(ch['account_id'])
+        raise RuntimeError("No saved Google credentials for this channel. Re-authentication is required.")
     # Refresh proactively and persist the new access token so background syncs
     # and performance requests do not repeatedly start from an expired token.
     if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except Exception as exc:
+            from google.auth.exceptions import RefreshError
+            from .database import get_channel, mark_youtube_account_reauth_required
+            ch=get_channel(channel_id)
+            if ch and ch.get('account_id'):
+                mark_youtube_account_reauth_required(ch['account_id'])
+            if isinstance(exc, RefreshError) and 'invalid_grant' in str(exc):
+                raise RuntimeError("Google credentials have expired or been revoked. Re-authentication is required.") from exc
+            raise
         try:
             save_credentials(channel_id, creds)
         except Exception:
             pass
+    elif creds.expired and not creds.refresh_token:
+        from .database import get_channel, mark_youtube_account_reauth_required
+        ch=get_channel(channel_id)
+        if ch and ch.get('account_id'):
+            mark_youtube_account_reauth_required(ch['account_id'])
+        raise RuntimeError("Google credentials are expired and no refresh token is available. Re-authentication is required.")
     return build("youtube", "v3", credentials=creds, cache_discovery=False)
 
 def get_google_account_email(creds):
@@ -185,7 +206,16 @@ def test_youtube_account(account_id):
         except Exception as exc:
             all_ok=False
             results.append({"channel_id":cid,"channel_name":ch.get("channel_name", ""),"ok":False,"error":str(exc)})
-    update_youtube_account_status(account_id, "connected" if all_ok else "error", now_iso() if all_ok else None)
+    if all_ok:
+        from .database import mark_youtube_account_auth_success
+        mark_youtube_account_auth_success(account_id)
+    else:
+        # A credential failure is tracked as reauth-required; other API failures remain error.
+        if any('re-authentication is required' in str(r.get('error','')).lower() or 'invalid_grant' in str(r.get('error','')).lower() for r in results if not r['ok']):
+            from .database import mark_youtube_account_reauth_required
+            mark_youtube_account_reauth_required(account_id)
+        else:
+            update_youtube_account_status(account_id, "error", now_iso())
     if not all_ok:
         failed="; ".join(f'{r["channel_name"]}: {r.get("error","test failed")}' for r in results if not r["ok"])
         raise RuntimeError(f"YouTube connection test failed. {failed}")

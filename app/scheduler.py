@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .database import (
-    list_schedules, get_schedule, get_channel, get_channel_folder, get_inventory_by_hash, get_inventory_by_path, get_inventory_by_id,
+    list_schedules, get_schedule, get_channel, get_youtube_account, get_channel_folder, get_inventory_by_hash, get_inventory_by_path, get_inventory_by_id,
     upsert_video, update_video, mark_schedule_run, get_remote_video_by_hash, list_channels, upsert_remote_video, get_inventory_by_youtube_id,
     update_channel_sync, add_remote_metrics_snapshot, list_ai_connections, create_upload_job, update_upload_job, add_upload_attempt, record_scheduler_run
 )
@@ -36,6 +36,10 @@ def _run_schedule(row):
     channel = get_channel(channel_id)
     if not channel:
         return "channel_missing"
+    account = get_youtube_account(channel.get('account_id')) if channel.get('account_id') else None
+    if account and str(account.get('status','')).lower() == 'reauth_required':
+        log.warning("Scheduler paused for channel=%s because Google re-authentication is required for account=%s", channel_id, account.get('account_name',''))
+        return "reauth_required"
 
     folder = get_channel_folder(channel_id)
     if not folder or not Path(folder).exists():
@@ -324,6 +328,10 @@ def _loop():
             try:
                 for ch in list_channels():
                     try:
+                        acct = get_youtube_account(ch.get('account_id')) if ch.get('account_id') else None
+                        if acct and str(acct.get('status','')).lower() == 'reauth_required':
+                            update_channel_sync(ch['channel_id'], 'error', 'Google re-authentication required; scheduler sync paused.')
+                            continue
                         items = list_channel_videos(ch["channel_id"])
                     except Exception as exc:
                         update_channel_sync(ch["channel_id"], "error", str(exc))

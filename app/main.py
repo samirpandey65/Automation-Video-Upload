@@ -21,10 +21,10 @@ from .database import (
     set_channel_folder, get_channel_folder,
     list_schedules, upsert_schedule, replace_day_schedules, delete_schedule,
     list_ai_connections, get_ai_connection, upsert_ai_connection, delete_ai_connection,
-    list_youtube_accounts, get_youtube_account, upsert_youtube_account, update_youtube_account_status, set_channel_account, list_channels_for_account,
+    list_youtube_accounts, get_youtube_account, upsert_youtube_account, update_youtube_account_status, mark_youtube_account_auth_success, mark_youtube_account_reauth_required, set_youtube_reauth_reminder_days, get_youtube_reauth_alerts, set_channel_account, list_channels_for_account, delete_youtube_account,
     count_users, create_user, get_user, update_user_password, list_users, touch_user_login, add_audit_log, list_audit_log, create_upload_job, get_upload_job, update_upload_job, list_upload_jobs, add_upload_attempt,
     upsert_remote_video, list_remote_videos, get_remote_video_by_hash, get_inventory_by_youtube_id, get_remote_video, update_channel_sync, add_remote_metrics_snapshot,
-    database_health, get_schedule
+    database_health, get_schedule, list_meta_connections, get_meta_connection, upsert_meta_connection, update_meta_connection_status, delete_meta_connection
 )
 from .auth import (
     start_oauth, discover_channels, get_google_account_email, save_credentials,
@@ -33,6 +33,7 @@ from .auth import (
 from .local_auth import ensure_admin, setup_available, create_first_admin, make_session, read_session, verify_password, hash_password, SESSION_COOKIE
 from .video_utils import scan_folder, sha256_file
 from .youtube import upload_video, list_channel_videos, extract_hash_marker, get_video_stats
+from .meta import build_oauth_url, save_app_secret, load_app_secret, delete_app_secret, exchange_code, get_pages, save_page_token, load_page_token, delete_page_token, test_meta_connection
 from .scheduler import start_scheduler, stop_scheduler
 from .analytics import get_video_analytics
 from .ai_validation import validate_metadata
@@ -230,7 +231,10 @@ class UploadRequest(BaseModel):
 @app.middleware("http")
 async def local_login_guard(request: Request, call_next):
     path=request.url.path
-    if path.startswith("/static/") or path in {"/login","/setup","/favicon.ico"} or path.startswith("/api/auth/"):
+    # Meta redirects the browser here from localhost and cannot reliably send
+    # the uploader's session cookie. The callback validates its one-time OAuth
+    # state before exchanging the authorization code.
+    if path.startswith("/static/") or path in {"/login","/setup","/favicon.ico","/api/meta/oauth/callback"} or path.startswith("/api/auth/"):
         return await call_next(request)
     user=read_session(request.cookies.get(SESSION_COOKIE))
     if not user:
@@ -375,6 +379,10 @@ def channels_page():
 def settings_page():
     return page("settings.html")
 
+@app.get("/setup-guide", response_class=HTMLResponse)
+def setup_guide_page():
+    return page("setup-guide.html")
+
 @app.get("/connections", response_class=HTMLResponse)
 def connections_page():
     return page("connections.html")
@@ -399,8 +407,12 @@ def analytics_page():
 def api_youtube_accounts(request: Request):
     require_role(request,"admin","editor")
     accounts=[]
+    alerts={int(x['id']):x for x in get_youtube_reauth_alerts(3650)}
     for a in list_youtube_accounts():
-        aa=dict(a); aa["channels"]=list_channels_for_account(a["id"]); accounts.append(aa)
+        aa=dict(a); aa["channels"]=list_channels_for_account(a["id"]);
+        if a["id"] in alerts:
+            aa.update({k:alerts[a["id"]].get(k) for k in ("days_remaining","reauth_required","reauth_due_at","reauth_status")})
+        accounts.append(aa)
     return {"accounts":accounts}
 
 @app.post("/api/youtube/accounts/{account_id}/test")
@@ -430,6 +442,22 @@ async def api_logout_youtube_account(account_id: int, request: Request):
         return {"ok":True,"account_name":account["account_name"],**result}
     except Exception as e:
         logging.exception("YouTube account logout failed: account=%s", account_id)
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/youtube/accounts/{account_id}")
+async def api_delete_youtube_account(account_id: int, request: Request):
+    require_role(request,"admin")
+    account=get_youtube_account(account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="YouTube account not found.")
+    try:
+        # Revoke/remove OAuth credentials first. If remote revocation is unavailable,
+        # local credentials are still removed so the connection is no longer usable.
+        await asyncio.to_thread(logout_youtube_account, account_id)
+        deleted=delete_youtube_account(account_id)
+        return {"ok":True,"account_name":(deleted or account).get("account_name","")}
+    except Exception as e:
+        logging.exception("YouTube account delete failed: account=%s", account_id)
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/youtube/accounts/client-secret/upload")
@@ -539,6 +567,10 @@ def api_health():
     }
 
 
+@app.get("/api/youtube/reauth-alerts")
+def api_youtube_reauth_alerts():
+    return {"alerts": get_youtube_reauth_alerts(2), "threshold_days": 2}
+
 @app.get("/api/dashboard")
 def api_dashboard(channel_id: str | None = None):
     channels=list_channels()
@@ -551,7 +583,7 @@ def api_dashboard(channel_id: str | None = None):
         rr=dict(r)
         rr.update({"local_id":local["id"] if local else None,"local_file_path":local["file_path"] if local else "","local_filename":local["filename"] if local else ""})
         enriched.append(rr)
-    return {"stats": stats(channel_id), "channels": channels, "remote_videos": enriched, "remote_count": len(enriched)}
+    return {"stats": stats(channel_id), "channels": channels, "remote_videos": enriched, "remote_count": len(enriched), "reauth_alerts": get_youtube_reauth_alerts(2)}
 
 @app.get("/api/youtube/sync")
 @app.post("/api/youtube/sync")
@@ -631,6 +663,11 @@ def api_library(channel_id: str | None = None):
 async def api_connect(payload: dict, request: Request):
     require_role(request,"admin")
     account_name=str(payload.get("account_name") or "").strip()
+    account_id=payload.get("account_id")
+    try:
+        account_id=int(account_id) if account_id not in (None, "") else None
+    except Exception:
+        account_id=None
     client_secret_path=str(payload.get("client_secret_path") or "").strip()
     if not account_name: raise HTTPException(status_code=400,detail="Account name is required.")
     if not client_secret_path or not Path(client_secret_path).exists(): raise HTTPException(status_code=400,detail="Select a valid client_secret.json file.")
@@ -640,6 +677,41 @@ async def api_connect(payload: dict, request: Request):
         if not items: raise HTTPException(status_code=400, detail="No YouTube channel was returned for this Google account.")
         account_email = get_google_account_email(creds)
         app.state.pending_creds = creds
+        # Reconnect path: an existing account already has channel mappings.
+        # Save the newly authorized credentials for every returned channel so a
+        # reconnect cannot get stuck waiting for the old channel-picker modal.
+        if account_id:
+            existing_account = get_youtube_account(account_id)
+            if existing_account:
+                existing_channels = {c["channel_id"]: c for c in list_channels_for_account(account_id)}
+                returned_ids = {str(item.get("id")) for item in items if item.get("id")}
+                if existing_channels and returned_ids.intersection(existing_channels):
+                    account = upsert_youtube_account(
+                        existing_account.get("account_name") or account_name,
+                        str(Path(client_secret_path).resolve()),
+                        account_email,
+                        account_id=account_id,
+                    )
+                    saved = 0
+                    for item in items:
+                        cid = str(item.get("id") or "")
+                        if cid not in existing_channels:
+                            continue
+                        snippet = item.get("snippet", {})
+                        save_credentials(cid, creds)
+                        upsert_channel(
+                            cid,
+                            snippet.get("title", "") or existing_channels[cid].get("channel_name", ""),
+                            snippet.get("customUrl", "") or existing_channels[cid].get("channel_handle", ""),
+                            account_email,
+                            cid,
+                        )
+                        set_channel_account(cid, account_id)
+                        saved += 1
+                    if saved:
+                        from .database import mark_youtube_account_auth_success
+                        mark_youtube_account_auth_success(account_id)
+                        return {"ok": True, "reconnected": True, "account": account, "channels_saved": saved, "account_email": account_email}
         app.state.pending_youtube_account = {
             "account_name": account_name,
             "account_email": account_email,
@@ -1156,6 +1228,96 @@ def api_video_stream(video_id: int):
     path=validate_channel_path(row["channel_id"], row["file_path"])
     allowed={".mp4":"video/mp4",".webm":"video/webm",".m4v":"video/mp4",".mov":"video/quicktime",".mkv":"video/x-matroska",".avi":"video/x-msvideo"}
     return FileResponse(str(path), media_type=allowed.get(path.suffix.lower(),"application/octet-stream"), filename=path.name)
+
+@app.get("/api/meta/connections")
+def api_meta_connections(request: Request):
+    require_role(request, "admin", "editor")
+    rows=[]
+    for x in list_meta_connections():
+        y=dict(x); y["token_available"]=bool(load_page_token(x["token_key"]))
+        rows.append(y)
+    return {"connections":rows}
+
+@app.post("/api/meta/oauth/start")
+def api_meta_oauth_start(payload: dict, request: Request):
+    require_role(request, "admin", "editor")
+    app_id=str(payload.get("app_id") or "").strip(); app_secret=str(payload.get("app_secret") or "").replace("\ufeff", "").replace("\u200b", "").replace("\u200c", "").replace("\u200d", "").replace("\u2060", "").strip(); config_id=str(payload.get("config_id") or "").strip()
+    if not app_id or not app_secret: raise HTTPException(status_code=400, detail="Meta App ID and App Secret are required.")
+    if not config_id: raise HTTPException(status_code=400, detail="Facebook Login for Business Configuration ID is required.")
+    save_app_secret(app_id, app_secret)
+    state=os.urandom(24).hex()
+    app.state.meta_oauth_state=state; app.state.meta_oauth_app_id=app_id; app.state.meta_oauth_app_secret=app_secret; app.state.meta_oauth_config_id=config_id; app.state.meta_oauth_started_at=time.time(); app.state.meta_oauth_account_name=str(payload.get('account_name') or 'Meta Account').strip()
+    redirect_uri=str(payload.get("redirect_uri") or "http://localhost:8080/api/meta/oauth/callback")
+    app.state.meta_oauth_redirect_uri=redirect_uri
+    return {"ok":True,"auth_url":build_oauth_url(app_id,redirect_uri,state,config_id),"redirect_uri":redirect_uri,"config_id":config_id}
+
+@app.get("/api/meta/oauth/callback")
+async def api_meta_oauth_callback(request: Request):
+    error=request.query_params.get("error")
+    if error:
+        return HTMLResponse(f"<h2>Meta connection cancelled</h2><p>{error}</p><p>You can close this tab.</p>")
+    state=request.query_params.get("state"); expected=getattr(app.state,"meta_oauth_state","")
+    if not state or state != expected or time.time()-getattr(app.state,"meta_oauth_started_at",0)>900:
+        return HTMLResponse("<h2>Meta OAuth state expired</h2><p>Start the connection again from the uploader.</p>",status_code=400)
+    code=request.query_params.get("code")
+    if not code: return HTMLResponse("<h2>Meta OAuth failed</h2><p>No authorization code was returned.</p>",status_code=400)
+    app_id=getattr(app.state,"meta_oauth_app_id",""); redirect_uri=getattr(app.state,"meta_oauth_redirect_uri",""); secret=getattr(app.state,"meta_oauth_app_secret","") or load_app_secret(app_id)
+    try:
+        user_token, expires_in=await asyncio.to_thread(exchange_code,app_id,secret,redirect_uri,code)
+        pages=await asyncio.to_thread(get_pages,user_token)
+        app.state.meta_oauth_pages=pages; app.state.meta_oauth_user_token=user_token; app.state.meta_oauth_token_expires_in=expires_in; app.state.meta_oauth_completed_at=time.time()
+        if len(pages)==1 and pages[0].get('id') and pages[0].get('access_token'):
+            pg=pages[0]; ig=pg.get('instagram_business_account') or {}; page_id=str(pg.get('id')); token_key=f'meta_page_{page_id}'; save_page_token(token_key,{'access_token':pg.get('access_token'),'saved_at':datetime.now(timezone.utc).isoformat()})
+            row=upsert_meta_connection(getattr(app.state,'meta_oauth_account_name','Meta Account'),app_id,page_id,str(pg.get('name') or ''),str(ig.get('id') or ''),str(ig.get('username') or ''),token_key,datetime.now(timezone.utc).isoformat())
+            app.state.meta_oauth_state=None; app.state.meta_oauth_pages=None; app.state.meta_oauth_user_token=None
+            return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:40px'><h2>Meta authorization successful</h2><p>Meta account connected. Return to the uploader.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-complete'},'*');setTimeout(()=>window.close(),800);</script></body></html>""")
+        return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:40px'><h2>Meta authorization successful</h2><p>Return to the uploader to select the Facebook Page.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-success'},'*');setTimeout(()=>window.close(),800);</script></body></html>""")
+    except Exception as exc:
+        logging.exception("Meta OAuth callback failed")
+        return HTMLResponse(f"<h2>Meta authorization failed</h2><pre>{str(exc)}</pre><p>Return to the uploader and try again.</p>",status_code=400)
+
+@app.get("/api/meta/oauth/pages")
+def api_meta_oauth_pages(request: Request):
+    require_role(request, "admin", "editor")
+    if not getattr(app.state,"meta_oauth_pages",None): raise HTTPException(status_code=400, detail="No completed Meta OAuth session. Connect Meta first.")
+    return {"pages":[{"id":x.get("id"),"name":x.get("name"),"instagram_business_account":x.get("instagram_business_account") or {}} for x in app.state.meta_oauth_pages]}
+
+@app.post("/api/meta/oauth/complete")
+def api_meta_oauth_complete(payload: dict, request: Request):
+    require_role(request, "admin", "editor")
+    pages=getattr(app.state,"meta_oauth_pages",None); user_token=getattr(app.state,"meta_oauth_user_token",None)
+    if not pages or not user_token: raise HTTPException(status_code=400, detail="Complete Meta authorization first.")
+    page_id=str(payload.get("page_id") or "").strip(); account_name=str(payload.get("account_name") or "Meta Account").strip()
+    page=next((x for x in pages if str(x.get("id"))==page_id),None)
+    if not page: raise HTTPException(status_code=404, detail="Selected Facebook Page was not returned by Meta.")
+    page_token=page.get("access_token")
+    if not page_token: raise HTTPException(status_code=400, detail="Meta did not return a Page access token for this Page.")
+    ig=page.get("instagram_business_account") or {}; token_key=f"meta_page_{page_id}"
+    save_page_token(token_key,{"access_token":page_token,"saved_at":datetime.now(timezone.utc).isoformat()})
+    row=upsert_meta_connection(account_name,getattr(app.state,"meta_oauth_app_id",""),page_id,page.get("name","") or "",str(ig.get("id") or ""),str(ig.get("username") or ""),token_key,datetime.now(timezone.utc).isoformat())
+    app.state.meta_oauth_state=None; app.state.meta_oauth_app_secret=None; app.state.meta_oauth_pages=None; app.state.meta_oauth_user_token=None
+    audit(request,"connect_meta","meta_connection",row["id"],{"page_id":page_id,"instagram_user_id":row.get("instagram_user_id","")})
+    return {"ok":True,"connection":row}
+
+@app.post("/api/meta/connections/{connection_id}/test")
+async def api_test_meta(connection_id:int, request:Request):
+    require_role(request,"admin","editor"); row=get_meta_connection(connection_id)
+    if not row: raise HTTPException(status_code=404,detail="Meta connection not found.")
+    try: return await asyncio.to_thread(test_meta_connection,row)
+    except Exception as exc:
+        update_meta_connection_status(connection_id,"error"); raise HTTPException(status_code=400,detail=str(exc))
+
+@app.post("/api/meta/connections/{connection_id}/logout")
+def api_logout_meta(connection_id:int, request:Request):
+    require_role(request,"admin"); row=get_meta_connection(connection_id)
+    if not row: raise HTTPException(status_code=404,detail="Meta connection not found.")
+    delete_page_token(row["token_key"]); update_meta_connection_status(connection_id,"logged_out"); return {"ok":True}
+
+@app.delete("/api/meta/connections/{connection_id}")
+def api_delete_meta(connection_id:int, request:Request):
+    require_role(request,"admin"); row=get_meta_connection(connection_id)
+    if not row: raise HTTPException(status_code=404,detail="Meta connection not found.")
+    delete_page_token(row["token_key"]); delete_meta_connection(connection_id); return {"ok":True}
 
 @app.get("/api/youtube/remote")
 def api_youtube_remote(channel_id: str | None = None):
