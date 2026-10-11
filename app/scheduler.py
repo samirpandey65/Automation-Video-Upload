@@ -7,11 +7,14 @@ from pathlib import Path
 from .database import (
     list_schedules, get_schedule, get_channel, get_youtube_account, get_channel_folder, get_inventory_by_hash, get_inventory_by_path, get_inventory_by_id,
     upsert_video, update_video, mark_schedule_run, get_remote_video_by_hash, list_channels, upsert_remote_video, get_inventory_by_youtube_id,
-    update_channel_sync, add_remote_metrics_snapshot, list_ai_connections, create_upload_job, update_upload_job, add_upload_attempt, record_scheduler_run
+    update_channel_sync, add_remote_metrics_snapshot, list_ai_connections, create_upload_job, update_upload_job, add_upload_attempt, record_scheduler_run,
+    get_meta_connection
 )
 from .video_utils import scan_folder, sha256_file
 from .youtube import upload_video, list_channel_videos, extract_hash_marker
 from .gemini import analyze as analyze_gemini
+from .meta import load_page_token, upload_facebook_page_video, upload_facebook_page_reel, upload_instagram_reel
+from .telegram import notify_scheduler_upload_success, notify_scheduler_upload_failed, notify_meta_publish_success, notify_meta_publish_failed
 
 def compose_description(description, hashtags):
     base=str(description or '').strip()
@@ -24,7 +27,6 @@ log = logging.getLogger(__name__)
 _lock = threading.Lock()
 _thread = None
 _stop = threading.Event()
-_last_youtube_sync = 0.0
 
 def _render(template, filename):
     template = template or ""
@@ -165,13 +167,73 @@ def _run_schedule(row):
         add_upload_attempt(job_id,1,"success",youtube_video_id=result.get("id",""),started_at=attempt_started,finished_at=datetime.now().isoformat())
         update_upload_job(job_id,status="completed",completed_at=datetime.now().isoformat(),youtube_video_id=result.get("id",""),last_error="")
         log.info("Scheduler upload success: %s -> %s", f["filename"], result.get("id"))
+        notify_scheduler_upload_success(channel.get("channel_name",""), title, result.get("id",""), f["filename"])
+        _run_meta_publish(row, item, title, description, hashtags, f["path"])
         return "uploaded"
     except Exception as exc:
         update_video(item["id"], status="failed", error_message=str(exc))
         add_upload_attempt(job_id,1,"failed",error_message=str(exc),started_at=attempt_started,finished_at=datetime.now().isoformat())
         update_upload_job(job_id,status="retry_pending",completed_at=datetime.now().isoformat(),last_error=str(exc))
         log.exception("Scheduler upload failed for %s", f["filename"])
+        notify_scheduler_upload_failed(channel.get("channel_name",""), f["filename"], str(exc))
         return "failed"
+
+
+def _run_meta_publish(row, item, title, description, hashtags, file_path):
+    """Publish to Facebook Video, Facebook Reel and/or Instagram Reel after a scheduled YouTube upload."""
+    fb_video = bool(row.get("publish_facebook_video"))
+    fb_reel  = bool(row.get("publish_facebook_reel"))
+    ig_reel  = bool(row.get("publish_instagram_reel"))
+    meta_cid = row.get("meta_connection_id")
+    if not (fb_video or fb_reel or ig_reel) or not meta_cid:
+        return
+    if not str(file_path).lower().endswith(".mp4"):
+        log.warning("Scheduler Meta publish skipped: not an MP4 file: %s", file_path)
+        return
+    connection = get_meta_connection(int(meta_cid))
+    if not connection or connection.get("status") == "logged_out":
+        log.warning("Scheduler Meta publish skipped: connection %s not available", meta_cid)
+        return
+    token_data = load_page_token(connection["token_key"]) or {}
+    token = token_data.get("access_token")
+    if not token:
+        log.warning("Scheduler Meta publish skipped: no access token for connection %s", meta_cid)
+        return
+    caption = description
+    if hashtags:
+        hs = " ".join("#" + h.lstrip("#") for h in hashtags)
+        if hs.lower() not in caption.lower():
+            caption = (caption + "\n\n" + hs).strip()
+    if fb_video:
+        try:
+            result = upload_facebook_page_video(connection["page_id"], token, file_path, title, caption, True)
+            log.info("Scheduler Facebook Video published: page=%s video_id=%s file=%s",
+                     connection["page_id"], result.get("id",""), Path(file_path).name)
+            notify_meta_publish_success("facebook_video", connection.get("page_name",""), title, Path(file_path).name, str(result.get("id","")))
+        except Exception as exc:
+            log.error("Scheduler Facebook Video failed: %s", exc)
+            notify_meta_publish_failed("facebook_video", connection.get("page_name",""), Path(file_path).name, str(exc))
+    if fb_reel:
+        try:
+            result = upload_facebook_page_reel(connection["page_id"], token, file_path, title, caption)
+            log.info("Scheduler Facebook Reel published: page=%s video_id=%s file=%s",
+                     connection["page_id"], result.get("id",""), Path(file_path).name)
+            notify_meta_publish_success("facebook_reel", connection.get("page_name",""), title, Path(file_path).name, str(result.get("id","")))
+        except Exception as exc:
+            log.error("Scheduler Facebook Reel failed: %s", exc)
+            notify_meta_publish_failed("facebook_reel", connection.get("page_name",""), Path(file_path).name, str(exc))
+    if ig_reel:
+        if not connection.get("instagram_user_id"):
+            log.warning("Scheduler Instagram Reel skipped: no Instagram account linked to page %s", connection["page_id"])
+            return
+        try:
+            result = upload_instagram_reel(connection["instagram_user_id"], token, file_path, caption, True)
+            log.info("Scheduler Instagram Reel published: ig_user=%s media_id=%s file=%s",
+                     connection["instagram_user_id"], result.get("id",""), Path(file_path).name)
+            notify_meta_publish_success("instagram_reel", connection.get("page_name",""), title, Path(file_path).name, str(result.get("id","")))
+        except Exception as exc:
+            log.error("Scheduler Instagram Reel failed: %s", exc)
+            notify_meta_publish_failed("instagram_reel", connection.get("page_name",""), Path(file_path).name, str(exc))
 
 
 def _process_retry_jobs():
@@ -318,42 +380,46 @@ def _process_retry_jobs():
                         job["id"], attempt_no, 5, msg)
 
 def _loop():
-    global _last_youtube_sync
+    _last_expiry_check = [0.0]
+    # Per-account last-notified timestamps to throttle to once every 24h
+    _last_notified: dict[str, float] = {}
+    _NOTIFY_INTERVAL = 86400  # 24 hours
     while not _stop.wait(15):
         now = datetime.now()
-        # Refresh the remote YouTube index every 30 minutes so a new machine
-        # can inherit duplicate protection without scanning the local library.
-        import time
-        if time.time() - _last_youtube_sync >= 1800:
+        import time as _time
+        # Check token expiry once per hour
+        if _time.time() - _last_expiry_check[0] >= 3600:
             try:
-                for ch in list_channels():
-                    try:
-                        acct = get_youtube_account(ch.get('account_id')) if ch.get('account_id') else None
-                        if acct and str(acct.get('status','')).lower() == 'reauth_required':
-                            update_channel_sync(ch['channel_id'], 'error', 'Google re-authentication required; scheduler sync paused.')
-                            continue
-                        items = list_channel_videos(ch["channel_id"])
-                    except Exception as exc:
-                        update_channel_sync(ch["channel_id"], "error", str(exc))
-                        log.exception("Background YouTube sync failed for channel=%s", ch["channel_id"])
-                        continue
-                    for item in items:
-                        sn=item.get("snippet",{}); st=item.get("status",{}); marker=extract_hash_marker(item)
-                        statistics=item.get("statistics",{}) or {}
-                        upsert_remote_video(ch["channel_id"], item.get("id",""), sn.get("title",""), sn.get("description",""), sn.get("publishedAt",""), st.get("privacyStatus",""), sn.get("tags",[]), marker, __import__("json").dumps(statistics), __import__("json").dumps(item.get("contentDetails",{})))
-                        try:
-                            add_remote_metrics_snapshot(ch["channel_id"], item.get("id",""), statistics)
-                        except Exception:
-                            log.exception("Failed to save background YouTube metrics snapshot")
-                        if marker:
-                            local = get_inventory_by_hash(ch["channel_id"], marker)
-                            if local and local.get("status") != "uploaded":
-                                update_video(local["id"], status="uploaded", youtube_video_id=item.get("id",""), title=sn.get("title",local.get("title","")), description=sn.get("description",local.get("description","")), privacy_status=st.get("privacyStatus",local.get("privacy_status","")), error_message="")
-                    update_channel_sync(ch["channel_id"], "success", "", len(items))
-                    log.info("Background YouTube sync: channel=%s videos=%d", ch["channel_id"], len(items))
-                _last_youtube_sync=time.time()
+                from .database import get_youtube_reauth_alerts, list_meta_connections
+                from .meta import load_page_token
+                from .telegram import notify_token_expiring, notify_token_expired
+                now_ts = _time.time()
+                for alert in get_youtube_reauth_alerts(threshold_days=7):
+                    key = f"yt_{alert['id']}"
+                    needs_notify = alert.get("reauth_required") or alert.get("days_remaining") is not None
+                    if needs_notify:
+                        if now_ts - _last_notified.get(key, 0) >= _NOTIFY_INTERVAL:
+                            if alert.get("reauth_required"):
+                                notify_token_expired(alert["account_name"])
+                            else:
+                                notify_token_expiring(alert["account_name"], alert["days_remaining"])
+                            _last_notified[key] = now_ts
+                    else:
+                        # Account is healthy — reset throttle so next issue fires immediately
+                        _last_notified.pop(key, None)
+                for mc in list_meta_connections():
+                    key = f"meta_{mc['id']}"
+                    if mc.get("status") == "logged_out" or not load_page_token(mc["token_key"]):
+                        if now_ts - _last_notified.get(key, 0) >= _NOTIFY_INTERVAL:
+                            from .telegram import notify_meta_token_expiring
+                            notify_meta_token_expiring(mc.get("page_name",""))
+                            _last_notified[key] = now_ts
+                    else:
+                        # Connection healthy — reset throttle
+                        _last_notified.pop(key, None)
             except Exception:
-                log.exception("Background YouTube sync failed")
+                log.exception("Token expiry check failed")
+            _last_expiry_check[0] = _time.time()
         try:
             _process_retry_jobs()
         except Exception:
@@ -361,8 +427,6 @@ def _loop():
         weekday = now.weekday()
         hhmm = now.strftime("%H:%M")
         today = now.strftime("%Y-%m-%d")
-
-        # A one-minute tolerance makes the scheduler resilient to small delays.
         schedules = list_schedules()
         for row in schedules:
             if not row["enabled"] or row["weekday"] != weekday:

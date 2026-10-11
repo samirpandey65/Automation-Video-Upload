@@ -1,0 +1,5 @@
+# Enable: proxy proxy_http headers ssl (for HTTPS)
+ProxyPreserveHost On
+ProxyPass / http://127.0.0.1:8080/ timeout=3600
+ProxyPassReverse / http://127.0.0.1:8080/
+RequestHeader set X-Forwarded-Proto expr=%{REQUEST_SCHEME}

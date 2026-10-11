@@ -1,265 +1,442 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Upload to YouTube</title>
-<link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<!doctype html><html><head><meta charset="utf-8"><title>Upload Video</title>
+<link rel="stylesheet" href="/static/layout.css?v=24">
+<style>
+.platform-targets{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.platform-card{border:2px solid #e5e7eb;border-radius:12px;padding:14px 18px;cursor:pointer;min-width:200px;flex:1;transition:border-color .15s,background .15s}
+.platform-card.selected{border-color:#2563eb;background:#eff6ff}
+.platform-card input[type=checkbox]{margin-right:8px;accent-color:#2563eb}
+.platform-card .plat-label{font-weight:700;font-size:14px}
+.platform-card .plat-sub{font-size:12px;color:#71809a;margin-top:4px}
+.platform-extra{margin-top:10px;padding:12px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;display:none}
+.platform-extra.show{display:block}
+#publishResults .result-row{padding:8px 0;border-bottom:1px solid #f0f2f7;font-size:13px}
+#publishResults .result-row:last-child{border-bottom:0}
+</style>
+</head>
 <body><div class="app"><aside class="sidebar">
   <div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div>
   <div class="nav-group">
     <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
-    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Video</span></a>
     <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
     <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
     <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
     <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
     <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a>
-    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
     <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
   </div>
   <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
-</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main"><h1>Upload to YouTube</h1>
-<p class="muted">Select a connected channel, scan a local folder, choose a video, review metadata, then upload.</p>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header>
+<main class="main">
+<h1>↥ Upload Video</h1>
+<p class="muted">Scan your folder, pick a video, generate metadata with AI, then choose which platforms to publish to.</p>
+
+<!-- Step 1: Channel + folder -->
 <div class="card">
 <label>YouTube Channel</label><select id="channel"></select>
-<label>AI Provider</label><div class="row"><select id="provider" style="max-width:240px"><option value="gemini">Gemini</option></select><select id="aiConnection" style="max-width:360px;display:none"></select><a class="btn btn-secondary" href="/connections" style="text-decoration:none">🔌 Manage Connections</a></div><div id="aiConnectionMsg" class="muted" style="margin-bottom:10px"></div><label>Video Folder</label><div class="row"><input id="folder" placeholder="Saved folder for this channel"><button class="btn btn-secondary" onclick="browseFolder()">📂 Browse Folder...</button><button class="btn btn-primary" onclick="scan()">🔍 Scan Folder</button></div><div id="folderBrowser" class="modal"><div class="modal-box" style="max-width:760px"><h2>📂 Select Video Folder</h2><div class="row" style="gap:8px"><input id="folderPath" readonly style="flex:1"><button class="btn btn-secondary" onclick="folderUp()">⬆ Up</button></div><div id="folderEntries" style="margin-top:12px;max-height:420px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px"></div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeFolderBrowser()">Cancel</button><button class="btn btn-primary" onclick="selectCurrentFolder()">Select This Folder</button></div></div></div>
+<label style="margin-top:12px">AI Provider</label>
+<div class="row"><select id="provider" style="max-width:240px"><option value="gemini">Gemini</option></select><select id="aiConnection" style="max-width:360px;display:none"></select><a class="btn btn-secondary" href="/connections" style="text-decoration:none">🔌 Manage Connections</a></div>
+<div id="aiConnectionMsg" class="muted" style="margin-bottom:10px"></div>
+<label>Video Folder</label>
+<div class="row"><input id="folder" placeholder="Saved folder for this channel"><button class="btn btn-secondary" onclick="browseFolder()">📂 Browse Folder...</button><button class="btn btn-primary" onclick="scan()">🔍 Scan Folder</button></div>
 <div id="scanmsg"></div>
-<div id="videoArea" style="display:none">
-<label>Select Video</label><select id="video" onchange="pickVideo()"></select>
-<div id="videoInfo" class="notice"></div>
-<div class="row" style="margin-top:10px">
-<button class="btn btn-secondary" onclick="analyze()">🤖 Analyze Video & Generate Metadata</button>
-<span id="aiStatus" class="muted"></span>
-</div>
-<div id="aiSummary" class="notice" style="display:none"></div>
-<div id="visualAnalysis" class="notice" style="display:none"></div>
-<label>Title</label><input id="title" maxlength="100" placeholder="YouTube title">
-<label>Description</label><textarea id="description" maxlength="5000" placeholder="Description"></textarea>
-<label>Hashtags</label><input id="hashtags" placeholder="#hindistory #animation #shorts">
-<label>Tags (comma separated)</label><input id="tags" placeholder="hindi story, animated story, chalaak kahaniya">
-<div class="row">
-<div><label>Privacy</label><select id="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></div>
-<div><label>Category</label><select id="category"><option value="24" selected>Entertainment</option><option value="22">People & Blogs</option><option value="23">Comedy</option><option value="1">Film & Animation</option></select></div>
 </div>
 
-<div class="card" style="margin-top:14px;padding:16px;background:#f8fafc;border:1px solid #e5e7eb">
-<h3 style="margin:0 0 12px">YouTube Studio Metadata</h3>
-<div class="row">
-  <div><label>AI use / Altered or Synthetic content</label><select id="synthetic"><option value="yes" selected>Yes</option><option value="no">No</option></select></div>
-  <div><label>Video language</label><select id="videoLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option><option value="hinglish">Hindi / Hinglish</option></select></div>
-  <div><label>Title & description language</label><select id="metadataLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option></select></div>
+<!-- Folder browser modal -->
+<div id="folderBrowser" class="modal"><div class="modal-box" style="max-width:760px"><h2>📂 Select Video Folder</h2><div class="row" style="gap:8px"><input id="folderPath" readonly style="flex:1"><button class="btn btn-secondary" onclick="folderUp()">⬆ Up</button></div><div id="folderEntries" style="margin-top:12px;max-height:420px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px"></div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeFolderBrowser()">Cancel</button><button class="btn btn-primary" onclick="selectCurrentFolder()">Select This Folder</button></div></div></div>
+
+<!-- Step 2: Video + metadata -->
+<div id="videoArea" style="display:none">
+<div class="card" style="margin-top:16px">
+<label>Select Video</label><select id="video" onchange="pickVideo()"></select>
+<div id="videoInfo" class="notice" style="margin-top:8px"></div>
+<div class="row" style="margin-top:10px">
+  <button class="btn btn-secondary" onclick="analyze()">🤖 Analyze Video &amp; Generate Metadata</button>
+  <span id="aiStatus" class="muted"></span>
 </div>
+<div id="aiSummary" class="notice" style="display:none;margin-top:8px"></div>
+<div id="visualAnalysis" class="notice" style="display:none;margin-top:8px"></div>
+
+<label style="margin-top:14px">Title</label><input id="title" maxlength="100" placeholder="Video title">
+<label>Description</label><textarea id="description" maxlength="5000" placeholder="Description"></textarea>
+<label>Hashtags</label><input id="hashtags" placeholder="#hindistory #animation #shorts">
+<label>Tags (comma separated)</label><input id="tags" placeholder="hindi story, animated story">
 <div class="row">
+  <div><label>Privacy</label><select id="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></div>
+  <div><label>Category</label><select id="category"><option value="24" selected>Entertainment</option><option value="22">People &amp; Blogs</option><option value="23">Comedy</option><option value="1">Film &amp; Animation</option></select></div>
+</div>
+
+<div style="margin-top:14px;padding:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px">
+<strong style="font-size:13px">YouTube Studio Metadata</strong>
+<div class="row" style="margin-top:10px">
+  <div><label>AI / Synthetic content</label><select id="synthetic"><option value="yes" selected>Yes</option><option value="no">No</option></select></div>
+  <div><label>Video language</label><select id="videoLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option><option value="hinglish">Hindi / Hinglish</option></select></div>
+  <div><label>Title &amp; description language</label><select id="metadataLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option></select></div>
+</div>
+<div class="row" style="margin-top:8px">
   <div><label>Caption certification</label><select id="captionCertification"><option value="none" selected>None</option></select></div>
   <div><label>Recording date</label><input id="recordingDate" type="date"></div>
   <div><label>Video location</label><select id="videoLocation"><option value="India" selected>India</option><option value="">None</option></select></div>
 </div>
-<div class="muted" style="margin-top:10px;font-size:12px">AI disclosure, language, title/description language, category and recording date are sent through the YouTube API. YouTube's current Data API does not expose Caption Certification or the Studio text location field for upload, so those two values are retained in this uploader UI but are not falsely sent as API fields.</div>
+<div class="muted" style="margin-top:8px;font-size:11px">AI disclosure, language and recording date are sent via the YouTube API. Caption Certification and Studio location are not exposed by the Data API.</div>
+</div>
+<label style="margin-top:10px"><input id="kids" type="checkbox" style="width:auto"> Made for kids</label>
 </div>
 
-<label><input id="kids" type="checkbox" style="width:auto"> Made for kids</label>
-<button class="btn btn-primary" onclick="upload()" id="uploadBtn">🚀 Upload Video</button>
-<div id="uploadmsg"></div>
-</div></div></main></div></div></div>
+<!-- Step 3: Platform selection -->
+<div class="card" style="margin-top:16px">
+<h2 style="margin:0 0 6px">Publish To</h2>
+<p class="muted" style="margin:0 0 12px">Choose one or more platforms. Metadata above is shared across all selected platforms.</p>
+
+<div class="platform-targets">
+
+  <!-- YouTube -->
+  <div class="platform-card" id="cardYT" onclick="togglePlatform('yt')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkYT" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('yt',this.checked)">
+    <span class="plat-label">▶ YouTube</span></label>
+    <div class="plat-sub" id="ytSubLabel">Select a channel above</div>
+  </div>
+
+  <!-- Facebook Page Video -->
+  <div class="platform-card" id="cardFB" onclick="togglePlatform('fb')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkFB" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('fb',this.checked)">
+    <span class="plat-label">📘 Facebook Video</span></label>
+    <div class="plat-sub" id="fbSubLabel">No Meta page connected</div>
+  </div>
+
+  <!-- Facebook Reel -->
+  <div class="platform-card" id="cardFBR" onclick="togglePlatform('fbr')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkFBR" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('fbr',this.checked)">
+    <span class="plat-label">📘 Facebook Reel</span></label>
+    <div class="plat-sub" id="fbrSubLabel">No Meta page connected</div>
+  </div>
+
+  <!-- Instagram Reel -->
+  <div class="platform-card" id="cardIG" onclick="togglePlatform('ig')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkIG" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('ig',this.checked)">
+    <span class="plat-label">📸 Instagram Reel</span></label>
+    <div class="plat-sub" id="igSubLabel">No Instagram linked</div>
+  </div>
+
+</div>
+
+<!-- Meta page selector (shown when any Meta platform is checked) -->
+<div id="metaExtra" class="platform-extra" style="margin-top:12px">
+  <label>Connected Meta Page</label>
+  <select id="metaConnection" style="max-width:400px"></select>
+</div>
+
+<div style="margin-top:16px">
+  <label><input type="checkbox" id="approveCheck" style="width:auto"> I reviewed the video and approve publishing to all selected platforms.</label>
+</div>
+
+<div class="row" style="margin-top:14px;gap:10px;flex-wrap:wrap">
+  <button class="btn btn-primary" id="publishBtn" onclick="publishAll()">🚀 Publish to Selected Platforms</button>
+</div>
+<div id="publishResults" style="margin-top:12px"></div>
+</div>
+</div><!-- end videoArea -->
+
+</main></div></div>
 <script src="/static/common.js?v=25"></script>
 <script>
-let videos=[];
-let analysisPassed=false;
+
+let videos = [];
+let analysisPassed = false;
+let metaConnections = [];
+let folderBrowserChannel = '', folderBrowserCurrent = '', folderBrowserParent = '';
+
+function uiLog(message, level='INFO'){
+  fetch('/api/client-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,level})}).catch(()=>{});
+}
+// ── init ──────────────────────────────────────────────────────────────────────
 async function init(){
- await loadChannels("channel");
- await loadAIConnections();
- document.getElementById("provider").onchange=()=>{analysisPassed=false;loadAIConnections();};
- document.getElementById("channel").onchange = loadSavedFolder;
- await loadSavedFolder();
+  await loadChannels('channel');
+  await loadAIConnections();
+  document.getElementById('provider').onchange = () => { analysisPassed = false; loadAIConnections(); };
+  document.getElementById('channel').onchange = async () => {
+    const sel = document.getElementById('channel');
+    uiLog(`Channel selected: ${sel.options[sel.selectedIndex]?.text || sel.value}`);
+    await loadSavedFolder(); await loadMetaConnections(); updateYTLabel();
+  };
+  await loadSavedFolder();
+  await loadMetaConnections();
+  updateYTLabel();
 }
+
+// ── AI connections ────────────────────────────────────────────────────────────
 async function loadAIConnections(){
- const provider=document.getElementById("provider").value; const sel=document.getElementById("aiConnection");
- if(provider!=="gemini"){sel.style.display="none";document.getElementById("aiConnectionMsg").textContent="Gemini selected.";return;}
- const d=await api("/api/connections"); const rows=(d.connections||[]).filter(x=>x.provider==="gemini");
- sel.style.display="block"; sel.innerHTML=rows.map(x=>`<option value="${x.id}" ${x.status==='logged_out'?'disabled':''}>${esc(x.account_name||x.account_email)} — ${esc(x.account_email)} — ${esc(x.model||"Gemini")}${x.status==='logged_out'?' (Logged out)':''}</option>`).join("")||`<option value="">No Gemini account connected</option>`;
- document.getElementById("aiConnectionMsg").textContent=rows.length?"Gemini account selected.":"Connect a Gemini account from Connections first.";
+  const provider = document.getElementById('provider').value;
+  const sel = document.getElementById('aiConnection');
+  if(provider !== 'gemini'){ sel.style.display='none'; document.getElementById('aiConnectionMsg').textContent='Gemini selected.'; return; }
+  const d = await api('/api/connections');
+  const rows = (d.connections||[]).filter(x => x.provider==='gemini');
+  sel.style.display = 'block';
+  sel.innerHTML = rows.map(x => `<option value="${x.id}" ${x.status==='logged_out'?'disabled':''}>${esc(x.account_name||x.account_email)} — ${esc(x.account_email)} — ${esc(x.model||'Gemini')}${x.status==='logged_out'?' (Logged out)':''}</option>`).join('') || '<option value="">No Gemini account connected</option>';
+  document.getElementById('aiConnectionMsg').textContent = rows.length ? 'Gemini account selected.' : 'Connect a Gemini account from Connections first.';
 }
+
+// ── Meta connections ──────────────────────────────────────────────────────────
+async function loadMetaConnections(){
+  try{
+    const d = await api('/api/meta/connections');
+    metaConnections = (d.connections||[]).filter(x => x.status !== 'logged_out' && x.token_available);
+    const sel = document.getElementById('metaConnection');
+    sel.innerHTML = metaConnections.map(x => `<option value="${x.id}">${esc(x.page_name)}${x.instagram_username?' / @'+esc(x.instagram_username):''}</option>`).join('') || '<option value="">Connect Meta in Connections first</option>';
+    updateMetaLabels();
+  }catch(e){ console.error(e); }
+}
+
+function updateMetaLabels(){
+  const mc = metaConnections[0];
+  const pageName = mc ? esc(mc.page_name) : 'No Meta page connected';
+  const igName = mc && mc.instagram_username ? `@${esc(mc.instagram_username)}` : 'No Instagram linked';
+  document.getElementById('fbSubLabel').textContent = mc ? pageName : 'No Meta page connected';
+  document.getElementById('fbrSubLabel').textContent = mc ? pageName : 'No Meta page connected';
+  document.getElementById('igSubLabel').textContent = mc && mc.instagram_username ? igName : 'No Instagram linked';
+  if(!mc){ ['cardFB','cardFBR','cardIG'].forEach(id => { document.getElementById(id).style.opacity='0.5'; document.getElementById(id).style.pointerEvents='none'; }); }
+  else { ['cardFB','cardFBR','cardIG'].forEach(id => { document.getElementById(id).style.opacity=''; document.getElementById(id).style.pointerEvents=''; }); }
+  if(mc && mc.instagram_username){ document.getElementById('cardIG').style.opacity=''; document.getElementById('cardIG').style.pointerEvents=''; }
+  else { document.getElementById('cardIG').style.opacity='0.5'; document.getElementById('cardIG').style.pointerEvents='none'; }
+}
+
+function updateYTLabel(){
+  const sel = document.getElementById('channel');
+  const txt = sel.options[sel.selectedIndex]?.text || 'No channel selected';
+  document.getElementById('ytSubLabel').textContent = txt;
+}
+
+// ── platform toggle ───────────────────────────────────────────────────────────
+function togglePlatform(key, forceVal){
+  const map = {yt:'chkYT',fb:'chkFB',fbr:'chkFBR',ig:'chkIG'};
+  const cardMap = {yt:'cardYT',fb:'cardFB',fbr:'cardFBR',ig:'cardIG'};
+  const chk = document.getElementById(map[key]);
+  if(forceVal !== undefined) chk.checked = forceVal;
+  else chk.checked = !chk.checked;
+  document.getElementById(cardMap[key]).classList.toggle('selected', chk.checked);
+  const anyMeta = document.getElementById('chkFB').checked || document.getElementById('chkFBR').checked || document.getElementById('chkIG').checked;
+  document.getElementById('metaExtra').classList.toggle('show', anyMeta);
+}
+
+// ── folder ────────────────────────────────────────────────────────────────────
 async function loadSavedFolder(){
- const c=document.getElementById("channel").value;
- if(!c)return;
- try{
-  const d=await api("/api/folder?channel_id="+encodeURIComponent(c));
-  document.getElementById("folder").value=d.folder||"";
-  if(d.folder) {
-    setMessage("scanmsg","Saved folder loaded. Existing library restored — click Scan Folder only when you want to detect newly added videos.","success");
-    await loadExistingInventory(c);
-  }
- }catch(e){console.error(e)}
+  const c = document.getElementById('channel').value; if(!c) return;
+  try{
+    const d = await api('/api/folder?channel_id='+encodeURIComponent(c));
+    document.getElementById('folder').value = d.folder || '';
+    if(d.folder){ setMessage('scanmsg','Saved folder loaded. Click Scan Folder to detect new videos.','success'); await loadExistingInventory(c); }
+  }catch(e){ console.error(e); }
 }
+
 async function loadExistingInventory(channel){
- try{
-  const d=await api("/api/library?channel_id="+encodeURIComponent(channel));
-  videos=(d.videos||[]).map(v => {
-    const p = v.file_path || v.path || "";
-    return {...v, path: p, file_path: p};
-  });
-  document.getElementById("videoArea").style.display=videos.length?"block":"none";
-  if(videos.length){ document.getElementById("video").innerHTML=videos.map((v,i)=>`<option value="${i}">${esc(v.filename)} — ${esc(v.status)}</option>`).join(""); pickVideo(); }
- }catch(e){console.error(e)}
+  try{
+    const d = await api('/api/library?channel_id='+encodeURIComponent(channel));
+    videos = (d.videos||[]).map(v => { const p=v.file_path||v.path||''; return {...v,path:p,file_path:p}; });
+    document.getElementById('videoArea').style.display = videos.length ? 'block' : 'none';
+    if(videos.length){ document.getElementById('video').innerHTML = videos.map((v,i) => `<option value="${i}">${esc(v.filename)} — ${esc(v.status)}</option>`).join(''); pickVideo(); }
+  }catch(e){ console.error(e); }
 }
-let folderBrowserChannel="";
-let folderBrowserCurrent="";
-let folderBrowserParent="";
+
 async function browseFolder(){
- const c=document.getElementById("channel").value;
- if(!c)return setMessage("scanmsg","Connect a YouTube channel first.","error");
- folderBrowserChannel=c;
- document.getElementById("folderBrowser").classList.add("open");
- await loadFolderBrowser(document.getElementById("folder").value.trim()||"");
+  const c = document.getElementById('channel').value;
+  if(!c) return setMessage('scanmsg','Connect a YouTube channel first.','error');
+  folderBrowserChannel = c;
+  document.getElementById('folderBrowser').classList.add('open');
+  await loadFolderBrowser(document.getElementById('folder').value.trim()||'');
 }
-async function loadFolderBrowser(path=""){
- try{
-  const q=path?"?path="+encodeURIComponent(path)+"&channel_id="+encodeURIComponent(folderBrowserChannel):"?channel_id="+encodeURIComponent(folderBrowserChannel);
-  const d=await api("/api/folder/browse"+q);
-  folderBrowserCurrent=d.current;
-  folderBrowserParent=d.parent||d.current;
-  document.getElementById("folderPath").value=d.current;
-  document.getElementById("folderEntries").innerHTML=(d.entries||[]).map(x=>`<button class="btn btn-secondary" style="display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;border-radius:0;padding:12px" onclick='loadFolderBrowser(${JSON.stringify(x.path)})'>📁 ${esc(x.name)}</button>`).join("")||'<div class="muted" style="padding:16px">No subfolders.</div>';
- }catch(e){setMessage("scanmsg",e.message,"error")}
+
+async function loadFolderBrowser(path=''){
+  try{
+    const q = path ? '?path='+encodeURIComponent(path)+'&channel_id='+encodeURIComponent(folderBrowserChannel) : '?channel_id='+encodeURIComponent(folderBrowserChannel);
+    const d = await api('/api/folder/browse'+q);
+    folderBrowserCurrent = d.current; folderBrowserParent = d.parent||d.current;
+    document.getElementById('folderPath').value = d.current;
+    document.getElementById('folderEntries').innerHTML = (d.entries||[]).map(x => `<button class="btn btn-secondary" style="display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;border-radius:0;padding:12px" onclick='loadFolderBrowser(${JSON.stringify(x.path)})'>📁 ${esc(x.name)}</button>`).join('') || '<div class="muted" style="padding:16px">No subfolders.</div>';
+  }catch(e){ setMessage('scanmsg',e.message,'error'); }
 }
-async function folderUp(){
- await loadFolderBrowser(folderBrowserParent);
-}
+
+async function folderUp(){ await loadFolderBrowser(folderBrowserParent); }
+function closeFolderBrowser(){ document.getElementById('folderBrowser').classList.remove('open'); }
+
 async function selectCurrentFolder(){
- try{
-  const d=await api("/api/folder/select",{method:"POST",body:JSON.stringify({channel_id:folderBrowserChannel,folder:folderBrowserCurrent})});
-  document.getElementById("folder").value=d.folder;
-  closeFolderBrowser();
-  setMessage("scanmsg","Folder saved for this channel. You won't need to select it again.","success");
- }catch(e){setMessage("scanmsg",e.message,"error")}
+  try{
+    const d = await api('/api/folder/select',{method:'POST',body:JSON.stringify({channel_id:folderBrowserChannel,folder:folderBrowserCurrent})});
+    document.getElementById('folder').value = d.folder; closeFolderBrowser();
+    setMessage('scanmsg',"Folder saved for this channel. You won't need to select it again.",'success');
+  }catch(e){ setMessage('scanmsg',e.message,'error'); }
 }
-function closeFolderBrowser(){document.getElementById("folderBrowser").classList.remove("open")}
+
 async function scan(){
- const channel=document.getElementById("channel").value, folder=document.getElementById("folder").value.trim();
- if(!channel || !folder) return setMessage("scanmsg","Select a channel and enter a folder.","error");
- setMessage("scanmsg","Scanning folder and calculating SHA-256 hashes. This may take time for large videos.");
- try{
-  const d=await api("/api/scan",{method:"POST",body:JSON.stringify({channel_id:channel,folder})});
-  videos=(d.videos||[]).map(v => {
-    const p = v.file_path || v.path || "";
-    return {...v, path: p, file_path: p};
-  });
-  document.getElementById("videoArea").style.display="block";
-  document.getElementById("video").innerHTML=videos.map((v,i)=>
-    `<option value="${i}">${esc(v.filename)} — ${esc(v.status)}</option>`).join("");
-  pickVideo(); setMessage("scanmsg",`Scan complete: ${d.videos.length} video(s). ${d.hashed||0} new/changed file(s) hashed; ${d.reused||0} unchanged file(s) reused.`,"success");
- }catch(e){setMessage("scanmsg",e.message,"error")}
+  const channel = document.getElementById('channel').value, folder = document.getElementById('folder').value.trim();
+  if(!channel||!folder) return setMessage('scanmsg','Select a channel and enter a folder.','error');
+  uiLog(`Folder scan started: channel=${channel} folder=${folder}`);
+  setMessage('scanmsg','Scanning folder and calculating SHA-256 hashes. This may take time for large videos.');
+  try{
+    const d = await api('/api/scan',{method:'POST',body:JSON.stringify({channel_id:channel,folder})});
+    videos = (d.videos||[]).map(v => { const p=v.file_path||v.path||''; return {...v,path:p,file_path:p}; });
+    document.getElementById('videoArea').style.display = 'block';
+    document.getElementById('video').innerHTML = videos.map((v,i) => `<option value="${i}">${esc(v.filename)} — ${esc(v.status)}</option>`).join('');
+    pickVideo();
+    uiLog(`Folder scan complete: ${d.videos.length} video(s) found in ${folder}`);
+    setMessage('scanmsg',`Scan complete: ${d.videos.length} video(s). ${d.hashed||0} new/changed hashed; ${d.reused||0} reused.`,'success');
+  }catch(e){ uiLog(`Folder scan failed: ${e.message}`,'ERROR'); setMessage('scanmsg',e.message,'error'); }
 }
+
+// ── video pick ────────────────────────────────────────────────────────────────
 function pickVideo(){
- const v=videos[Number(document.getElementById("video").value)];
- if(!v)return;
- const fp = v.file_path || v.path || "";
- analysisPassed = (v.ai_status === "completed") || Boolean(v.title && v.description);
- document.getElementById("title").value=v.title || v.filename.replace(/\.[^.]+$/,"");
- document.getElementById("description").value=v.description || "";
- document.getElementById("tags").value=v.tags || "";
- document.getElementById("hashtags").value=v.hashtags || "";
- document.getElementById("videoInfo").textContent=`Path: ${fp} | SHA-256: ${v.sha256} | Status: ${v.status}`;
- document.getElementById("aiSummary").style.display = v.ai_summary ? "block" : "none";
- document.getElementById("aiSummary").textContent = v.ai_summary || "";
- const vaBox = document.getElementById("visualAnalysis");
- if (v.analysis_json) {
-  try {
-   const aj = JSON.parse(v.analysis_json);
-   const va = aj.visual_analysis || {};
-   if (va.visual_summary) {
-    vaBox.style.display = "block";
-    vaBox.innerHTML = "<strong>Verified Visual Analysis</strong><br>"+
-      esc(va.visual_summary||"")+
-      "<br><br><strong>Setting:</strong> "+esc(va.setting||"Story scene")+
-      " &nbsp; <strong>Confidence:</strong> "+esc(va.confidence||"medium");
-   } else { vaBox.style.display = "none"; }
-  } catch(e){ vaBox.style.display = "none"; }
- } else { vaBox.style.display = "none"; }
- document.getElementById("aiStatus").textContent = v.ai_status && v.ai_status !== "not_analyzed" ? "AI: "+v.ai_status : "";
+  const v = videos[Number(document.getElementById('video').value)]; if(!v) return;
+  const fp = v.file_path||v.path||'';
+  uiLog(`Video selected: ${v.filename} | path=${fp} | status=${v.status} | ai_status=${v.ai_status||'not_analyzed'}`);
+  analysisPassed = (v.ai_status==='completed') || Boolean(v.title && v.description);
+  document.getElementById('title').value = v.title || v.filename.replace(/\.[^.]+$/,'');
+  document.getElementById('description').value = v.description || '';
+  document.getElementById('tags').value = v.tags || '';
+  document.getElementById('hashtags').value = v.hashtags || '';
+  document.getElementById('videoInfo').textContent = `Path: ${fp} | SHA-256: ${v.sha256} | Status: ${v.status}`;
+  document.getElementById('aiSummary').style.display = v.ai_summary ? 'block' : 'none';
+  document.getElementById('aiSummary').textContent = v.ai_summary || '';
+  const vaBox = document.getElementById('visualAnalysis');
+  if(v.analysis_json){ try{ const aj=JSON.parse(v.analysis_json); const va=aj.visual_analysis||{}; if(va.visual_summary){ vaBox.style.display='block'; vaBox.innerHTML='<strong>Visual Analysis</strong><br>'+esc(va.visual_summary||'')+'<br><strong>Setting:</strong> '+esc(va.setting||'')+'  <strong>Confidence:</strong> '+esc(va.confidence||''); }else vaBox.style.display='none'; }catch(e){ vaBox.style.display='none'; } }else vaBox.style.display='none';
+  document.getElementById('aiStatus').textContent = v.ai_status && v.ai_status!=='not_analyzed' ? 'AI: '+v.ai_status : '';
+  // Auto-fill Meta caption from description
+  const isMp4 = fp.toLowerCase().endsWith('.mp4');
+  if(!isMp4){ ['cardFB','cardFBR','cardIG'].forEach(id=>{ document.getElementById(id).style.opacity='0.4'; document.getElementById(id).style.pointerEvents='none'; }); }
+  else { updateMetaLabels(); }
 }
+
+// ── analyze ───────────────────────────────────────────────────────────────────
 async function analyze(){
- const v=videos[Number(document.getElementById("video").value)];
- if(!v)return;
- const fp = v.file_path || v.path || "";
- if(!fp) return setMessage("scanmsg","No file path found for the selected video. Please scan folder again.","error");
- const provider=document.getElementById("provider").value;
- const connectionId=document.getElementById("aiConnection").value;
- if(provider==="gemini" && !connectionId){
-  return setMessage("scanmsg","Connect or select a Gemini account first. Open Connections.","error");
- }
- const btns=document.querySelectorAll("button"); btns.forEach(b=>{if(b.textContent.includes("Analyze")){b.disabled=true;b.textContent="🤖 Analyzing…"}});
- if (provider === "gemini") {
-  document.getElementById("aiStatus").textContent="Gemini video analysis running (uploading & processing video)…";
- } else {
-  document.getElementById("aiStatus").textContent="Gemini analysis running…";
- }
- try{
-  const d=await api("/api/analyze",{method:"POST",body:JSON.stringify({
-   channel_id:document.getElementById("channel").value,
-   file_path:fp,
-   path:fp,
-   provider,
-   connection_id:provider==="gemini" && connectionId ? Number(connectionId) : null
-  })});
-  const md=d.metadata;
-  document.getElementById("title").value=md.title||"";
-  document.getElementById("description").value=md.description||"";
-  document.getElementById("hashtags").value=(md.hashtags||[]).join(" ");
-  document.getElementById("tags").value=(md.tags||[]).join(", ");
-  document.getElementById("aiSummary").style.display="block";
-  document.getElementById("aiSummary").textContent="AI Summary: "+(md.summary||"");
-  const va=d.visual_analysis||{};
-  if (va.visual_summary) {
-    document.getElementById("visualAnalysis").style.display="block";
-    document.getElementById("visualAnalysis").innerHTML=
-      "<strong>Verified Visual Analysis</strong><br>"+
-      esc(va.visual_summary||"")+
-      "<br><br><strong>Setting:</strong> "+esc(va.setting||"")+
-      " &nbsp; <strong>Confidence:</strong> "+esc(va.confidence||"");
+  const v = videos[Number(document.getElementById('video').value)]; if(!v) return;
+  const fp = v.file_path||v.path||'';
+  if(!fp) return setMessage('scanmsg','No file path found. Please scan folder again.','error');
+  const provider = document.getElementById('provider').value;
+  const connectionId = document.getElementById('aiConnection').value;
+  if(provider==='gemini' && !connectionId) return setMessage('scanmsg','Connect or select a Gemini account first.','error');
+  uiLog(`AI analyze started: file=${v.filename} provider=${provider} connection_id=${connectionId}`);
+  const btns = document.querySelectorAll('button');
+  btns.forEach(b => { if(b.textContent.includes('Analyze')){ b.disabled=true; b.textContent='🤖 Analyzing…'; } });
+  document.getElementById('aiStatus').textContent = 'Gemini video analysis running…';
+  try{
+    const d = await api('/api/analyze',{method:'POST',body:JSON.stringify({channel_id:document.getElementById('channel').value,file_path:fp,path:fp,provider,connection_id:provider==='gemini'&&connectionId?Number(connectionId):null})});
+    const md = d.metadata;
+    document.getElementById('title').value = md.title||'';
+    document.getElementById('description').value = md.description||'';
+    document.getElementById('hashtags').value = (md.hashtags||[]).join(' ');
+    document.getElementById('tags').value = (md.tags||[]).join(', ');
+    document.getElementById('aiSummary').style.display = 'block';
+    document.getElementById('aiSummary').textContent = 'AI Summary: '+(md.summary||'');
+    const va = d.visual_analysis||{};
+    if(va.visual_summary){ document.getElementById('visualAnalysis').style.display='block'; document.getElementById('visualAnalysis').innerHTML='<strong>Visual Analysis</strong><br>'+esc(va.visual_summary||'')+'<br><strong>Setting:</strong> '+esc(va.setting||'')+'  <strong>Confidence:</strong> '+esc(va.confidence||''); }
+    document.getElementById('aiStatus').textContent = `AI: PASSED | Provider: ${d.ai_provider||provider} | Model: ${d.vision_model||provider}`;
+    v.title=md.title; v.description=md.description; v.hashtags=(md.hashtags||[]).join(', '); v.tags=(md.tags||[]).join(', '); v.ai_status='completed'; v.ai_summary=md.summary; analysisPassed=true;
+    uiLog(`AI analyze complete: file=${v.filename} title="${md.title?.substring(0,60)}" hashtags=${(md.hashtags||[]).join(' ')}`);
+    setMessage('scanmsg','Gemini AI metadata generated. Review then publish.','success');
+  }catch(e){ uiLog(`AI analyze failed: file=${v.filename} error=${e.message}`,'ERROR'); document.getElementById('aiStatus').textContent='AI: FAILED'; setMessage('scanmsg',e.message,'error'); }
+  finally{ btns.forEach(b => { if(b.textContent.includes('Analyzing')){ b.disabled=false; b.textContent='🤖 Analyze Video & Generate Metadata'; } }); }
+}
+
+// ── publish all ───────────────────────────────────────────────────────────────
+async function publishAll(){
+  const ytChecked  = document.getElementById('chkYT').checked;
+  const fbChecked  = document.getElementById('chkFB').checked;
+  const fbrChecked = document.getElementById('chkFBR').checked;
+  const igChecked  = document.getElementById('chkIG').checked;
+  const approved   = document.getElementById('approveCheck').checked;
+
+  if(!ytChecked && !fbChecked && !fbrChecked && !igChecked)
+    return setMessage('publishResults','Select at least one platform to publish to.','error');
+  if(!approved)
+    return setMessage('publishResults','Check the approval box before publishing.','error');
+
+  const v = videos[Number(document.getElementById('video').value)];
+  if(!v) return setMessage('publishResults','Select a video first.','error');
+  const fp = v.file_path||v.path||'';
+
+  if(ytChecked && !analysisPassed)
+    return setMessage('publishResults','Run AI analysis first before uploading to YouTube.','error');
+
+  const title       = document.getElementById('title').value;
+  const description = document.getElementById('description').value;
+  const hashtags    = document.getElementById('hashtags').value.split(/\s+/).map(x=>x.trim()).filter(Boolean);
+  const tags        = document.getElementById('tags').value.split(',').map(x=>x.trim()).filter(Boolean);
+  const metaConnId  = document.getElementById('metaConnection').value;
+
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true; btn.textContent = 'Publishing…';
+  document.getElementById('publishResults').innerHTML = '';
+  uiLog(`Publish started: platforms=${[ytChecked&&'YouTube',fbChecked&&'Facebook Video',fbrChecked&&'Facebook Reel',igChecked&&'Instagram Reel'].filter(Boolean).join(',')} file=${v.filename} title="${title?.substring(0,60)}"`);
+
+  const results = [];
+
+  // YouTube
+  if(ytChecked){
+    if(v.status==='uploaded'){ results.push({platform:'YouTube',ok:false,msg:'Already uploaded to this channel.'}); }
+    else {
+      try{
+        const payload = {
+          channel_id: document.getElementById('channel').value, file_path:fp, path:fp,
+          title, description, hashtags, tags,
+          privacy_status: document.getElementById('privacy').value,
+          category_id: document.getElementById('category').value,
+          made_for_kids: document.getElementById('kids').checked,
+          contains_synthetic_media: document.getElementById('synthetic').value==='yes',
+          video_language: document.getElementById('videoLanguage').value,
+          title_description_language: document.getElementById('metadataLanguage').value,
+          caption_certification: document.getElementById('captionCertification').value,
+          recording_date: document.getElementById('recordingDate').value||'',
+          video_location: document.getElementById('videoLocation').value
+        };
+        const d = await api('/api/upload',{method:'POST',body:JSON.stringify(payload)});
+        v.status='uploaded';
+        uiLog(`YouTube upload complete: file=${v.filename} youtube_video_id=${d.youtube_video_id}`);
+        results.push({platform:'YouTube',ok:true,msg:`Uploaded. Video ID: ${d.youtube_video_id}`});
+      }catch(e){ uiLog(`YouTube upload failed: file=${v.filename} error=${e.message}`,'ERROR'); results.push({platform:'YouTube',ok:false,msg:e.message}); }
+    }
   }
-  document.getElementById("aiStatus").textContent=
-    `AI: quality gate PASSED | Provider: ${d.ai_provider||provider} | ${d.frame_count ? "Frames: "+d.frame_count+" | " : "Video: direct | "}Model: ${d.vision_model||provider} | ${d.whisper_status||""}`;
-  v.status="pending"; v.title=md.title; v.description=md.description;
-  v.hashtags=(md.hashtags||[]).join(", "); v.tags=(md.tags||[]).join(", ");
-  v.ai_status="completed"; v.ai_summary=md.summary; analysisPassed=true;
-  setMessage("scanmsg", ("Gemini AI metadata generated successfully.") + " Review before uploading.", "success");
- }catch(e){
-  document.getElementById("aiStatus").textContent="AI: quality gate FAILED";
-  setMessage("scanmsg",e.message,"error");
- }finally{
-  btns.forEach(b=>{if(b.textContent.includes("Analyzing")){b.disabled=false;b.textContent="🤖 Analyze Video & Generate Metadata"}});
- }
+
+  // Facebook / Instagram (need video_id from library)
+  const anyMeta = fbChecked||fbrChecked||igChecked;
+  if(anyMeta){
+    if(!metaConnId){ results.push({platform:'Meta',ok:false,msg:'No Meta page selected.'}); }
+    else if(!fp.toLowerCase().endsWith('.mp4')){ results.push({platform:'Meta',ok:false,msg:'Meta publishing requires an MP4 file.'}); }
+    else {
+      // Ensure video is in library to get its id
+      let videoId = v.id;
+      if(!videoId){
+        try{ const lib=await api('/api/library?channel_id='+encodeURIComponent(document.getElementById('channel').value)); const found=(lib.videos||[]).find(x=>(x.file_path||x.path)===fp); videoId=found?.id; }catch(e){}
+      }
+      if(!videoId){ results.push({platform:'Meta',ok:false,msg:'Video not found in library. Scan folder first.'}); }
+      else {
+        const caption = [description, hashtags.join(' ')].filter(Boolean).join('\n\n');
+        const destinations = [];
+        if(fbChecked)  destinations.push({key:'Facebook Video', dest:'facebook_video'});
+        if(fbrChecked) destinations.push({key:'Facebook Reel',  dest:'facebook_reel'});
+        if(igChecked)  destinations.push({key:'Instagram Reel', dest:'instagram_reel'});
+        for(const {key,dest} of destinations){
+          try{
+            uiLog(`Meta publish started: destination=${dest} file=${v.filename} page_connection_id=${metaConnId}`);
+            const r = await api('/api/meta/publish',{method:'POST',body:JSON.stringify({connection_id:Number(metaConnId),video_id:videoId,destination:dest,title,caption,approved:true})});
+            uiLog(`Meta publish complete: destination=${dest} file=${v.filename} meta_id=${r.result?.id||''} post_id=${r.result?.post_id||''}`);
+            const postId = r.result?.post_id||'';
+            const metaId = r.result?.id||'see Meta dashboard';
+            const postLink = postId ? ` — <a href="https://www.facebook.com/${postId}" target="_blank" rel="noopener">View Post ↗</a>` : '';
+            results.push({platform:key,ok:true,msg:`Published. Meta ID: ${metaId}${postLink}`,html:true});
+          }catch(e){ uiLog(`Meta publish failed: destination=${dest} file=${v.filename} error=${e.message}`,'ERROR'); results.push({platform:key,ok:false,msg:e.message}); }
+        }
+      }
+    }
+  }
+
+  // Render results
+  document.getElementById('publishResults').innerHTML = results.map(r =>
+    `<div class="result-row">${r.ok?'✅':'❌'} <strong>${esc(r.platform)}:</strong> ${r.html ? r.msg : esc(r.msg)}</div>`
+  ).join('');
+
+  btn.disabled = false; btn.textContent = '🚀 Publish to Selected Platforms';
+  document.getElementById('approveCheck').checked = false;
 }
-async function upload(){
- const v=videos[Number(document.getElementById("video").value)];
- if(!analysisPassed) return setMessage("uploadmsg","Upload blocked: run successful video analysis first.","error");
- if(!v)return;
- const fp = v.file_path || v.path || "";
- if(!fp) return setMessage("uploadmsg","No file path found for the selected video. Please scan folder again.","error");
- if(v.status==="uploaded") return setMessage("uploadmsg","This exact video is already uploaded to this channel.","error");
- const payload={
-  channel_id:document.getElementById("channel").value,
-  file_path:fp,
-  path:fp,
-  title:document.getElementById("title").value,
-  description:document.getElementById("description").value,
-  hashtags:document.getElementById("hashtags").value.split(/\s+/).map(x=>x.trim()).filter(Boolean),
-  tags:document.getElementById("tags").value.split(",").map(x=>x.trim()).filter(Boolean),
-  privacy_status:document.getElementById("privacy").value,
-  category_id:document.getElementById("category").value,
-  made_for_kids:document.getElementById("kids").checked,
-  contains_synthetic_media:document.getElementById("synthetic").value === "yes",
-  video_language:document.getElementById("videoLanguage").value,
-  title_description_language:document.getElementById("metadataLanguage").value,
-  caption_certification:document.getElementById("captionCertification").value,
-  recording_date:document.getElementById("recordingDate").value || "",
-  video_location:document.getElementById("videoLocation").value
- };
- const btn=document.getElementById("uploadBtn"); btn.disabled=true; btn.textContent="Uploading…";
- setMessage("uploadmsg","Uploading to YouTube. Keep the app running until it finishes.");
- try{
-  const d=await api("/api/upload",{method:"POST",body:JSON.stringify(payload)});
-  setMessage("uploadmsg",`Upload successful. YouTube video ID: ${d.youtube_video_id}`,"success");
-  v.status="uploaded";
- }catch(e){setMessage("uploadmsg",e.message,"error")}
- finally{btn.disabled=false;btn.textContent="🚀 Upload Video"}
-}
-init().catch(e=>console.error(e));
+
+init().catch(e => console.error(e));
 </script></body></html>
