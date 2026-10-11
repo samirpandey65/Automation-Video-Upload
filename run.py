@@ -96,11 +96,12 @@ def delegate_to_venv():
 delegate_to_venv()
 
 import uvicorn
+from app.config import APP_HOST, APP_PORT
 
 def get_local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
+        s.connect(("8.8.8.8", 8800))
         ip = s.getsockname()[0]
         s.close()
         return ip
@@ -108,8 +109,8 @@ def get_local_ip():
         return "127.0.0.1"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8081))
-    host = os.environ.get("HOST", "0.0.0.0")
+    port = APP_PORT
+    host = APP_HOST
     #host = os.environ.get("HOST", "127.0.0.1")
     local_ip = get_local_ip()
 

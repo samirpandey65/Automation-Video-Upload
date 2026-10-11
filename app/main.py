@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, File
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
-from .config import WEB_DIR, LOG_DIR, GEMINI_DEFAULT_MODEL
+from .config import WEB_DIR, LOG_DIR, GEMINI_DEFAULT_MODEL, PUBLIC_BASE_URL
 from .database import (
     init_db, list_channels, get_channel, upsert_channel, delete_channel,
     get_inventory, get_inventory_by_id, get_inventory_by_hash, get_inventory_by_path, upsert_video, update_video, stats,
@@ -24,7 +24,9 @@ from .database import (
     list_youtube_accounts, get_youtube_account, upsert_youtube_account, update_youtube_account_status, mark_youtube_account_auth_success, mark_youtube_account_reauth_required, set_youtube_reauth_reminder_days, get_youtube_reauth_alerts, set_channel_account, list_channels_for_account, delete_youtube_account,
     count_users, create_user, get_user, update_user_password, list_users, touch_user_login, add_audit_log, list_audit_log, create_upload_job, get_upload_job, update_upload_job, list_upload_jobs, add_upload_attempt,
     upsert_remote_video, list_remote_videos, get_remote_video_by_hash, get_inventory_by_youtube_id, get_remote_video, update_channel_sync, add_remote_metrics_snapshot,
-    database_health, get_schedule, list_meta_connections, get_meta_connection, upsert_meta_connection, update_meta_connection_status, delete_meta_connection
+    database_health, get_schedule, list_meta_connections, get_meta_connection, upsert_meta_connection, update_meta_connection_status, delete_meta_connection,
+    list_meta_connections_for_account, list_unlinked_meta_connections, set_meta_connection_account, list_accounts_overview,
+    get_app_setting, set_app_setting
 )
 from .auth import (
     start_oauth, discover_channels, get_google_account_email, save_credentials,
@@ -33,10 +35,18 @@ from .auth import (
 from .local_auth import ensure_admin, setup_available, create_first_admin, make_session, read_session, verify_password, hash_password, SESSION_COOKIE
 from .video_utils import scan_folder, sha256_file
 from .youtube import upload_video, list_channel_videos, extract_hash_marker, get_video_stats
-from .meta import build_oauth_url, save_app_secret, load_app_secret, delete_app_secret, exchange_code, get_pages, save_page_token, load_page_token, delete_page_token, test_meta_connection
+from .meta import build_oauth_url, save_app_secret, load_app_secret, delete_app_secret, exchange_code, get_pages, save_page_token, load_page_token, delete_page_token, test_meta_connection, upload_facebook_page_video, upload_facebook_page_reel, upload_instagram_reel
 from .scheduler import start_scheduler, stop_scheduler
 from .analytics import get_video_analytics
 from .ai_validation import validate_metadata
+from .telegram import (
+    send as tg_send,
+    test_connection as tg_test,
+    notify_youtube_upload_success, notify_youtube_upload_failed,
+    notify_meta_publish_success, notify_meta_publish_failed,
+    notify_scheduler_upload_success, notify_scheduler_upload_failed,
+    notify_token_expiring, notify_token_expired,
+)
 from .gemini import (
     connect_account as connect_gemini_account,
     delete_credentials as delete_gemini_credentials,
@@ -164,6 +174,10 @@ class ScheduleDayRequest(BaseModel):
     caption_certification: str = "none"
     recording_date: str = ""
     video_location: str = "India"
+    publish_facebook_video: bool = False
+    publish_facebook_reel: bool = False
+    publish_instagram_reel: bool = False
+    meta_connection_id: int | None = None
 
 class ScheduleManualDayRequest(BaseModel):
     channel_id: str
@@ -184,6 +198,10 @@ class ScheduleManualDayRequest(BaseModel):
     caption_certification: str = "none"
     recording_date: str = ""
     video_location: str = "India"
+    publish_facebook_video: bool = False
+    publish_facebook_reel: bool = False
+    publish_instagram_reel: bool = False
+    meta_connection_id: int | None = None
 
 class AnalyzeRequest(BaseModel):
     channel_id: str
@@ -377,7 +395,16 @@ def channels_page():
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page():
-    return page("settings.html")
+    html = page("settings.html")
+    # Pre-check the Telegram enabled checkbox based on saved setting so it
+    # shows the correct state immediately on load without waiting for the JS fetch.
+    tg_enabled = (get_app_setting("telegram_enabled") or "0") == "1"
+    if tg_enabled:
+        html = html.replace(
+            'id="tgEnabled" style="width:auto">',
+            'id="tgEnabled" style="width:auto" checked>'
+        )
+    return html
 
 @app.get("/setup-guide", response_class=HTMLResponse)
 def setup_guide_page():
@@ -508,8 +535,55 @@ def api_backup(request: Request):
     stamp=datetime.now().strftime("%Y%m%d_%H%M%S")
     out=Path(tempfile.gettempdir()) / f"yla_backup_{stamp}.db"
     src=__import__('sqlite3').connect(DB_PATH); dst=__import__('sqlite3').connect(out); src.backup(dst); dst.close(); src.close()
+    log.info("[BACKUP] Database backup created: %s by user=%s", out.name, (getattr(request.state,'user',None) or {}).get('username','?'))
     audit(request,"backup_database","database",str(out))
-    return FileResponse(out, filename=out.name, media_type="application/octet-stream")
+    return FileResponse(out, filename=f"yla_backup_{stamp}.db", media_type="application/octet-stream")
+
+@app.post("/api/restore")
+async def api_restore(request: Request):
+    require_role(request,"admin")
+    from .config import DB_PATH
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="No backup file received.")
+    # Validate it's a real SQLite file
+    if not body.startswith(b"SQLite format 3"):
+        raise HTTPException(status_code=400, detail="File does not appear to be a valid SQLite database.")
+    # Write to a temp file first, verify it opens, then replace
+    tmp = Path(tempfile.gettempdir()) / f"yla_restore_{int(time.time())}.db"
+    tmp.write_bytes(body)
+    try:
+        import sqlite3 as _sq
+        check = _sq.connect(str(tmp))
+        # Must have the core tables
+        tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        check.close()
+        required = {"youtube_accounts", "youtube_channels", "video_inventory", "upload_schedules"}
+        missing = required - tables
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Backup is missing required tables: {', '.join(sorted(missing))}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Backup file is corrupt: {e}")
+    finally:
+        pass
+    # Take an auto-backup of current DB before overwriting
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    auto_bak = DB_PATH.parent / f"uploader_pre_restore_{stamp}.db"
+    try:
+        src = __import__('sqlite3').connect(DB_PATH)
+        dst = __import__('sqlite3').connect(auto_bak)
+        src.backup(dst); dst.close(); src.close()
+    except Exception:
+        pass
+    # Replace the live DB with the uploaded backup
+    import shutil
+    shutil.copy2(str(tmp), str(DB_PATH))
+    tmp.unlink(missing_ok=True)
+    username = (getattr(request.state,'user',None) or {}).get('username','?')
+    log.info("[RESTORE] Database restored from backup by user=%s, pre-restore saved as %s", username, auto_bak.name)
+    return {"ok": True, "message": f"Database restored. Pre-restore backup saved as {auto_bak.name}. Restart the app to apply changes.", "pre_restore_backup": auto_bak.name}
 
 @app.get("/api/audit")
 def api_audit(request: Request, limit: int = 300):
@@ -873,6 +947,8 @@ async def api_select_folder(payload: dict, request: Request):
     if not os.access(p, os.R_OK):
         raise HTTPException(status_code=403, detail="Selected folder is not readable by the uploader service.")
     set_channel_folder(channel_id, str(p))
+    ch = get_channel(channel_id)
+    log.info("[FOLDER] Folder selected: channel=%s (%s) folder=%s", channel_id, (ch or {}).get('channel_name',''), p)
     return {"ok":True,"folder":str(p)}
 
 @app.post("/api/scan")
@@ -886,7 +962,8 @@ async def api_scan(payload: ScanRequest):
         if not os.access(folder_path, os.R_OK):
             raise HTTPException(status_code=403, detail="Video folder is not readable.")
         set_channel_folder(payload.channel_id, str(folder_path))
-        logging.info("Folder scan requested: channel=%s folder=%s", payload.channel_id, folder_path)
+        ch = get_channel(payload.channel_id)
+        log.info("[SCAN] User selected folder: channel=%s (%s) folder=%s", payload.channel_id, (ch or {}).get('channel_name',''), folder_path)
         files = await asyncio.to_thread(scan_folder, payload.folder)
         result = []
         hashed_new = 0
@@ -923,11 +1000,96 @@ async def api_scan(payload: ScanRequest):
                 "analysis_json": row.get("analysis_json", "")
             })
         logging.info("Folder scan complete: files=%d reused=%d hashed=%d channel=%s", len(files), reused, hashed_new, payload.channel_id)
+        log.info("[SCAN] Scan complete: channel=%s folder=%s total_files=%d new_hashed=%d reused=%d", payload.channel_id, folder_path, len(files), hashed_new, reused)
         return {"folder": payload.folder, "videos": result, "reused": reused, "hashed": hashed_new, "incremental": True}
     except Exception as e:
         logging.exception("Folder scan failed")
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@app.get("/api/telegram/config")
+def api_telegram_get(request: Request):
+    return {
+        "bot_token": get_app_setting("telegram_bot_token") or "",
+        "chat_id": get_app_setting("telegram_chat_id") or "",
+        "enabled": (get_app_setting("telegram_enabled") or "0") == "1",
+    }
+
+@app.post("/api/telegram/config")
+def api_telegram_save(payload: dict, request: Request):
+    require_role(request, "admin")
+    bot_token = str(payload.get("bot_token") or "").strip()
+    chat_id = str(payload.get("chat_id") or "").strip()
+    enabled = bool(payload.get("enabled", False))
+    set_app_setting("telegram_bot_token", bot_token)
+    set_app_setting("telegram_chat_id", chat_id)
+    set_app_setting("telegram_enabled", "1" if enabled else "0")
+    log.info("[TELEGRAM] Config saved: enabled=%s chat_id=%s", enabled, chat_id)
+    return {"ok": True}
+
+@app.post("/api/telegram/test")
+def api_telegram_test(payload: dict, request: Request):
+    require_role(request, "admin")
+    bot_token = str(payload.get("bot_token") or "").strip()
+    chat_id = str(payload.get("chat_id") or "").strip()
+    try:
+        from .telegram import test_connection as tg_test_conn
+        result = tg_test_conn(bot_token, chat_id)
+        return {"ok": True, **result}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@app.get("/api/openai/config")
+def api_openai_get(request: Request):
+    require_role(request, "admin")
+    key = get_app_setting("openai_api_key") or ""
+    return {"api_key": ("sk-..." + key[-4:]) if len(key) > 8 else ("" if not key else "****"), "has_key": bool(key), "enabled": (get_app_setting("openai_enabled") or "0") == "1", "model": get_app_setting("openai_model") or "gpt-4o"}
+
+@app.post("/api/openai/config")
+def api_openai_save(payload: dict, request: Request):
+    require_role(request, "admin")
+    api_key = str(payload.get("api_key") or "").strip()
+    enabled = bool(payload.get("enabled", False))
+    model = str(payload.get("model") or "gpt-4o").strip()
+    if api_key and not api_key.startswith("sk-..."):
+        set_app_setting("openai_api_key", api_key)
+    set_app_setting("openai_enabled", "1" if enabled else "0")
+    set_app_setting("openai_model", model)
+    log.info("[OPENAI] Config saved: enabled=%s model=%s", enabled, model)
+    return {"ok": True}
+
+@app.post("/api/openai/test")
+def api_openai_test(payload: dict, request: Request):
+    require_role(request, "admin")
+    api_key = str(payload.get("api_key") or "").strip()
+    if not api_key or api_key.startswith("sk-..."):
+        api_key = get_app_setting("openai_api_key") or ""
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No OpenAI API key configured.")
+    try:
+        import requests as _req
+        r = _req.post("https://api.openai.com/v1/chat/completions", headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, json={"model": str(payload.get("model") or "gpt-4o"), "messages": [{"role": "user", "content": "Reply with just: OpenAI connected!"}], "max_tokens": 20}, timeout=15)
+        data = r.json()
+        if not r.ok:
+            raise HTTPException(status_code=400, detail=data.get("error", {}).get("message") or f"OpenAI error {r.status_code}")
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return {"ok": True, "reply": reply}
+    except HTTPException: raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@app.post("/api/client-log")
+async def api_client_log(payload: dict, request: Request):
+    """Receives UI activity events and writes them to the application log."""
+    user = getattr(request.state, "user", None)
+    username = (user or {}).get("username", "unknown")
+    level = str(payload.get("level") or "INFO").upper()
+    message = str(payload.get("message") or "")[:2000]
+    if level == "ERROR":
+        log.error("[UI:%s] %s", username, message)
+    else:
+        log.info("[UI:%s] %s", username, message)
+    return {"ok": True}
 
 @app.get("/api/logs")
 def api_logs(lines: int = 300):
@@ -1053,6 +1215,7 @@ async def api_analyze(payload: AnalyzeRequest, request: Request):
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found.")
     path = validate_channel_path(payload.channel_id, payload.file_path)
+    log.info("[AI] Analyze requested: channel=%s file=%s provider=%s connection_id=%s", payload.channel_id, path.name, payload.provider, payload.connection_id)
 
     try:
         st = path.stat()
@@ -1071,6 +1234,7 @@ async def api_analyze(payload: AnalyzeRequest, request: Request):
             conns=[c for c in list_ai_connections("gemini") if c.get("status") != "logged_out"]
             if len(conns)==1: payload.connection_id=conns[0]["id"]
             else: raise RuntimeError("Select a connected Gemini account first. Open Connections.")
+        log.info("[AI] Gemini analysis running: file=%s size_bytes=%d connection_id=%s", path.name, st.st_size, payload.connection_id)
         result = await asyncio.to_thread(analyze_gemini, str(path), path.name, payload.connection_id, payload.model or None)
         md = result["metadata"]
         update_video(
@@ -1085,9 +1249,11 @@ async def api_analyze(payload: AnalyzeRequest, request: Request):
             analysis_json=__import__("json").dumps(result, ensure_ascii=False),
             error_message=""
         )
+        log.info("[AI] Gemini analysis COMPLETE: file=%s title=%r tags=%s hashtags=%s", path.name, md.get('title','')[:60], md.get('tags',[]), md.get('hashtags',[]))
         return {"ok": True, "video_id": row["id"], **result}
     except Exception as exc:
         logging.exception("AI analysis failed")
+        log.error("[AI] Gemini analysis FAILED: file=%s error=%s", path.name, exc)
         if 'row' in locals():
             update_video(row["id"], ai_status="failed", error_message=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
@@ -1156,7 +1322,11 @@ def api_save_schedule_day(payload: ScheduleDayRequest):
         slots.append({"time_local":t,"enabled":payload.enabled,"privacy_status":payload.privacy_status,"category_id":payload.category_id,"title_template":payload.title_template,"description_template":payload.description_template,"tags":payload.tags,"made_for_kids":payload.made_for_kids,"ai_provider":payload.ai_provider,"ai_connection_id":payload.ai_connection_id,
                    "contains_synthetic_media":payload.contains_synthetic_media,"video_language":payload.video_language,
                    "title_description_language":payload.title_description_language,"caption_certification":payload.caption_certification,
-                   "recording_date":payload.recording_date,"video_location":payload.video_location})
+                   "recording_date":payload.recording_date,"video_location":payload.video_location,
+                   "publish_facebook_video":getattr(payload,"publish_facebook_video",False),
+                   "publish_facebook_reel":getattr(payload,"publish_facebook_reel",False),
+                   "publish_instagram_reel":getattr(payload,"publish_instagram_reel",False),
+                   "meta_connection_id":getattr(payload,"meta_connection_id",None)})
     rows=replace_day_schedules(payload.channel_id,payload.weekday,slots) if payload.enabled else (delete_schedule(payload.channel_id,payload.weekday) or [])
     return {"schedules": rows if isinstance(rows,list) else []}
 
@@ -1210,7 +1380,11 @@ def api_save_schedule_day_manual(payload: ScheduleManualDayRequest):
         "ai_provider": payload.ai_provider, "ai_connection_id": payload.ai_connection_id,
         "contains_synthetic_media": payload.contains_synthetic_media, "video_language": payload.video_language,
         "title_description_language": payload.title_description_language, "caption_certification": payload.caption_certification,
-        "recording_date": payload.recording_date, "video_location": payload.video_location
+        "recording_date": payload.recording_date, "video_location": payload.video_location,
+        "publish_facebook_video": payload.publish_facebook_video,
+        "publish_facebook_reel": payload.publish_facebook_reel,
+        "publish_instagram_reel": payload.publish_instagram_reel,
+        "meta_connection_id": payload.meta_connection_id,
     } for t in times]
     rows=replace_day_schedules(payload.channel_id, payload.weekday, slots)
     log.info("Manual daily schedule saved: channel=%s weekday=%s slots=%s", payload.channel_id, payload.weekday, times)
@@ -1247,8 +1421,12 @@ def api_meta_oauth_start(payload: dict, request: Request):
     save_app_secret(app_id, app_secret)
     state=os.urandom(24).hex()
     app.state.meta_oauth_state=state; app.state.meta_oauth_app_id=app_id; app.state.meta_oauth_app_secret=app_secret; app.state.meta_oauth_config_id=config_id; app.state.meta_oauth_started_at=time.time(); app.state.meta_oauth_account_name=str(payload.get('account_name') or 'Meta Account').strip()
-    redirect_uri=str(payload.get("redirect_uri") or "http://localhost:8080/api/meta/oauth/callback")
+    app.state.meta_oauth_account_id=int(payload['account_id']) if payload.get('account_id') else None
+    redirect_uri=str(payload.get("redirect_uri") or "").strip() or (f"{PUBLIC_BASE_URL}/api/meta/oauth/callback" if PUBLIC_BASE_URL else str(request.base_url).rstrip("/") + "/api/meta/oauth/callback")
+    if not redirect_uri.startswith(("http://localhost:", "http://127.0.0.1:", "https://")):
+        raise HTTPException(status_code=400, detail="Meta OAuth requires a localhost callback on the same computer or an HTTPS public URL. Open the uploader using localhost or configure YLA_PUBLIC_BASE_URL with HTTPS.")
     app.state.meta_oauth_redirect_uri=redirect_uri
+    log.info("[META-OAUTH] OAuth flow started: app_id=%s account_name=%r config_id=%s redirect_uri=%s", app_id, app.state.meta_oauth_account_name, config_id, redirect_uri)
     return {"ok":True,"auth_url":build_oauth_url(app_id,redirect_uri,state,config_id),"redirect_uri":redirect_uri,"config_id":config_id}
 
 @app.get("/api/meta/oauth/callback")
@@ -1265,10 +1443,17 @@ async def api_meta_oauth_callback(request: Request):
     try:
         user_token, expires_in=await asyncio.to_thread(exchange_code,app_id,secret,redirect_uri,code)
         pages=await asyncio.to_thread(get_pages,user_token)
+        logging.info("Meta OAuth pages returned: count=%d, page_ids=%s, page_tokens_present=%s", len(pages), [str(p.get("id")) for p in pages], [bool(p.get("access_token")) for p in pages])
+        log.info("[META-OAUTH] Pages returned: count=%d page_ids=%s", len(pages), [str(p.get('id')) for p in pages])
+        if not pages:
+            return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:32px'><h2>Meta connection needs a Facebook Page</h2><p>Meta authorized your account, but returned no managed Facebook Pages. Check that you have access to a Facebook Page and that your Facebook Login for Business configuration grants pages_show_list and the necessary Page permissions.</p><p>Return to the uploader and retry after updating Page access.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-error',message:'Meta returned zero Facebook Pages. Check Page access and pages_show_list in the Meta configuration.'},'*');</script></body></html>""", status_code=200)
+        if not any(p.get("id") and p.get("access_token") for p in pages):
+            return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:32px'><h2>Missing Facebook Page access tokens</h2><p>Meta returned Pages but did not provide a Page access token. Check your Facebook Login for Business permissions and Page access.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-error',message:'Meta returned Pages without Page access tokens. Check your Page permissions.'},'*');</script></body></html>""", status_code=200)
         app.state.meta_oauth_pages=pages; app.state.meta_oauth_user_token=user_token; app.state.meta_oauth_token_expires_in=expires_in; app.state.meta_oauth_completed_at=time.time()
         if len(pages)==1 and pages[0].get('id') and pages[0].get('access_token'):
             pg=pages[0]; ig=pg.get('instagram_business_account') or {}; page_id=str(pg.get('id')); token_key=f'meta_page_{page_id}'; save_page_token(token_key,{'access_token':pg.get('access_token'),'saved_at':datetime.now(timezone.utc).isoformat()})
-            row=upsert_meta_connection(getattr(app.state,'meta_oauth_account_name','Meta Account'),app_id,page_id,str(pg.get('name') or ''),str(ig.get('id') or ''),str(ig.get('username') or ''),token_key,datetime.now(timezone.utc).isoformat())
+            row=upsert_meta_connection(getattr(app.state,'meta_oauth_account_name','Meta Account'),app_id,page_id,str(pg.get('name') or ''),str(ig.get('id') or ''),str(ig.get('username') or ''),token_key,datetime.now(timezone.utc).isoformat(),getattr(app.state,'meta_oauth_account_id',None))
+            log.info("[META-OAUTH] Auto-saved single page: page_id=%s page_name=%r ig_user_id=%s", page_id, pg.get('name',''), ig.get('id',''))
             app.state.meta_oauth_state=None; app.state.meta_oauth_pages=None; app.state.meta_oauth_user_token=None
             return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:40px'><h2>Meta authorization successful</h2><p>Meta account connected. Return to the uploader.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-complete'},'*');setTimeout(()=>window.close(),800);</script></body></html>""")
         return HTMLResponse("""<!doctype html><html><body style='font-family:Arial;padding:40px'><h2>Meta authorization successful</h2><p>Return to the uploader to select the Facebook Page.</p><script>window.opener&&window.opener.postMessage({type:'meta-oauth-success'},'*');setTimeout(()=>window.close(),800);</script></body></html>""")
@@ -1279,7 +1464,7 @@ async def api_meta_oauth_callback(request: Request):
 @app.get("/api/meta/oauth/pages")
 def api_meta_oauth_pages(request: Request):
     require_role(request, "admin", "editor")
-    if not getattr(app.state,"meta_oauth_pages",None): raise HTTPException(status_code=400, detail="No completed Meta OAuth session. Connect Meta first.")
+    if not getattr(app.state,"meta_oauth_pages",None): raise HTTPException(status_code=400, detail="No selectable Facebook Pages returned. Reconnect Meta and check your Page access and permissions.")
     return {"pages":[{"id":x.get("id"),"name":x.get("name"),"instagram_business_account":x.get("instagram_business_account") or {}} for x in app.state.meta_oauth_pages]}
 
 @app.post("/api/meta/oauth/complete")
@@ -1294,8 +1479,9 @@ def api_meta_oauth_complete(payload: dict, request: Request):
     if not page_token: raise HTTPException(status_code=400, detail="Meta did not return a Page access token for this Page.")
     ig=page.get("instagram_business_account") or {}; token_key=f"meta_page_{page_id}"
     save_page_token(token_key,{"access_token":page_token,"saved_at":datetime.now(timezone.utc).isoformat()})
-    row=upsert_meta_connection(account_name,getattr(app.state,"meta_oauth_app_id",""),page_id,page.get("name","") or "",str(ig.get("id") or ""),str(ig.get("username") or ""),token_key,datetime.now(timezone.utc).isoformat())
+    row=upsert_meta_connection(account_name,getattr(app.state,"meta_oauth_app_id",""),page_id,page.get("name","") or "",str(ig.get("id") or ""),str(ig.get("username") or ""),token_key,datetime.now(timezone.utc).isoformat(),getattr(app.state,"meta_oauth_account_id",None))
     app.state.meta_oauth_state=None; app.state.meta_oauth_app_secret=None; app.state.meta_oauth_pages=None; app.state.meta_oauth_user_token=None
+    log.info("[META-OAUTH] Connection saved: account=%r page_id=%s page_name=%r ig_user_id=%s ig_username=%s", account_name, page_id, page.get('name',''), ig.get('id',''), ig.get('username',''))
     audit(request,"connect_meta","meta_connection",row["id"],{"page_id":page_id,"instagram_user_id":row.get("instagram_user_id","")})
     return {"ok":True,"connection":row}
 
@@ -1318,6 +1504,81 @@ def api_delete_meta(connection_id:int, request:Request):
     require_role(request,"admin"); row=get_meta_connection(connection_id)
     if not row: raise HTTPException(status_code=404,detail="Meta connection not found.")
     delete_page_token(row["token_key"]); delete_meta_connection(connection_id); return {"ok":True}
+
+@app.get("/api/accounts/overview")
+def api_accounts_overview(request: Request):
+    require_role(request, "admin", "editor")
+    accounts=list_accounts_overview()
+    for a in accounts:
+        for m in a["meta_connections"]:
+            m["token_available"]=bool(load_page_token(m["token_key"]))
+    unlinked=list_unlinked_meta_connections()
+    for m in unlinked:
+        m["token_available"]=bool(load_page_token(m["token_key"]))
+    return {"accounts": accounts, "unlinked_meta": unlinked}
+
+@app.post("/api/meta/connections/{connection_id}/link")
+def api_link_meta_to_account(connection_id: int, payload: dict, request: Request):
+    require_role(request, "admin")
+    account_id=payload.get("account_id")
+    if not account_id: raise HTTPException(status_code=400, detail="account_id is required.")
+    if not get_meta_connection(connection_id): raise HTTPException(status_code=404, detail="Meta connection not found.")
+    if not get_youtube_account(int(account_id)): raise HTTPException(status_code=404, detail="YouTube account not found.")
+    set_meta_connection_account(connection_id, int(account_id))
+    return {"ok": True}
+
+@app.post("/api/meta/publish")
+async def api_meta_publish(payload: dict, request: Request):
+    """Explicit user-approved publishing of an existing library video to Meta."""
+    require_role(request, "admin", "editor")
+    if payload.get("approved") is not True:
+        raise HTTPException(status_code=400, detail="Review and approve publishing before proceeding.")
+    try:
+        connection_id=int(payload.get("connection_id"))
+        video_id=int(payload.get("video_id"))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Select a Meta connection and a video.")
+    destination=str(payload.get("destination") or "").strip()
+    if destination not in {"facebook_video", "facebook_reel", "instagram_reel"}:
+        raise HTTPException(status_code=400, detail="Invalid publishing destination.")
+    connection=get_meta_connection(connection_id)
+    if not connection or connection.get("status") == "logged_out":
+        raise HTTPException(status_code=400, detail="Connect or reconnect the Meta account first.")
+    video=get_inventory_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found in local library.")
+    path=validate_channel_path(video["channel_id"], video["file_path"])
+    if path.suffix.lower() != ".mp4":
+        raise HTTPException(status_code=400, detail="Meta publishing currently requires an MP4 file. Convert the video to MP4 first.")
+    token_data=load_page_token(connection["token_key"]) or {}
+    token=token_data.get("access_token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Meta Page token missing. Reconnect the account.")
+    title=str(payload.get("title") or video.get("title") or path.stem).strip()
+    caption=str(payload.get("caption") or "").strip()
+    if not title: raise HTTPException(status_code=400, detail="Title is required.")
+    if len(caption)>2200 and destination=="instagram_reel":
+        raise HTTPException(status_code=400, detail="Instagram caption must be 2200 characters or less.")
+    log.info("[META] Publish requested: destination=%s page_id=%s file=%s size_bytes=%d title=%r", destination, connection.get('page_id',''), path.name, path.stat().st_size, title[:60])
+    try:
+        if destination=="facebook_video":
+            result=await asyncio.to_thread(upload_facebook_page_video, connection["page_id"], token, str(path), title, caption, True)
+        elif destination=="facebook_reel":
+            result=await asyncio.to_thread(upload_facebook_page_reel, connection["page_id"], token, str(path), title, caption)
+        else:
+            if not connection.get("instagram_user_id"):
+                raise HTTPException(status_code=400, detail="No Instagram Professional account is linked to this Facebook Page.")
+            result=await asyncio.to_thread(upload_instagram_reel, connection["instagram_user_id"], token, str(path), caption, True)
+        log.info("[META] Publish DONE: destination=%s page_id=%s file=%s meta_id=%s post_id=%s", destination, connection.get('page_id',''), path.name, result.get('id',''), result.get('post_id',''))
+        notify_meta_publish_success(destination, connection.get('page_name',''), title, path.name, str(result.get('id','')))
+        audit(request, "publish_meta_video", "meta_connection", connection_id, {"video_id":video_id,"destination":destination,"remote_id":str(result.get("id") or "")})
+        return {"ok":True,"destination":destination,"result":result}
+    except HTTPException: raise
+    except Exception as exc:
+        logging.exception("Meta video publishing failed")
+        log.error("[META] Publish FAILED: destination=%s page_id=%s file=%s error=%s", destination, connection.get('page_id',''), path.name, exc)
+        notify_meta_publish_failed(destination, connection.get('page_name',''), path.name, str(exc))
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @app.get("/api/youtube/remote")
 def api_youtube_remote(channel_id: str | None = None):
@@ -1344,6 +1605,7 @@ async def api_upload(payload: UploadRequest, request: Request):
         raise HTTPException(status_code=404, detail="Channel not found.")
 
     path = validate_channel_path(payload.channel_id, payload.file_path)
+    log.info("[UPLOAD] YouTube upload requested: channel=%s (%s) file=%s title=%r privacy=%s", payload.channel_id, channel.get('channel_name',''), path.name, payload.title[:60], payload.privacy_status)
 
     if path.suffix.lower() not in {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"}:
         raise HTTPException(status_code=400, detail="Unsupported video format.")
@@ -1395,6 +1657,7 @@ async def api_upload(payload: UploadRequest, request: Request):
         job_id=create_upload_job(row["id"], payload.channel_id, None, scheduled_at=datetime.now(timezone.utc).isoformat())
         update_upload_job(job_id,status="uploading",started_at=datetime.now(timezone.utc).isoformat(),attempt_count=1)
         attempt_started=datetime.now(timezone.utc).isoformat()
+        log.info("[UPLOAD] YouTube upload START: channel=%s file=%s size_bytes=%d", payload.channel_id, path.name, path.stat().st_size)
         result = await asyncio.to_thread(
             upload_video,
             payload.channel_id,
@@ -1418,10 +1681,14 @@ async def api_upload(payload: UploadRequest, request: Request):
         add_upload_attempt(job_id,1,"success",youtube_video_id=video_id,started_at=attempt_started,finished_at=datetime.now(timezone.utc).isoformat())
         update_upload_job(job_id,status="completed",completed_at=datetime.now(timezone.utc).isoformat(),youtube_video_id=video_id,last_error="")
         upsert_remote_video(payload.channel_id, video_id, payload.title, payload.description, "", payload.privacy_status, list(payload.tags) + ["yla_hash_" + sha], sha, "{}", "{}")
+        log.info("[UPLOAD] YouTube upload DONE: channel=%s file=%s youtube_video_id=%s", payload.channel_id, path.name, video_id)
+        notify_youtube_upload_success(channel.get("channel_name", ""), payload.title, video_id, path.name)
         return {"ok": True, "youtube_video_id": video_id}
 
     except Exception as e:
         logging.exception("Upload failed")
+        log.error("[UPLOAD] YouTube upload FAILED: channel=%s file=%s error=%s", payload.channel_id, path.name, e)
+        notify_youtube_upload_failed(channel.get("channel_name", ""), path.name, str(e))
         if 'row' in locals():
             update_video(row["id"], status="failed", error_message=str(e))
         if 'job_id' in locals():

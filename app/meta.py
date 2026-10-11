@@ -20,6 +20,7 @@ META_SCOPES = [
     "pages_manage_posts",
     "instagram_basic",
     "instagram_content_publish",
+    "business_management",
 ]
 
 
@@ -143,8 +144,40 @@ def exchange_code(app_id, app_secret, redirect_uri, code):
 
 
 def get_pages(user_token):
+    # Primary: pages the user directly admins
     r=requests.get(META_GRAPH+"/me/accounts", params={"fields":"id,name,access_token,instagram_business_account{id,username}","access_token":user_token,"limit":100}, timeout=30)
-    return _json_response(r).get("data",[])
+    pages=_json_response(r).get("data",[])
+    if pages:
+        return pages
+
+    # Fallback: pages owned by the user's Business Portfolios.
+    # When a Page is managed exclusively through a Business Portfolio,
+    # /me/accounts returns an empty list even after the user grants
+    # pages_show_list. Fetching via /me/businesses covers that case.
+    log.info("Meta /me/accounts returned 0 pages; trying /me/businesses fallback")
+    seen=set()
+    try:
+        biz_r=requests.get(META_GRAPH+"/me/businesses", params={"fields":"id,name","access_token":user_token,"limit":50}, timeout=30)
+        businesses=_json_response(biz_r).get("data",[])
+        for biz in businesses:
+            biz_id=biz.get("id")
+            if not biz_id:
+                continue
+            owned_r=requests.get(
+                META_GRAPH+f"/{biz_id}/owned_pages",
+                params={"fields":"id,name,access_token,instagram_business_account{id,username}","access_token":user_token,"limit":100},
+                timeout=30,
+            )
+            try:
+                for p in _json_response(owned_r).get("data",[]):
+                    if p.get("id") and p["id"] not in seen:
+                        seen.add(p["id"])
+                        pages.append(p)
+            except Exception as exc:
+                log.warning("Meta owned_pages fetch failed for business %s: %s", biz_id, exc)
+    except Exception as exc:
+        log.warning("Meta /me/businesses fallback failed: %s", exc)
+    return pages
 
 
 def save_page_token(token_key, payload):
@@ -172,42 +205,85 @@ def graph_post(path, token, data=None, files=None, timeout=300):
 
 
 def upload_facebook_page_video(page_id, token, file_path, title, description, published=True):
+    size = os.path.getsize(file_path)
+    log.info("Facebook Page Video upload START: page_id=%s file=%s size_bytes=%d title=%r", page_id, file_path, size, title[:80])
     with open(file_path,"rb") as fh:
-        return graph_post(f"/{page_id}/videos", token, data={"title":title[:255],"description":description[:10000],"published":"true" if published else "false"}, files={"source":(Path(file_path).name,fh,"video/mp4")}, timeout=1800)
+        result = graph_post(f"/{page_id}/videos", token, data={"title":title[:255],"description":description[:10000],"published":"true" if published else "false"}, files={"source":(Path(file_path).name,fh,"video/mp4")}, timeout=1800)
+    log.info("Facebook Page Video upload DONE: page_id=%s meta_id=%s file=%s", page_id, result.get("id",""), file_path)
+    return result
 
 
-def upload_facebook_page_reel(page_id, token, file_path, description=""):
+def upload_facebook_page_reel(page_id, token, file_path, title="", description=""):
+    size = os.path.getsize(file_path)
+    log.info("Facebook Reel upload START: page_id=%s file=%s size_bytes=%d title=%r", page_id, file_path, size, title[:80])
     start=graph_post(f"/{page_id}/video_reels", token, data={"upload_phase":"start"})
     video_id=start.get("video_id"); upload_url=start.get("upload_url")
     if not video_id or not upload_url: raise RuntimeError("Meta did not return a Facebook Reel upload session.")
-    size=os.path.getsize(file_path)
+    log.info("Facebook Reel session: page_id=%s video_id=%s uploading %d bytes", page_id, video_id, size)
     with open(file_path,"rb") as fh:
         r=requests.post(upload_url, headers={"Authorization":f"OAuth {token}","offset":"0","file_size":str(size),"Content-Type":"application/octet-stream"}, data=fh, timeout=1800)
         _json_response(r)
-    finish=graph_post(f"/{page_id}/video_reels", token, data={"upload_phase":"finish","video_id":video_id,"description":description[:10000]})
-    return {"id":video_id, **finish}
+    log.info("Facebook Reel bytes uploaded: page_id=%s video_id=%s — sending finish+publish phase", page_id, video_id)
+    finish_data={"upload_phase":"finish","video_id":video_id,"video_state":"PUBLISHED","description":description[:10000]}
+    if title: finish_data["title"]=title[:255]
+    finish=graph_post(f"/{page_id}/video_reels", token, data=finish_data)
+    post_id=finish.get("post_id","")
+    log.info("Facebook Reel finish accepted: page_id=%s video_id=%s post_id=%s — polling for READY status", page_id, video_id, post_id)
+    # Poll until Meta finishes transcoding. The finish phase returns immediately
+    # with 'Video is Processing'; the reel only appears on the page once the
+    # status reaches READY or PUBLISHED.
+    deadline=time.time()+900  # 15 min max
+    poll_interval=10
+    while time.time()<deadline:
+        try:
+            r=requests.get(
+                META_GRAPH+f"/{video_id}",
+                params={"fields":"status,description","access_token":token},
+                timeout=30,
+            )
+            st=_json_response(r)
+            code=str((st.get("status") or {}).get("video_status") or "").upper()
+            log.info("Facebook Reel status poll: video_id=%s status=%s", video_id, code)
+            if code in {"READY","PUBLISHED"}:
+                log.info("Facebook Reel is LIVE: page_id=%s video_id=%s post_id=%s", page_id, video_id, post_id)
+                break
+            if code in {"ERROR","INVALID"}:
+                raise RuntimeError(f"Facebook Reel processing failed with status: {code}")
+        except RuntimeError: raise
+        except Exception as exc:
+            log.warning("Facebook Reel status poll error (will retry): %s", exc)
+        time.sleep(poll_interval)
+        poll_interval=min(poll_interval+5, 30)  # back off gradually up to 30s
+    else:
+        log.warning("Facebook Reel processing timed out after 15 min: video_id=%s — reel may still appear later", video_id)
+    return {"id":video_id,"post_id":post_id}
 
 
 def upload_instagram_reel(ig_user_id, token, file_path, caption="", share_to_feed=True):
     size=os.path.getsize(file_path)
+    log.info("Instagram Reel upload START: ig_user_id=%s file=%s size_bytes=%d caption_len=%d", ig_user_id, file_path, size, len(caption))
     if size > 1024*1024*1024: raise RuntimeError("Instagram Reel exceeds the 1 GB API limit.")
     init=graph_post(f"/{ig_user_id}/media", token, data={"media_type":"REELS","upload_type":"resumable","caption":caption[:2200],"share_to_feed":"true" if share_to_feed else "false"})
     container=init.get("id")
     upload_uri=init.get("uri") or init.get("upload_uri")
     if not container or not upload_uri: raise RuntimeError("Meta did not return an Instagram Reel upload session.")
+    log.info("Instagram Reel container created: ig_user_id=%s container_id=%s uploading %d bytes", ig_user_id, container, size)
     with open(file_path,"rb") as fh:
         r=requests.post(upload_uri, headers={"Authorization":f"OAuth {token}","offset":"0","file_size":str(size),"Content-Type":"application/octet-stream"}, data=fh, timeout=1800)
         _json_response(r)
+    log.info("Instagram Reel bytes uploaded: container_id=%s — polling for FINISHED status", container)
     deadline=time.time()+900
     while time.time()<deadline:
         r=requests.get(META_GRAPH+f"/{container}", params={"fields":"status_code,status","access_token":token}, timeout=30)
         status=_json_response(r)
         code=str(status.get("status_code") or "")
+        log.info("Instagram Reel status poll: container_id=%s status_code=%s", container, code)
         if code == "FINISHED": break
         if code in {"ERROR","EXPIRED"}: raise RuntimeError(status.get("status") or f"Instagram container failed: {code}")
         time.sleep(5)
     else: raise RuntimeError("Instagram Reel processing timed out after 15 minutes.")
     published=graph_post(f"/{ig_user_id}/media_publish", token, data={"creation_id":container})
+    log.info("Instagram Reel published: ig_user_id=%s container_id=%s media_id=%s", ig_user_id, container, published.get("id",""))
     return {"id":published.get("id",""),"container_id":container}
 
 

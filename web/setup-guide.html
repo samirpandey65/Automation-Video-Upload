@@ -1,1 +1,518 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Setup Guide · YouTube Local Auto Uploader</title><link rel="stylesheet" href="/static/layout.css?v=24"></head><body><div class="app"><aside class="sidebar"><div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div><div class="nav-group"><a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a><a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a><a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a><a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a><a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a><a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a><a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a><a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a><a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a></div><div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div></div></aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div><div class="top-greeting">Setup Guide <span>✦</span></div><div class="top-subtitle">Connection and authentication troubleshooting</div></div></div></header><main class="main"><div class="page-head"><div><div class="eyebrow">Documentation</div><h1>Setup Guide</h1><p>Use this page to connect accounts and understand re-authentication alerts.</p></div></div><div class="card" style="margin-top:18px;padding:20px"><h2>📺 YouTube / Google</h2><ol><li>Open <a href="/connections">Connections</a> → Add YouTube Account.</li><li>Select the Google OAuth client JSON and complete Google sign-in.</li><li>Select the channel and save the connection.</li><li>The uploader tracks a local re-auth reminder from the last successful authentication. This is a tracking reminder, not a guaranteed Google token-expiry date.</li><li>If Google returns <code>invalid_grant</code>, the account is immediately marked <strong>RE-AUTH REQUIRED</strong> and scheduled work is paused for that account until reconnect.</li></ol><div class="notice" style="margin-top:14px"><strong>Missing credentials:</strong> the channel/account record is preserved; only authentication-dependent scheduler work is paused.</div></div><div class="card" style="margin-top:18px;padding:20px"><h2>📘 Meta — Facebook + Instagram</h2><ol><li>Open <a href="/connections">Connections</a> → Connect Meta Account.</li><li>Enter Meta App ID, App Secret and Facebook Login for Business Configuration ID.</li><li>Use <code>http://localhost:8080/api/meta/oauth/callback</code> as the redirect URI.</li><li>Complete Meta authorization and select the Facebook Page when more than one Page is returned.</li><li>Each connected Page is stored separately, so multiple Meta accounts/Pages can be tested.</li></ol></div><div class="card" style="margin-top:18px;padding:20px"><h2>🔔 Re-authentication tracking</h2><p>The dashboard shows an <strong>Action Required</strong> panel when an account is actually marked for re-authentication or its configured reminder reaches the final 2 days. The Connections page shows the account, last verification time, and remaining reminder days.</p><p class="muted">Default reminder window: 7 days after a successful Google connection/test. A successful reconnect resets the reminder window.</p></div></main></div></div></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Setup Guide · YouTube Local Auto Uploader</title>
+<link rel="stylesheet" href="/static/layout.css?v=24">
+<style>
+.guide-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.tab-btn{padding:9px 18px;border-radius:10px;border:2px solid #e3e8f1;background:#fff;font-weight:700;font-size:13px;cursor:pointer;color:#71809a;transition:all .15s}
+.tab-btn.active{background:#6257f4;color:#fff;border-color:#6257f4}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.step-card{border:1px solid #e3e8f1;border-radius:14px;margin:12px 0;overflow:hidden}
+.step-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:#f8fafc;font-weight:700}
+.step-head:hover{background:#f0f4ff}
+.step-num{min-width:30px;height:30px;border-radius:9px;background:#eef0ff;color:#6257f4;display:grid;place-items:center;font-size:12px;font-weight:800}
+.step-body{padding:14px 16px 16px 58px;font-size:14px;line-height:1.7;display:none}
+.step-card.open .step-body{display:block}
+.step-card.open .step-head{background:#eef0ff}
+.codebox{display:flex;align-items:center;gap:8px;background:#f5f6fb;border:1px solid #e3e8f1;padding:10px 12px;border-radius:9px;margin:8px 0;flex-wrap:wrap}
+.codebox code{flex:1;font-size:12px;overflow-wrap:anywhere;min-width:160px}
+.copy-btn{border:1px solid #d8dbee;background:#fff;color:#5146da;border-radius:7px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap}
+.copy-btn:hover{background:#f2f0ff}
+.notice-box{padding:12px 14px;border-radius:10px;background:#fff8e9;border:1px solid #f5dfa9;font-size:13px;line-height:1.6;margin:10px 0}
+.notice-box.ok{background:#ecfdf3;border-color:#abefc6;color:#067647}
+.notice-box.info{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#eef0ff;color:#5146da;margin-bottom:10px}
+.pill.green{background:#dcfce7;color:#166534}
+.pill.orange{background:#fff7ed;color:#9a3412}
+.pill.blue{background:#eff6ff;color:#1e40af}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{border-bottom:1px solid #e3e8f1;padding:8px 7px;text-align:left}
+th{background:#f7f8fc;font-weight:700}
+.progress-bar-wrap{background:#e9ecf6;border-radius:20px;height:8px;margin:6px 0 14px}
+.progress-bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,#6257f4,#28b991);transition:width .2s}
+a{color:#5146da;text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+ol,ul{padding-left:20px}li{margin:6px 0}
+</style>
+</head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">▶</div><div><div class="brand-name">YouTube Local</div><div class="brand-sub">Auto Uploader</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload to YouTube</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>YouTube Channels</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav active" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Setup Guide <span>✦</span></div><div class="top-subtitle">Step-by-step connection setup for all platforms</div></div></div></header>
+<main class="main">
+<h1>📋 Setup Guide</h1>
+<p class="muted" style="margin-bottom:20px">Follow each section to connect YouTube, Gemini AI, Facebook/Instagram, Telegram notifications, and OpenAI/ChatGPT.</p>
+
+<div class="guide-tabs">
+  <button class="tab-btn active" onclick="showTab('yt')">📺 YouTube &amp; Google Cloud</button>
+  <button class="tab-btn" onclick="showTab('gemini')">✨ Gemini AI</button>
+  <button class="tab-btn" onclick="showTab('meta')">📘 Meta (Facebook/Instagram)</button>
+  <button class="tab-btn" onclick="showTab('telegram')">📱 Telegram</button>
+  <button class="tab-btn" onclick="showTab('openai')">🔵 OpenAI / ChatGPT</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ YOUTUBE TAB -->
+<div id="tab-yt" class="tab-panel active">
+<span class="pill">GOOGLE CLOUD + YOUTUBE API</span>
+<div class="notice-box info">You need a Google Cloud project with the <strong>YouTube Data API v3</strong> enabled and a Desktop OAuth client to connect YouTube channels.</div>
+
+<div id="yt-progress" style="margin-bottom:4px;font-size:12px;color:#71809a">0 / 6 steps completed</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="yt-bar" style="width:0%"></div></div>
+
+<div class="step-card open" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">01</span><span>Create a Google Cloud Project</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com ↗</a> and sign in with your Google account.</li>
+      <li>Click the project dropdown at the top → <strong>New Project</strong>.</li>
+      <li>Enter a name like <code>YouTubeUploader</code> and click <strong>Create</strong>.</li>
+      <li>Make sure the new project is selected in the top dropdown before continuing.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">02</span><span>Enable YouTube Data API v3</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>In Google Cloud Console, go to <strong>APIs &amp; Services → Library</strong>.</li>
+      <li>Search for <strong>YouTube Data API v3</strong> and click it.</li>
+      <li>Click <strong>Enable</strong>.</li>
+    </ol>
+    <div class="notice-box">Without this API enabled, YouTube uploads and channel sync will fail with a 403 error.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">03</span><span>Configure OAuth Consent Screen</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>.</li>
+      <li>Select <strong>External</strong> and click <strong>Create</strong>.</li>
+      <li>Fill in App name (e.g. <code>YouTube Uploader</code>), support email, and developer email.</li>
+      <li>On the <strong>Scopes</strong> step, click <strong>Add or Remove Scopes</strong> and add:<br>
+        <code>https://www.googleapis.com/auth/youtube.upload</code><br>
+        <code>https://www.googleapis.com/auth/youtube.readonly</code>
+      </li>
+      <li>On the <strong>Test users</strong> step, add your Google account email.</li>
+      <li>Click <strong>Save and Continue</strong> through all steps.</li>
+    </ol>
+    <div class="notice-box">Keep the app in <strong>Testing</strong> mode. You do not need to publish it for personal use.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">04</span><span>Create Desktop OAuth Client</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>APIs &amp; Services → Credentials</strong>.</li>
+      <li>Click <strong>+ Create Credentials → OAuth client ID</strong>.</li>
+      <li>Application type: <strong>Desktop app</strong>.</li>
+      <li>Name it <code>YouTube Uploader Desktop</code> and click <strong>Create</strong>.</li>
+      <li>Click <strong>Download JSON</strong> — this is your <code>client_secret.json</code>.</li>
+      <li>Save it somewhere safe on your computer.</li>
+    </ol>
+    <div class="notice-box ok">✅ This JSON file is what you upload in the Connections page when adding a YouTube account.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">05</span><span>Connect YouTube Account in the App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open <a href="/connections">Connections ↗</a> → click <strong>+ Add YouTube Account</strong>.</li>
+      <li>Enter an account name (e.g. your channel name).</li>
+      <li>Click <strong>Browse</strong> and select the <code>client_secret.json</code> you downloaded.</li>
+      <li>Click <strong>Connect with Google</strong> — a browser window will open.</li>
+      <li>Sign in with the Google account that owns your YouTube channel.</li>
+      <li>Select the channel when prompted and click <strong>Connect Selected Channel</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="yt">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">06</span><span>Test &amp; Sync</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>On the Connections page, click <strong>⚡ Test</strong> next to your YouTube account.</li>
+      <li>Go to <a href="/">Dashboard ↗</a> and click <strong>Sync YouTube</strong> to pull your existing videos.</li>
+      <li>Go to <a href="/upload">Upload ↗</a>, select a video folder, and try a test upload.</li>
+    </ol>
+    <div class="notice-box ok">✅ If the test passes, your YouTube connection is fully working.</div>
+  </div>
+</div>
+</div><!-- end tab-yt -->
+
+<!-- ═══════════════════════════════════════════════════════ GEMINI TAB -->
+<div id="tab-gemini" class="tab-panel">
+<span class="pill">GOOGLE GEMINI AI</span>
+<div class="notice-box info">Gemini is used for automatic video analysis and metadata generation. It uses a <strong>separate</strong> Google Cloud OAuth client from YouTube — you can use the same project or a different one.</div>
+
+<div id="gemini-progress" style="margin-bottom:4px;font-size:12px;color:#71809a">0 / 5 steps completed</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="gemini-bar" style="width:0%"></div></div>
+
+<div class="step-card open" data-group="gemini">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">01</span><span>Enable Generative Language API</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console ↗</a> and select your project.</li>
+      <li>Go to <strong>APIs &amp; Services → Library</strong>.</li>
+      <li>Search for <strong>Generative Language API</strong> and click <strong>Enable</strong>.</li>
+      <li>Also enable <strong>Cloud AI Platform API</strong> if prompted.</li>
+    </ol>
+    <div class="notice-box">If you get a 403 error when testing Gemini, this API is not enabled in the correct project.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="gemini">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">02</span><span>Configure OAuth Consent Screen for Gemini</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>.</li>
+      <li>If not already done, set up External consent screen with your email.</li>
+      <li>Add these scopes:<br>
+        <code>https://www.googleapis.com/auth/generative-language.retriever</code><br>
+        <code>https://www.googleapis.com/auth/cloud-platform</code><br>
+        <code>openid</code>, <code>email</code>, <code>profile</code>
+      </li>
+      <li>Under <strong>Test users</strong>, add the Google account you will use for Gemini.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="gemini">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">03</span><span>Create Desktop OAuth Client for Gemini</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>APIs &amp; Services → Credentials → + Create Credentials → OAuth client ID</strong>.</li>
+      <li>Application type: <strong>Desktop app</strong>.</li>
+      <li>Name it <code>Gemini Desktop</code> and click <strong>Create</strong>.</li>
+      <li>Download the JSON — this is your Gemini <code>client_secret.json</code>.</li>
+    </ol>
+    <div class="notice-box ok">✅ You can use the same <code>client_secret.json</code> as YouTube if they are in the same Google Cloud project.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="gemini">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">04</span><span>Connect Gemini Account in the App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open <a href="/connections">Connections ↗</a> → scroll to <strong>✨ Gemini</strong> section.</li>
+      <li>Click <strong>+ Add Gemini Account</strong>.</li>
+      <li>Enter an account name and browse to select the Gemini <code>client_secret.json</code>.</li>
+      <li>Click <strong>Connect with Google</strong> and complete sign-in in the browser.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="gemini">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">05</span><span>Test Gemini Connection</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>On the Connections page, click <strong>⚡ Test</strong> next to your Gemini account.</li>
+      <li>A successful test shows the connected email and detected model.</li>
+      <li>Go to <a href="/upload">Upload ↗</a>, select a video, and click <strong>🤖 Analyze with AI</strong> to test metadata generation.</li>
+    </ol>
+    <div class="notice-box">Large videos (&gt;18 MB) are uploaded via the Gemini Files API automatically. Very large videos may take 1–2 minutes to process.</div>
+  </div>
+</div>
+</div><!-- end tab-gemini -->
+
+<!-- ═══════════════════════════════════════════════════════ META TAB -->
+<div id="tab-meta" class="tab-panel">
+<span class="pill orange">FACEBOOK + INSTAGRAM</span>
+<div class="notice-box info">Meta requires a Facebook Developer App with Facebook Login for Business to publish videos and Reels to Facebook Pages and Instagram.</div>
+
+<div id="meta-progress" style="margin-bottom:4px;font-size:12px;color:#71809a">0 / 7 steps completed</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="meta-bar" style="width:0%"></div></div>
+
+<div class="step-card open" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">01</span><span>Create a Meta Developer App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">developers.facebook.com/apps ↗</a> and sign in.</li>
+      <li>Click <strong>Create App</strong>.</li>
+      <li>Choose use cases related to <strong>Page management</strong> and <strong>Instagram content publishing</strong>.</li>
+      <li>Enter app name <code>VideoUploader</code>, contact email, and business portfolio if required.</li>
+      <li>Click <strong>Create App</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">02</span><span>Get App ID and App Secret</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>In your app dashboard, go to <strong>App settings → Basic</strong>.</li>
+      <li>Copy the <strong>App ID</strong> (visible by default).</li>
+      <li>Click <strong>Show</strong> next to App Secret and copy it.</li>
+    </ol>
+    <div class="notice-box">Never share your App Secret publicly or commit it to Git.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">03</span><span>Enable Facebook Login for Business</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>In your app dashboard, find <strong>Facebook Login for Business</strong> and click <strong>Set up</strong>.</li>
+      <li>Go to its <strong>Settings</strong> tab.</li>
+      <li>Under <strong>Valid OAuth Redirect URIs</strong>, add:
+        <div class="codebox"><code id="metaRedirectUri">http://localhost:8080/api/meta/oauth/callback</code><button class="copy-btn" onclick="copyText('metaRedirectUri')">Copy</button></div>
+      </li>
+      <li>Click <strong>Save Changes</strong>.</li>
+    </ol>
+    <div class="notice-box">The redirect URI must exactly match the address you use to open this app in your browser.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">04</span><span>Create a Business Login Configuration</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>Facebook Login for Business → Configurations</strong>.</li>
+      <li>Click <strong>Create configuration</strong>.</li>
+      <li>Name it <code>VideoUploader</code>, select <strong>General</strong> login variation and <strong>User access token</strong>.</li>
+      <li>Save and copy the <strong>Configuration ID</strong> — you will need this when connecting in the app.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">05</span><span>Configure Required Permissions</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <p>Add these permissions to your configuration:</p>
+    <table>
+      <thead><tr><th>Permission</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>pages_show_list</code></td><td>List your Facebook Pages</td></tr>
+        <tr><td><code>pages_read_engagement</code></td><td>Read Page info</td></tr>
+        <tr><td><code>pages_manage_posts</code></td><td>Publish to Facebook Pages</td></tr>
+        <tr><td><code>instagram_basic</code></td><td>Identify linked Instagram account</td></tr>
+        <tr><td><code>instagram_content_publish</code></td><td>Publish Instagram Reels</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">06</span><span>Add Yourself as Test User</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <strong>App roles → Roles</strong>.</li>
+      <li>Under <strong>Testers</strong>, click <strong>Add Testers</strong> and add your Facebook profile.</li>
+      <li>Accept the tester invite from your Facebook notifications.</li>
+    </ol>
+    <div class="notice-box">While the app is in Development mode, only added testers can authorize it.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="meta">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">07</span><span>Connect Meta Account in the App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open <a href="/connections">Connections ↗</a> → expand a YouTube account → click <strong>+ Connect Facebook Page</strong>.</li>
+      <li>Enter your <strong>Meta App ID</strong>, <strong>App Secret</strong>, and <strong>Configuration ID</strong>.</li>
+      <li>The Redirect URI is auto-filled — make sure it matches what you added in step 03.</li>
+      <li>Click <strong>Continue with Meta</strong> and complete Facebook authorization in the popup.</li>
+      <li>Select your Facebook Page when prompted and click <strong>Save Connection</strong>.</li>
+    </ol>
+    <div class="notice-box ok">✅ After connecting, click <strong>⚡ Test</strong> to verify the Page token is working.</div>
+  </div>
+</div>
+</div><!-- end tab-meta -->
+
+<!-- ═══════════════════════════════════════════════════════ TELEGRAM TAB -->
+<div id="tab-telegram" class="tab-panel">
+<span class="pill blue">TELEGRAM NOTIFICATIONS</span>
+<div class="notice-box info">Get instant Telegram messages when uploads complete, fail, or tokens are expiring. Takes about 2 minutes to set up.</div>
+
+<div id="telegram-progress" style="margin-bottom:4px;font-size:12px;color:#71809a">0 / 4 steps completed</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="telegram-bar" style="width:0%"></div></div>
+
+<div class="step-card open" data-group="telegram">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">01</span><span>Create a Telegram Bot via @BotFather</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open Telegram and search for <strong>@BotFather</strong> — look for the blue ✅ verified checkmark.</li>
+      <li>Or open directly: <a href="https://t.me/BotFather" target="_blank" rel="noopener">t.me/BotFather ↗</a></li>
+      <li>Send <code>/newbot</code> to BotFather.</li>
+      <li>Enter a display name, e.g. <code>YouTube Uploader Notifications</code>.</li>
+      <li>Enter a username ending in <code>bot</code>, e.g. <code>YouTubeUploaderNotify_bot</code> (no dots, no spaces).</li>
+      <li>BotFather will reply with your <strong>Bot Token</strong> — copy it immediately.</li>
+    </ol>
+    <div class="notice-box">The Bot Token looks like: <code>123456789:ABCdefGHIjklMNOpqrSTUvwxYZ</code></div>
+  </div>
+</div>
+
+<div class="step-card" data-group="telegram">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">02</span><span>Start Your Bot &amp; Get Your Chat ID</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Search for your new bot by its username in Telegram and click <strong>Start</strong> — this is required before it can message you.</li>
+      <li>Open <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot ↗</a> (verified bot) and send <code>/start</code>.</li>
+      <li>It will reply with your <strong>Id:</strong> number — this is your Chat ID.</li>
+    </ol>
+    <div class="notice-box ok">✅ For a group/channel: add your bot to the group, then use @userinfobot inside the group. Group IDs start with <code>-100</code>.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="telegram">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">03</span><span>Configure in the App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open <a href="/settings">Settings ↗</a> → scroll to <strong>📱 Telegram Notifications</strong>.</li>
+      <li>Paste your <strong>Bot Token</strong> into the Bot Token field.</li>
+      <li>Paste your <strong>Chat ID</strong> into the Chat ID field.</li>
+      <li>Check <strong>Enable Telegram notifications</strong>.</li>
+      <li>Click <strong>📨 Send Test Message</strong> — you should receive a message in Telegram instantly.</li>
+      <li>Click <strong>💾 Save Telegram Config</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step-card" data-group="telegram">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">04</span><span>What Triggers Notifications</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <table>
+      <thead><tr><th>Event</th><th>Message</th></tr></thead>
+      <tbody>
+        <tr><td>✅ YouTube upload complete</td><td>Channel name, title, video link</td></tr>
+        <tr><td>❌ Upload failed</td><td>Channel name, filename, error</td></tr>
+        <tr><td>🤖 Scheduled upload complete/failed</td><td>Same as above with scheduler label</td></tr>
+        <tr><td>📘 Facebook/Instagram published</td><td>Page name, title, Meta ID</td></tr>
+        <tr><td>⚠️ Token expiring soon</td><td>Account name, days remaining</td></tr>
+        <tr><td>🔴 Token expired</td><td>Account name, reconnect prompt</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div><!-- end tab-telegram -->
+
+<!-- ═══════════════════════════════════════════════════════ OPENAI TAB -->
+<div id="tab-openai" class="tab-panel">
+<span class="pill blue">OPENAI / CHATGPT</span>
+<div class="notice-box info">Connect your OpenAI API key to enable ChatGPT-powered features. You need an OpenAI account with API access (not just a ChatGPT subscription).</div>
+
+<div id="openai-progress" style="margin-bottom:4px;font-size:12px;color:#71809a">0 / 3 steps completed</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="openai-bar" style="width:0%"></div></div>
+
+<div class="step-card open" data-group="openai">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">01</span><span>Get an OpenAI API Key</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys ↗</a> and sign in.</li>
+      <li>Click <strong>+ Create new secret key</strong>.</li>
+      <li>Give it a name like <code>YouTubeUploader</code> and click <strong>Create secret key</strong>.</li>
+      <li>Copy the key immediately — it starts with <code>sk-</code> and is only shown once.</li>
+    </ol>
+    <div class="notice-box">You need a paid OpenAI API account (separate from ChatGPT Plus). Add billing at <a href="https://platform.openai.com/settings/organization/billing" target="_blank" rel="noopener">platform.openai.com/billing ↗</a>.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="openai">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">02</span><span>Connect OpenAI in the App</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <ol>
+      <li>Open <a href="/connections">Connections ↗</a> → scroll to <strong>🔵 OpenAI / ChatGPT</strong>.</li>
+      <li>Paste your API key into the <strong>API Key</strong> field.</li>
+      <li>Select a model — <strong>gpt-4o</strong> is recommended for best quality.</li>
+      <li>Check <strong>Enable OpenAI / ChatGPT</strong>.</li>
+      <li>Click <strong>⚡ Test Connection</strong> to verify the key works.</li>
+      <li>Click <strong>💾 Save OpenAI Config</strong>.</li>
+    </ol>
+    <div class="notice-box ok">✅ The API key is stored securely in the local database and never sent anywhere except OpenAI's API.</div>
+  </div>
+</div>
+
+<div class="step-card" data-group="openai">
+  <div class="step-head" onclick="toggleStep(this)"><span class="step-num">03</span><span>Model Comparison</span><input type="checkbox" class="step-check" style="margin-left:auto;width:18px;height:18px;accent-color:#6257f4" onclick="event.stopPropagation()"></div>
+  <div class="step-body">
+    <table>
+      <thead><tr><th>Model</th><th>Best for</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><code>gpt-4o</code></td><td>Best quality, multimodal</td><td>Higher</td></tr>
+        <tr><td><code>gpt-4o-mini</code></td><td>Fast, cost-effective</td><td>Low</td></tr>
+        <tr><td><code>gpt-4-turbo</code></td><td>Long context tasks</td><td>Medium</td></tr>
+        <tr><td><code>gpt-3.5-turbo</code></td><td>Basic tasks, cheapest</td><td>Very low</td></tr>
+      </tbody>
+    </table>
+    <div class="notice-box">For video metadata generation, <strong>gpt-4o-mini</strong> offers the best balance of quality and cost.</div>
+  </div>
+</div>
+</div><!-- end tab-openai -->
+
+</main></div></div>
+
+<script src="/static/common.js?v=24"></script>
+<script>
+const STORAGE_KEY = 'yla-setup-guide-v2';
+
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleStep(head) {
+  head.closest('.step-card').classList.toggle('open');
+}
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim()).catch(() => {});
+}
+
+function updateProgress(group) {
+  const cards = document.querySelectorAll(`.step-card[data-group="${group}"]`);
+  const total = cards.length;
+  const done = [...cards].filter(c => c.querySelector('.step-check')?.checked).length;
+  const pct = total ? Math.round(100 * done / total) : 0;
+  const bar = document.getElementById(group + '-bar');
+  const txt = document.getElementById(group + '-progress');
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = `${done} / ${total} steps completed`;
+}
+
+function saveState() {
+  const state = {};
+  document.querySelectorAll('.step-check').forEach((cb, i) => { state[i] = cb.checked; });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(_) {}
+}
+
+function loadState() {
+  try {
+    const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    document.querySelectorAll('.step-check').forEach((cb, i) => { cb.checked = !!state[i]; });
+  } catch(_) {}
+}
+
+// Set meta redirect URI dynamically
+const uriEl = document.getElementById('metaRedirectUri');
+if (uriEl) uriEl.textContent = window.location.origin + '/api/meta/oauth/callback';
+
+loadState();
+['yt','gemini','meta','telegram','openai'].forEach(g => updateProgress(g));
+
+document.querySelectorAll('.step-check').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const group = cb.closest('.step-card')?.dataset.group;
+    if (group) updateProgress(group);
+    saveState();
+  });
+});
+</script>
+</body></html>

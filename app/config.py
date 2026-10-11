@@ -2,6 +2,29 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv(path: Path):
+    """Load simple KEY=VALUE settings without adding a runtime dependency."""
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if value and value[0:1] == value[-1:] and value.startswith(("\"", "'")):
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+_load_dotenv(BASE_DIR / ".env")
+
+APP_ENV = os.getenv("YLA_APP_ENV", "development").strip().lower() or "development"
+APP_HOST = os.getenv("HOST", os.getenv("YLA_HOST", "0.0.0.0")).strip() or "0.0.0.0"
+APP_PORT = int(os.getenv("PORT", os.getenv("YLA_PORT", "8080")))
+PUBLIC_BASE_URL = os.getenv("YLA_PUBLIC_BASE_URL", "").strip().rstrip("/")
 bin_dir = BASE_DIR / "bin"
 if bin_dir.exists() and str(bin_dir) not in os.environ.get("PATH", ""):
     os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"

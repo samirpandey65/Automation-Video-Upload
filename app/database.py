@@ -319,6 +319,38 @@ def init_db():
         conn.execute("ALTER TABLE youtube_accounts ADD COLUMN account_email TEXT DEFAULT ''")
 
     conn.execute("UPDATE upload_schedules SET ai_provider='gemini' WHERE COALESCE(ai_provider,'') != 'gemini'")
+
+    # Link Meta connections to a YouTube account so the UI can group them.
+    mcols = {r["name"] for r in conn.execute("PRAGMA table_info(meta_connections)").fetchall()}
+    if "account_id" not in mcols:
+        conn.execute("ALTER TABLE meta_connections ADD COLUMN account_id INTEGER DEFAULT NULL")
+
+    # Meta publishing columns on upload_schedules
+    scols2 = {r["name"] for r in conn.execute("PRAGMA table_info(upload_schedules)").fetchall()}
+    for col, definition in [
+        ("publish_facebook_video",  "INTEGER NOT NULL DEFAULT 0"),
+        ("publish_facebook_reel",  "INTEGER NOT NULL DEFAULT 0"),
+        ("publish_instagram_reel", "INTEGER NOT NULL DEFAULT 0"),
+        ("meta_connection_id",     "INTEGER DEFAULT NULL"),
+    ]:
+        if col not in scols2:
+            conn.execute(f"ALTER TABLE upload_schedules ADD COLUMN {col} {definition}")
+
+    # App-wide key/value settings (Telegram config, etc.)
+    conn.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')")
+
+    conn.commit()
+    conn.close()
+
+def get_app_setting(key: str) -> str | None:
+    conn = get_conn()
+    row = conn.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else None
+
+def set_app_setting(key: str, value: str):
+    conn = get_conn()
+    conn.execute("INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
     conn.commit()
     conn.close()
 
@@ -472,18 +504,19 @@ def delete_channel(channel_id):
     conn.close()
 
 def delete_youtube_account(account_id):
-    """Remove a YouTube connection and its account record while preserving channel/video history.
+    """Remove a YouTube account and ALL its channels, inventory, schedules and remote videos.
 
     Credentials are removed by auth.logout_youtube_account() before this function is called.
-    Channel rows are retained for history/schedule continuity but detached from the deleted
-    connection so the deletion cannot cascade into video inventory or remote-video history.
+    All child rows (channels, video_inventory, upload_schedules, youtube_remote_videos) are
+    removed via ON DELETE CASCADE so nothing from this account lingers in the database.
     """
     conn = get_conn()
     row = conn.execute("SELECT * FROM youtube_accounts WHERE id=?", (int(account_id),)).fetchone()
     if not row:
         conn.close()
         return None
-    conn.execute("UPDATE youtube_channels SET account_id=NULL, status='logged_out' WHERE account_id=?", (int(account_id),))
+    # Delete channels first — CASCADE removes inventory, schedules, remote videos automatically.
+    conn.execute("DELETE FROM youtube_channels WHERE account_id=?", (int(account_id),))
     conn.execute("DELETE FROM youtube_accounts WHERE id=?", (int(account_id),))
     conn.commit()
     conn.close()
@@ -687,23 +720,51 @@ def list_meta_connections():
     conn.close()
     return [dict(r) for r in rows]
 
+def list_meta_connections_for_account(account_id):
+    conn=get_conn()
+    rows=conn.execute("SELECT * FROM meta_connections WHERE account_id=? ORDER BY page_name COLLATE NOCASE", (int(account_id),)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def list_unlinked_meta_connections():
+    """Meta connections not yet assigned to any YouTube account."""
+    conn=get_conn()
+    rows=conn.execute("SELECT * FROM meta_connections WHERE account_id IS NULL ORDER BY page_name COLLATE NOCASE").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def set_meta_connection_account(connection_id, account_id):
+    conn=get_conn()
+    conn.execute("UPDATE meta_connections SET account_id=? WHERE id=?", (int(account_id), int(connection_id)))
+    conn.commit(); conn.close()
+
+def list_accounts_overview():
+    """Return every YouTube account with its channels and Meta connections grouped."""
+    conn=get_conn()
+    accounts=[dict(r) for r in conn.execute("SELECT * FROM youtube_accounts ORDER BY account_name COLLATE NOCASE").fetchall()]
+    for a in accounts:
+        a["channels"]=[dict(r) for r in conn.execute("SELECT * FROM youtube_channels WHERE account_id=? ORDER BY channel_name COLLATE NOCASE",(a["id"],)).fetchall()]
+        a["meta_connections"]=[dict(r) for r in conn.execute("SELECT * FROM meta_connections WHERE account_id=? ORDER BY page_name COLLATE NOCASE",(a["id"],)).fetchall()]
+    conn.close()
+    return accounts
+
 def get_meta_connection(connection_id):
     conn=get_conn()
     row=conn.execute("SELECT * FROM meta_connections WHERE id=?", (int(connection_id),)).fetchone()
     conn.close()
     return dict(row) if row else None
 
-def upsert_meta_connection(account_name, app_id, page_id, page_name='', instagram_user_id='', instagram_username='', token_key='', last_verified_at=''):
+def upsert_meta_connection(account_name, app_id, page_id, page_name='', instagram_user_id='', instagram_username='', token_key='', last_verified_at='', account_id=None):
     conn=get_conn(); now=last_verified_at or now_iso()
     existing=conn.execute("SELECT id FROM meta_connections WHERE page_id=?", (page_id,)).fetchone()
     if existing:
-        conn.execute("""UPDATE meta_connections SET account_name=?,app_id=?,page_name=?,instagram_user_id=?,instagram_username=?,token_key=?,status='connected',last_verified_at=? WHERE id=?""",
-                     (account_name,app_id,page_name,instagram_user_id,instagram_username,token_key,now,int(existing['id'])))
+        conn.execute("""UPDATE meta_connections SET account_name=?,app_id=?,page_name=?,instagram_user_id=?,instagram_username=?,token_key=?,status='connected',last_verified_at=?,account_id=COALESCE(?,account_id) WHERE id=?""",
+                     (account_name,app_id,page_name,instagram_user_id,instagram_username,token_key,now,account_id,int(existing['id'])))
         cid=int(existing['id'])
     else:
-        conn.execute("""INSERT INTO meta_connections(account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,status,created_at,last_verified_at)
-                       VALUES(?,?,?,?,?,?,?,'connected',?,?)""",
-                     (account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,now,now))
+        conn.execute("""INSERT INTO meta_connections(account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,status,created_at,last_verified_at,account_id)
+                       VALUES(?,?,?,?,?,?,?,'connected',?,?,?)""",
+                     (account_name,app_id,page_id,page_name,instagram_user_id,instagram_username,token_key,now,now,account_id))
         cid=int(conn.execute("SELECT last_insert_rowid() AS id").fetchone()['id'])
     conn.commit()
     row=conn.execute("SELECT * FROM meta_connections WHERE id=?",(cid,)).fetchone()
@@ -745,23 +806,27 @@ def upsert_schedule(channel_id, weekday, time_local, enabled=True, privacy_statu
                     title_template="{filename}", description_template="", tags="", made_for_kids=False,
                     ai_provider="gemini", ai_connection_id=None, contains_synthetic_media=True,
                     video_language="hi", title_description_language="hi", caption_certification="none",
-                    recording_date="", video_location="India"):
+                    recording_date="", video_location="India",
+                    publish_facebook_video=False, publish_facebook_reel=False, publish_instagram_reel=False, meta_connection_id=None):
 
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc).isoformat()
     conn = get_conn()
     conn.execute("""
         INSERT INTO upload_schedules
-        (channel_id,weekday,time_local,enabled,privacy_status,category_id,title_template,description_template,tags,made_for_kids,ai_provider,ai_connection_id,contains_synthetic_media,video_language,title_description_language,caption_certification,recording_date,video_location,last_run_date,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        (channel_id,weekday,time_local,enabled,privacy_status,category_id,title_template,description_template,tags,made_for_kids,ai_provider,ai_connection_id,contains_synthetic_media,video_language,title_description_language,caption_certification,recording_date,video_location,publish_facebook_video,publish_facebook_reel,publish_instagram_reel,meta_connection_id,last_run_date,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(channel_id,weekday,time_local) DO UPDATE SET
           enabled=excluded.enabled, privacy_status=excluded.privacy_status, category_id=excluded.category_id,
           title_template=excluded.title_template, description_template=excluded.description_template, tags=excluded.tags,
           made_for_kids=excluded.made_for_kids, ai_provider=excluded.ai_provider, ai_connection_id=excluded.ai_connection_id,
           contains_synthetic_media=excluded.contains_synthetic_media, video_language=excluded.video_language,
           title_description_language=excluded.title_description_language, caption_certification=excluded.caption_certification,
-          recording_date=excluded.recording_date, video_location=excluded.video_location, updated_at=excluded.updated_at
-    """, (channel_id,weekday,time_local,int(enabled),privacy_status,str(category_id),title_template,description_template,tags,int(made_for_kids),ai_provider,ai_connection_id,int(contains_synthetic_media),video_language,title_description_language,caption_certification,recording_date,video_location,'',now,now))
+          recording_date=excluded.recording_date, video_location=excluded.video_location,
+          publish_facebook_video=excluded.publish_facebook_video,
+          publish_facebook_reel=excluded.publish_facebook_reel, publish_instagram_reel=excluded.publish_instagram_reel,
+          meta_connection_id=excluded.meta_connection_id, updated_at=excluded.updated_at
+    """, (channel_id,weekday,time_local,int(enabled),privacy_status,str(category_id),title_template,description_template,tags,int(made_for_kids),ai_provider,ai_connection_id,int(contains_synthetic_media),video_language,title_description_language,caption_certification,recording_date,video_location,int(publish_facebook_video),int(publish_facebook_reel),int(publish_instagram_reel),meta_connection_id,'',now,now))
     conn.commit()
     row=conn.execute("SELECT * FROM upload_schedules WHERE channel_id=? AND weekday=? AND time_local=?",(channel_id,weekday,time_local)).fetchone()
     conn.close()
@@ -775,7 +840,8 @@ def replace_day_schedules(channel_id, weekday, slots):
     for slot in slots:
         rows.append(upsert_schedule(channel_id,weekday,slot["time_local"],slot.get("enabled",True),slot.get("privacy_status","private"),slot.get("category_id","22"),slot.get("title_template","{filename}"),slot.get("description_template",""),slot.get("tags",""),slot.get("made_for_kids",False),slot.get("ai_provider","gemini"),slot.get("ai_connection_id"),
                     slot.get("contains_synthetic_media",True),slot.get("video_language","hi"),slot.get("title_description_language","hi"),
-                    slot.get("caption_certification","none"),slot.get("recording_date",""),slot.get("video_location","India")))
+                    slot.get("caption_certification","none"),slot.get("recording_date",""),slot.get("video_location","India"),
+                    slot.get("publish_facebook_video",False),slot.get("publish_facebook_reel",False),slot.get("publish_instagram_reel",False),slot.get("meta_connection_id")))
     return rows
 
 def delete_schedule(channel_id, weekday, time_local=None):

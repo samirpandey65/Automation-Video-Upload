@@ -24,6 +24,7 @@
     <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance</span></a>
     <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
     <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
   </div>
   <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
 </aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">YouTube Local</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main">
@@ -43,9 +44,43 @@
       <div class="action-group">
         <button class="btn btn-secondary" onclick="checkAIStatus()">🔄 Refresh Gemini Status</button>
         <a class="btn btn-primary" href="/connections" style="text-decoration:none">🔌 Manage Gemini Connections</a>
-        <button class="btn btn-secondary" onclick="backupDb()">💾 Backup Database</button>
       </div>
       <div id="aiActionMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Telegram Notifications Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>📱 Telegram Notifications</h2>
+      <p class="muted">Get instant Telegram messages for uploads, failures, and token expiry. <a href="https://t.me/BotFather" target="_blank" rel="noopener">Create a bot via @BotFather</a> to get your Bot Token, then message your bot and use <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> to get your Chat ID.</p>
+      <div class="row" style="flex-wrap:wrap;gap:14px;margin-top:10px">
+        <div style="flex:1;min-width:220px"><label>Bot Token</label><input id="tgToken" placeholder="123456789:ABCdef..." autocomplete="off"></div>
+        <div style="flex:1;min-width:160px"><label>Chat ID</label><input id="tgChatId" placeholder="-100123456789 or 123456789" autocomplete="off"></div>
+      </div>
+      <div style="margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="tgEnabled" style="width:auto"> Enable Telegram notifications
+        </label>
+      </div>
+      <div style="margin-top:4px;font-size:12px;color:#71809a">Notifications sent for: ✅ YouTube upload complete &nbsp;❌ Upload failed &nbsp;🤖 Scheduled upload &nbsp;📘 Facebook/Instagram publish &nbsp;⚠️ Token expiry (max once per 24h)</div>
+      <div class="action-group" style="margin-top:12px">
+        <button class="btn btn-secondary" onclick="tgTest()">📨 Send Test Message</button>
+        <button class="btn btn-primary" onclick="tgSave()">💾 Save Telegram Config</button>
+      </div>
+      <div id="tgMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Backup & Restore Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>💾 Backup &amp; Restore</h2>
+      <p class="muted">Export the full database (schedules, channels, connections, video library) as a <code>.db</code> file. Import a backup to restore all settings. The app will save an automatic pre-restore backup before overwriting.</p>
+      <div class="action-group">
+        <button class="btn btn-primary" onclick="backupDb()">⬇ Download Backup</button>
+        <label class="btn btn-secondary" style="cursor:pointer;margin:0">
+          ⬆ Restore from Backup
+          <input type="file" id="restoreFile" accept=".db" style="display:none" onchange="restoreDb(this)">
+        </label>
+      </div>
+      <div id="backupMsg" style="margin-top:10px"></div>
     </div>
 
     <!-- OAuth Credentials Card -->
@@ -95,9 +130,41 @@
 
 <script src="/static/common.js?v=24"></script>
 <script>
-async function checkAIStatus(){const n=document.getElementById('aiNotice');try{const d=await api('/api/ai/status');document.getElementById('aiServiceVal').textContent=d.provider||'gemini';document.getElementById('aiModelStatusVal').textContent=d.model||'gemini';document.getElementById('aiModelsList').textContent=(d.connections||0)+' connected';document.getElementById('aiFfmpegVal').textContent='Check system health for FFmpeg';n.className=d.connected?'notice success':'notice';n.textContent=d.connected?'✅ Gemini is connected and ready for video analysis.':'⚠️ No Gemini account is connected. Open Connections to connect one.';}catch(e){n.className='notice error';n.textContent=e.message;}}
-async function backupDb(){try{const r=await fetch('/api/backup',{method:'POST'});if(!r.ok){const d=await r.json().catch(()=>({detail:'Backup failed'}));throw new Error(d.detail||'Backup failed');}const blob=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='youtube_local_uploader_backup.db';a.click();URL.revokeObjectURL(a.href);document.getElementById('aiActionMsg').innerHTML='<div class="notice success">Database backup created.</div>';}catch(e){document.getElementById('aiActionMsg').innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}}
+async function checkAIStatus(){const n=document.getElementById('aiNotice');try{const d=await api('/api/ai/status');document.getElementById('aiServiceVal').textContent=d.provider||'gemini';document.getElementById('aiModelStatusVal').textContent=d.model||'gemini';document.getElementById('aiModelsList').textContent=(d.connections||0)+' connected';document.getElementById('aiFfmpegVal').textContent='Check system health for FFmpeg';n.className=d.connected?'notice success':'notice';n.textContent=d.connected?'\u2705 Gemini is connected and ready for video analysis.':'\u26a0\ufe0f No Gemini account is connected. Open Connections to connect one.';}catch(e){n.className='notice error';n.textContent=e.message;}}
 
+async function loadTgConfig(){try{const d=await api('/api/telegram/config');document.getElementById('tgToken').value=d.bot_token||'';document.getElementById('tgChatId').value=d.chat_id||'';document.getElementById('tgEnabled').checked=d.enabled===true;}catch(e){console.error('loadTgConfig failed:',e.message);}}
+async function tgSave(){const msg=document.getElementById('tgMsg');try{await api('/api/telegram/config',{method:'POST',body:JSON.stringify({bot_token:document.getElementById('tgToken').value.trim(),chat_id:document.getElementById('tgChatId').value.trim(),enabled:document.getElementById('tgEnabled').checked})});msg.innerHTML='<div class="notice success">\u2705 Telegram config saved.</div>';}catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}}
+async function tgTest(){const msg=document.getElementById('tgMsg');const token=document.getElementById('tgToken').value.trim();const chatId=document.getElementById('tgChatId').value.trim();if(!token||!chatId){msg.innerHTML='<div class="notice error">Enter Bot Token and Chat ID first.</div>';return;}try{msg.innerHTML='<div class="notice">Sending test message...</div>';await api('/api/telegram/test',{method:'POST',body:JSON.stringify({bot_token:token,chat_id:chatId})});msg.innerHTML='<div class="notice success">\u2705 Test message sent! Check your Telegram.</div>';}catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}}
+
+async function backupDb(){
+  const msg=document.getElementById('backupMsg');
+  try{
+    msg.innerHTML='<div class="notice">Creating backup...</div>';
+    const r=await fetch('/api/backup',{method:'POST'});
+    if(!r.ok){const d=await r.json().catch(()=>({detail:'Backup failed'}));throw new Error(d.detail||'Backup failed');}
+    const blob=await r.blob();
+    const cd=r.headers.get('content-disposition')||'';
+    const fname=cd.match(/filename="?([^"]+)"?/)?.[1]||'yla_backup.db';
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();URL.revokeObjectURL(a.href);
+    msg.innerHTML='<div class="notice success">\u2705 Backup downloaded: '+esc(fname)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+
+async function restoreDb(input){
+  const msg=document.getElementById('backupMsg');
+  const file=input.files[0]; if(!file) return;
+  if(!file.name.endsWith('.db')){msg.innerHTML='<div class="notice error">Select a .db backup file.</div>';input.value='';return;}
+  if(!confirm('Restore database from "'+file.name+'"?\n\nThe app will save an automatic pre-restore backup first.\nAll current data will be replaced. Continue?')){input.value='';return;}
+  try{
+    msg.innerHTML='<div class="notice">Uploading and restoring backup...</div>';
+    const buf=await file.arrayBuffer();
+    const r=await fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:buf});
+    const d=await r.json().catch(()=>({detail:'Restore failed'}));
+    if(!r.ok) throw new Error(d.detail||'Restore failed');
+    msg.innerHTML='<div class="notice success">\u2705 '+esc(d.message)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+  input.value='';
+}
 async function createLocalUser(){
   try{
     await api('/api/users',{method:'POST',body:JSON.stringify({username:document.getElementById('newUser').value,password:document.getElementById('newPass').value,role:'editor'})});
@@ -120,6 +187,8 @@ async function changeMyPassword(){
   }
 }
 if(document.getElementById('users'))loadUsers();
+checkAIStatus();
+loadTgConfig();
 </script>
 </body>
 </html>
