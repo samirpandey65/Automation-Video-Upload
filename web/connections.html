@@ -1,0 +1,644 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Connections — OmniCast Studio</title>
+<link rel="stylesheet" href="/static/layout.css?v=24">
+<style>
+.account-card{border:2px solid #e5e7eb;border-radius:16px;margin-top:16px;overflow:hidden}
+.account-card.selected{border-color:#2563eb}
+.account-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#f8fafc;cursor:pointer;user-select:none}
+.account-header:hover{background:#f0f4ff}
+.account-header .acc-name{font-weight:800;font-size:15px;flex:1}
+.account-header .acc-email{font-size:12px;color:#71809a}
+.account-body{padding:16px 18px;display:none}
+.account-card.open .account-body{display:block}
+.platform-section{margin-top:14px}
+.platform-section h3{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#71809a;margin:0 0 8px}
+.conn-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f0f2f7}
+.conn-row:last-child{border-bottom:0}
+.conn-info{min-width:0}
+.conn-info strong{display:block;font-size:14px}
+.conn-info .muted{font-size:12px}
+.conn-actions{white-space:nowrap;flex-shrink:0}
+.add-platform-btn{margin-top:10px}
+</style>
+</head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a>
+    <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">OmniCast</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header>
+<main class="main">
+<h1>🔌 Connections</h1>
+<p class="muted">All platforms are grouped under each YouTube account. Select an account to manage its YouTube channels, Facebook Pages and Instagram accounts.</p>
+<div id="msg"></div>
+
+<div class="card" style="margin-top:18px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <h2 style="margin:0">Accounts</h2>
+    <button class="btn btn-primary" onclick="openAdd()">+ Add YouTube Account</button>
+  </div>
+  <div id="accountsList" style="margin-top:12px"></div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <h2>✨ Gemini</h2>
+  <p class="muted">Separate Google OAuth connection for video analysis and metadata generation. Multiple accounts supported.</p>
+  <button class="btn btn-primary" onclick="openGeminiAdd()">+ Add Gemini Account</button>
+  <div id="gemini" style="margin-top:16px"></div>
+  <div class="notice" style="margin-top:16px"><strong>Google Cloud:</strong> Enable the Generative Language API in the project shown by your OAuth client. If the OAuth app is in Testing mode, add each Gemini Google account under Test Users.</div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <h2>🔵 OpenAI / ChatGPT</h2>
+  <p class="muted">Connect your OpenAI API key to enable ChatGPT-powered metadata generation. Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
+  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <strong style="font-size:13px;display:block">🌐 Option 1: Browser Login (Username &amp; Password)</strong>
+        <span class="muted" style="font-size:12px">Opens a clean Chrome window to <code>chatgpt.com</code>. Enter your email/username &amp; password directly in the browser. Zero credential storage; session is preserved locally.</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openChatgptBrowserSession()">🌐 Open ChatGPT Window &amp; Log In</button>
+        <button class="btn btn-secondary" onclick="checkChatgptSession()">🔄 Check Status</button>
+      </div>
+    </div>
+    <div id="chatgptSessionBadge" style="margin-top:10px;font-size:12px"></div>
+  </div>
+
+  <div style="margin-top:16px">
+    <strong style="font-size:13px;display:block">🔑 Option 2: OpenAI API Key (Optional)</strong>
+    <p class="muted" style="font-size:12px;margin:4px 0 8px">Use your OpenAI API key directly if you prefer API usage over browser automation.</p>
+  </div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+    <div style="flex:2;min-width:220px"><label>API Key</label><input id="oaiKey" type="password" placeholder="sk-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
+    <div style="flex:1;min-width:140px"><label>Model</label><select id="oaiModel" style="width:100%;margin-top:6px"><option value="gpt-4o" selected>gpt-4o (Vision)</option><option value="gpt-4o-mini">gpt-4o-mini (Fast Vision)</option><option value="gpt-4-turbo">gpt-4-turbo</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option></select></div>
+  </div>
+  <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="oaiEnabled" style="width:auto"> Enable OpenAI API Key</label></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+    <button class="btn btn-secondary" onclick="oaiTest()">⚡ Test API Key</button>
+    <button class="btn btn-primary" onclick="oaiSave()">💾 Save OpenAI Config</button>
+  </div>
+  <div id="oaiMsg" style="margin-top:10px"></div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <h2>🟣 Anthropic / Claude</h2>
+  <p class="muted">Connect your Anthropic API key to enable Claude-powered metadata generation. Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">
+    <div style="flex:2;min-width:220px"><label>Claude API Key</label><input id="claudeKey" type="password" placeholder="sk-ant-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
+    <div style="flex:1;min-width:140px"><label>Model</label><select id="claudeModel" style="width:100%;margin-top:6px"><option value="claude-3-5-sonnet-20241022" selected>claude-3-5-sonnet (High Intelligence)</option><option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet (Hybrid Reasoning)</option><option value="claude-3-5-haiku-20241022">claude-3-5-haiku (Lightning Fast)</option><option value="claude-3-opus-20240229">claude-3-opus</option></select></div>
+  </div>
+  <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="claudeEnabled" style="width:auto"> Enable Anthropic / Claude</label></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+    <button class="btn btn-secondary" onclick="claudeTest()">⚡ Test Connection</button>
+    <button class="btn btn-primary" onclick="claudeSave()">💾 Save Claude Config</button>
+  </div>
+  <div id="claudeMsg" style="margin-top:10px"></div>
+</div>
+
+</main></div></div>
+
+<!-- YouTube add/reconnect modal -->
+<div id="addAccountModal" class="modal"><div class="modal-box">
+  <h2 id="addAccountTitle">Add YouTube Account</h2>
+  <p class="muted">Give this OAuth client a clear name, choose its client_secret.json, then connect with Google.</p>
+  <label>Account Name</label><input id="accountNameInput" placeholder="e.g. Chalaak Kahaniya" style="width:100%;margin-top:6px">
+  <label style="display:block;margin-top:14px">Client Secret JSON</label>
+  <div style="display:flex;gap:8px;margin-top:6px"><input id="secretPath" readonly style="flex:1" placeholder="Select client_secret.json"><input id="secretFile" type="file" accept=".json,application/json" style="display:none" onchange="uploadSecret(this,'youtube')"><button class="btn btn-secondary" onclick="document.getElementById('secretFile').click()">Browse</button></div>
+  <div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeAdd()">Cancel</button><button class="btn btn-primary" onclick="connectYouTube()">Connect with Google</button></div>
+</div></div>
+
+<!-- YouTube channel picker modal -->
+<div id="ytModal" class="modal"><div class="modal-box">
+  <h2>Select YouTube Channel</h2>
+  <p class="muted">Choose which channel from this Google account should be stored.</p>
+  <select id="ytChoice"></select>
+  <div class="row" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeYT()">Cancel</button><button class="btn btn-primary" onclick="completeSelectedChannel()">Connect Selected Channel</button></div>
+</div></div>
+
+<!-- Meta connect modal -->
+<div id="metaModal" class="modal"><div class="modal-box">
+  <h2>Connect Meta Account</h2>
+  <p class="muted">Enter your Meta App details and Facebook Login for Business Configuration ID.</p>
+  <label>Meta App ID</label><input id="metaAppId" placeholder="123456789012345" style="width:100%;margin-top:6px">
+  <label style="display:block;margin-top:14px">Meta App Secret</label><input id="metaAppSecret" type="password" placeholder="Paste App Secret" style="width:100%;margin-top:6px">
+  <label style="display:block;margin-top:14px">Facebook Login for Business Configuration ID</label><input id="metaConfigId" style="width:100%;margin-top:6px">
+  <label style="display:block;margin-top:14px">OAuth Redirect URI</label><input id="metaRedirect" readonly style="width:100%;margin-top:6px">
+  <div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeMetaAdd()">Cancel</button><button class="btn btn-primary" onclick="connectMeta()">Continue with Meta</button></div>
+</div></div>
+
+<!-- Meta page picker modal -->
+<div id="metaPageModal" class="modal"><div class="modal-box">
+  <h2>Select Facebook Page</h2>
+  <p class="muted">Choose the Facebook Page this uploader should use.</p>
+  <select id="metaPageChoice" style="width:100%"></select>
+  <div id="metaPageInfo" class="notice" style="margin-top:12px"></div>
+  <div class="row" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeMetaPage()">Cancel</button><button class="btn btn-primary" onclick="completeMeta()">Save Connection</button></div>
+</div></div>
+
+<!-- Gemini modal -->
+<div id="geminiModal" class="modal"><div class="modal-box">
+  <h2 id="geminiModalTitle">Add Gemini Account</h2>
+  <p class="muted">Each Gemini account can use its own Google OAuth client_secret.json.</p>
+  <label>Account Name</label><input id="geminiName" placeholder="e.g. Gemini Production" style="width:100%;margin-top:6px">
+  <label style="display:block;margin-top:14px">Gemini OAuth Client Secret JSON</label>
+  <div style="display:flex;gap:8px;margin-top:6px"><input id="geminiSecretPath" readonly style="flex:1" placeholder="Select client_secret.json"><input id="geminiSecretFile" type="file" accept=".json,application/json" style="display:none" onchange="uploadSecret(this,'gemini')"><button class="btn btn-secondary" onclick="document.getElementById('geminiSecretFile').click()">Browse</button></div>
+  <div class="row" style="margin-top:18px"><button class="btn btn-secondary" onclick="closeGeminiAdd()">Cancel</button><button class="btn btn-primary" onclick="connectGemini()">Connect with Google</button></div>
+</div></div>
+
+<script src="/static/common.js?v=24"></script>
+<script>
+
+let ytCandidates = [];
+let metaPages = [];
+let metaTargetAccountId = null;
+let overviewData = [];
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function closeYT(){ document.getElementById('ytModal').classList.remove('open'); }
+function closeAdd(){ document.getElementById('addAccountModal').classList.remove('open'); }
+function closeMetaAdd(){ document.getElementById('metaModal').classList.remove('open'); }
+function closeMetaPage(){ document.getElementById('metaPageModal').classList.remove('open'); }
+function closeGeminiAdd(){ document.getElementById('geminiModal').classList.remove('open'); }
+function setMetaRedirect(){ const el=document.getElementById('metaRedirect'); if(el) el.value=window.location.origin+'/api/meta/oauth/callback'; }
+
+async function uploadSecret(input, kind){
+  const f=input.files&&input.files[0]; if(!f) return;
+  try{
+    setMessage('msg','Uploading OAuth client_secret.json…');
+    const b=await f.arrayBuffer(); let bin=''; const bytes=new Uint8Array(b);
+    for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    const content_base64=btoa(bin);
+    const endpoint=kind==='gemini'?'/api/connections/gemini/client-secret/upload':'/api/youtube/accounts/client-secret/upload';
+    const d=await api(endpoint,{method:'POST',body:JSON.stringify({filename:f.name,content_base64})});
+    document.getElementById(kind==='gemini'?'geminiSecretPath':'secretPath').value=d.path;
+    setMessage('msg','OAuth client file uploaded.','success');
+  }catch(e){ setMessage('msg',e.message,'error'); }
+  finally{ input.value=''; }
+}
+
+// ── main refresh ─────────────────────────────────────────────────────────────
+async function refresh(){
+  try{
+    const [ov, ac] = await Promise.all([api('/api/accounts/overview'), api('/api/connections')]);
+    overviewData = ov.accounts || [];
+    renderAccounts(overviewData, ov.unlinked_meta || []);
+    renderGemini((ac.connections||[]).filter(x=>x.provider==='gemini'));
+  }catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+function renderAccounts(accounts, unlinkedMeta){
+  const el = document.getElementById('accountsList');
+  if(!accounts.length){ el.innerHTML='<p class="muted">No YouTube accounts connected.</p>'; return; }
+  el.innerHTML = accounts.map(a => {
+    const status = String(a.status||'connected').toLowerCase();
+    const required = status==='reauth_required' || String(a.reauth_status||'').toLowerCase()==='required';
+    const badgeClass = required||status==='error'?'error': status==='connected'?'uploaded':'';
+    const label = status==='logged_out'?'LOGGED OUT': required?'RE-AUTH REQUIRED': status.toUpperCase();
+    const ytActions = (status==='logged_out'||required)
+      ? `<button class="btn btn-primary" onclick="reconnectYouTube(${a.id})">↻ Reconnect</button> <button class="btn btn-secondary" onclick="deleteYouTube(${a.id})">Delete</button>`
+      : `<button class="btn btn-secondary" onclick="testYouTube(${a.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutYouTube(${a.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="deleteYouTube(${a.id})">Delete</button>`;
+
+    const channelsHtml = (a.channels||[]).map(c => {
+      const cUrl = c.url || (c.channel_handle ? ('https://www.youtube.com/' + c.channel_handle) : ('https://www.youtube.com/channel/' + c.channel_id));
+      return `
+      <div class="conn-row">
+        <div class="conn-info" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <a href="${esc(cUrl)}" target="_blank" rel="noopener" class="plat-badge-link yt" style="font-size:13px;padding:6px 12px" title="Open YouTube Channel">
+            ${PLATFORM_SVGS.youtube} <strong>${esc(c.channel_name)}</strong> <span class="plat-badge-arrow">↗</span>
+          </a>
+          <div class="muted">${esc(c.channel_handle||'')} · ${esc(c.google_email||'')}</div>
+        </div>
+        <div class="conn-actions"><span class="badge uploaded">CONNECTED</span></div>
+      </div>`;
+    }).join('') || '<p class="muted" style="margin:6px 0">No channels linked.</p>';
+
+    const metaHtml = (a.meta_connections||[]).map(m => {
+      const ms = String(m.status||'connected').toLowerCase();
+      const mb = ms==='connected'?'uploaded': ms==='error'?'error':'';
+      const fbUrl = m.facebook_url || ('https://www.facebook.com/' + m.page_id);
+      const igUrl = m.instagram_url || (m.instagram_username ? 'https://www.instagram.com/' + m.instagram_username + '/' : '');
+      const igBadge = m.instagram_username
+        ? `<a href="${esc(igUrl)}" target="_blank" rel="noopener" class="plat-badge-link ig" style="font-size:12px;padding:4px 9px" title="Open Instagram Profile">${PLATFORM_SVGS.instagram} <strong>@${esc(m.instagram_username)}</strong> <span class="plat-badge-arrow">↗</span></a>`
+        : '';
+      const mActions = ms==='logged_out'
+        ? `<button class="btn btn-primary" onclick="openMetaAdd(${a.id})">↻ Reconnect</button>`
+        : `<button class="btn btn-secondary" onclick="testMeta(${m.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutMeta(${m.id})">↪ Logout</button>`;
+      return `<div class="conn-row">
+        <div class="conn-info">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a href="${esc(fbUrl)}" target="_blank" rel="noopener" class="plat-badge-link fb" style="font-size:13px;padding:6px 12px" title="Open Facebook Page">
+              ${PLATFORM_SVGS.facebook} <strong>${esc(m.page_name||m.account_name)}</strong> <span class="plat-badge-arrow">↗</span>
+            </a>
+            ${igBadge}
+          </div>
+          <div class="muted" style="font-size:11px;margin-top:4px">Last verified: ${m.last_verified_at?esc(m.last_verified_at.replace('T',' ').slice(0,19)):'Never'}</div>
+        </div>
+        <div class="conn-actions"><span class="badge ${mb}">${ms.toUpperCase()}</span> ${mActions}</div>
+      </div>`;
+    }).join('');
+
+    // Summary platform badges for header
+    const connectedAccountBadges = [];
+    (a.channels||[]).forEach(c => {
+      connectedAccountBadges.push({
+        platform: 'youtube',
+        name: c.channel_name,
+        url: c.url || (c.channel_handle ? 'https://www.youtube.com/' + c.channel_handle : 'https://www.youtube.com/channel/' + c.channel_id)
+      });
+    });
+    (a.meta_connections||[]).forEach(m => {
+      connectedAccountBadges.push({
+        platform: 'facebook',
+        name: m.page_name || m.account_name,
+        url: m.facebook_url || ('https://www.facebook.com/' + m.page_id)
+      });
+      if (m.instagram_username) {
+        connectedAccountBadges.push({
+          platform: 'instagram',
+          name: m.instagram_username,
+          url: m.instagram_url || ('https://www.instagram.com/' + m.instagram_username + '/')
+        });
+      }
+    });
+    const headerBadgesHtml = renderAccountPlatformBadgesGroup(connectedAccountBadges);
+
+    return `<div class="account-card open" id="acc-${a.id}">
+      <div class="account-header" onclick="toggleAccount(${a.id})">
+        <div>
+          <div class="acc-name">${esc(a.account_name)}</div>
+          <div class="acc-email">${esc(a.account_email||'')}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">${headerBadgesHtml}</div>
+        </div>
+        <span class="badge ${badgeClass}">${label}</span>
+        ${ytActions}
+      </div>
+      <div class="account-body">
+        <div class="platform-section">
+          <h3>📺 YouTube Channels</h3>
+          ${channelsHtml}
+        </div>
+        <div class="platform-section" style="margin-top:18px">
+          <h3>📘 Facebook &amp; Instagram</h3>
+          ${metaHtml || '<p class="muted" style="margin:6px 0">No Meta connections linked to this account.</p>'}
+          <button class="btn btn-primary add-platform-btn" onclick="openMetaAdd(${a.id})">+ Connect Facebook Page</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Unlinked Meta connections (connected before account grouping existed)
+  if(unlinkedMeta.length){
+    const unlinkedHtml = unlinkedMeta.map(m => {
+      const ms = String(m.status||'connected').toLowerCase();
+      const mb = ms==='connected'?'uploaded': ms==='error'?'error':'';
+      const fbUrl = m.facebook_url || ('https://www.facebook.com/' + m.page_id);
+      const igUrl = m.instagram_url || (m.instagram_username ? 'https://www.instagram.com/' + m.instagram_username + '/' : '');
+      const igBadge = m.instagram_username
+        ? `<a href="${esc(igUrl)}" target="_blank" rel="noopener" class="plat-badge-link ig" style="font-size:12px;padding:4px 9px" title="Open Instagram Profile">${PLATFORM_SVGS.instagram} <strong>@${esc(m.instagram_username)}</strong> <span class="plat-badge-arrow">↗</span></a>`
+        : '';
+      return `<div class="conn-row">
+        <div class="conn-info">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a href="${esc(fbUrl)}" target="_blank" rel="noopener" class="plat-badge-link fb" style="font-size:13px;padding:6px 12px" title="Open Facebook Page">
+              ${PLATFORM_SVGS.facebook} <strong>${esc(m.page_name||m.account_name)}</strong> <span class="plat-badge-arrow">↗</span>
+            </a>
+            ${igBadge}
+          </div>
+        </div>
+        <div class="conn-actions">
+          <span class="badge ${mb}">${ms.toUpperCase()}</span>
+          <select id="linkAccSel-${m.id}" style="margin-left:8px">${accounts.map(a=>`<option value="${a.id}">${esc(a.account_name)}</option>`).join('')}</select>
+          <button class="btn btn-secondary" onclick="linkMetaToAccount(${m.id})">Link to Account</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML += `<div class="account-card open" style="margin-top:16px">
+      <div class="account-header"><div class="acc-name" style="color:#b45309">⚠ Unlinked Meta Connections</div></div>
+      <div class="account-body">${unlinkedHtml}</div>
+    </div>`;
+  }
+}
+
+function toggleAccount(id){
+  document.getElementById('acc-'+id)?.classList.toggle('open');
+}
+
+function renderGemini(rows){
+  document.getElementById('gemini').innerHTML = rows.map(x => {
+    const status = String(x.status||'connected').toLowerCase();
+    const label = status==='logged_out'?'LOGGED OUT':status.toUpperCase();
+    const badgeClass = status==='connected'?'uploaded': status==='error'?'error':'';
+    const actions = status==='logged_out'
+      ? `<button class="btn btn-primary" onclick="reconnectGemini(${x.id})">↻ Reconnect</button>`
+      : `<button class="btn btn-secondary" onclick="testGemini(${x.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutGemini(${x.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="removeGemini(${x.id})">Remove</button>`;
+    return `<div class="conn-row">
+      <div class="conn-info">
+        <strong>${esc(x.account_name||x.account_email)}</strong>
+        <div class="muted">Google: ${esc(x.account_email)} · Model: ${esc(x.model||'auto-detect')}</div>
+        <div class="muted" style="font-size:11px">Last verified: ${x.last_verified_at?esc(x.last_verified_at.replace('T',' ').slice(0,19)):'Never'}</div>
+      </div>
+      <div class="conn-actions"><span class="badge ${badgeClass}">${label}</span> ${actions}</div>
+    </div>`;
+  }).join('') || '<p class="muted">No Gemini accounts connected.</p>';
+}
+
+// ── YouTube ───────────────────────────────────────────────────────────────────
+function openAdd(){
+  window.youtubeReconnectAccountId=null;
+  document.getElementById('addAccountTitle').textContent='Add YouTube Account';
+  document.getElementById('accountNameInput').value='';
+  document.getElementById('secretPath').value='';
+  document.getElementById('addAccountModal').classList.add('open');
+}
+
+async function reconnectYouTube(id){
+  const a=overviewData.find(x=>x.id===id); if(!a) return;
+  window.youtubeReconnectAccountId=Number(a.id);
+  document.getElementById('addAccountTitle').textContent='Reconnect YouTube Account';
+  document.getElementById('accountNameInput').value=a.account_name||'';
+  document.getElementById('secretPath').value=a.client_secret_path||'';
+  document.getElementById('addAccountModal').classList.add('open');
+  setMessage('msg','Account details loaded. Click "Connect with Google" to sign in again.','notice');
+}
+
+async function connectYouTube(){
+  const name=document.getElementById('accountNameInput').value.trim(), path=document.getElementById('secretPath').value.trim();
+  if(!name||!path) return setMessage('msg','Account name and client_secret.json are required.','error');
+  closeAdd(); setMessage('msg','Opening Google sign-in…');
+  try{
+    const d=await api('/api/connect',{method:'POST',body:JSON.stringify({account_name:name,client_secret_path:path,account_id:window.youtubeReconnectAccountId||null})});
+    if(d.reconnected){ window.youtubeReconnectAccountId=null; await refresh(); setMessage('msg',`YouTube account reconnected. ${d.channels_saved||0} channel(s) re-authenticated.`,'success'); return; }
+    ytCandidates=d.channels||[];
+    if(ytCandidates.length===1){ await completeYouTube(0); }
+    else if(ytCandidates.length>1){
+      document.getElementById('ytChoice').innerHTML=ytCandidates.map((c,i)=>`<option value="${i}">${esc(c.channel_name)} (${esc(c.channel_id)})</option>`).join('');
+      document.getElementById('ytModal').classList.add('open');
+      setMessage('msg','Multiple channels found. Select which channel to store.','success');
+    } else { setMessage('msg','No YouTube channels found for this account.','error'); }
+  }catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function completeSelectedChannel(){ const idx=Number(document.getElementById('ytChoice').value); closeYT(); await completeYouTube(idx); }
+async function completeYouTube(i){
+  const c=ytCandidates[i]; if(!c) return setMessage('msg','Invalid channel selection.','error');
+  try{ await api('/api/connect/complete',{method:'POST',body:JSON.stringify(c)}); await refresh(); setMessage('msg','YouTube account connected successfully.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function testYouTube(id, btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Testing…';
+  try{ const r=await api('/api/youtube/accounts/'+id+'/test',{method:'POST'}); setMessage('msg',`YouTube test passed for ${r.account_name}. ${r.channels.length} channel(s) verified.`,'success'); await refresh(); }
+  catch(e){ setMessage('msg','YouTube test failed: '+e.message,'error'); await refresh(); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+async function logoutYouTube(id){
+  const a=overviewData.find(x=>x.id===id);
+  if(!confirm(`Log out ${a?a.account_name:'this YouTube account'}?\n\nData and settings are preserved.`)) return;
+  try{ await api('/api/youtube/accounts/'+id+'/logout',{method:'POST'}); await refresh(); setMessage('msg','YouTube account logged out.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function deleteYouTube(id){
+  const a=overviewData.find(x=>x.id===id); if(!a) return;
+  if(!confirm(`Delete ${a.account_name||'this YouTube account'}?\n\nChannel history and local data are preserved.`)) return;
+  try{ await api('/api/youtube/accounts/'+id,{method:'DELETE'}); await refresh(); setMessage('msg','YouTube connection deleted.','success'); }
+  catch(e){ setMessage('msg','Delete failed: '+e.message,'error'); }
+}
+
+// ── Meta ──────────────────────────────────────────────────────────────────────
+function openMetaAdd(accountId){
+  metaTargetAccountId = accountId || null;
+  setMetaRedirect();
+  document.getElementById('metaAppId').value='';
+  document.getElementById('metaAppSecret').value='';
+  document.getElementById('metaConfigId').value='';
+  document.getElementById('metaModal').classList.add('open');
+}
+
+async function connectMeta(){
+  setMetaRedirect();
+  const app_id=document.getElementById('metaAppId').value.trim();
+  const app_secret=document.getElementById('metaAppSecret').value.trim();
+  const config_id=document.getElementById('metaConfigId').value.trim();
+  const redirect_uri=document.getElementById('metaRedirect').value.trim();
+  if(!app_id||!app_secret||!config_id) return setMessage('msg','Meta App ID, App Secret and Configuration ID are required.','error');
+  try{
+    const d=await api('/api/meta/oauth/start',{method:'POST',body:JSON.stringify({app_id,app_secret,config_id,redirect_uri,account_id:metaTargetAccountId,account_name:''})});
+    window.removeEventListener('message',onMetaOAuth); window.addEventListener('message',onMetaOAuth);
+    const popup=window.open(d.auth_url,'metaOAuth','width=620,height=760');
+    if(!popup){ window.removeEventListener('message',onMetaOAuth); return setMessage('msg','Popup blocked. Allow popups and retry.','error'); }
+    closeMetaAdd(); setMessage('msg','Complete Facebook authorization in the popup.','notice');
+  }catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function onMetaOAuth(ev){
+  if(ev.origin!==window.location.origin||!['meta-oauth-success','meta-oauth-complete','meta-oauth-error'].includes(ev.data?.type)) return;
+  window.removeEventListener('message',onMetaOAuth);
+  try{ await finishMetaAuthorization(ev.data.type, ev.data.message); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function finishMetaAuthorization(type, message=''){
+  if(type==='meta-oauth-error'){ setMessage('msg',message||'Meta did not return a Facebook Page. Check Page access and permissions.','error'); return; }
+  if(type==='meta-oauth-complete'){ await refresh(); setMessage('msg','Meta account connected successfully.','success'); return; }
+  const d=await api('/api/meta/oauth/pages'); metaPages=d.pages||[];
+  if(!metaPages.length) throw new Error('Meta returned no Facebook Pages. Check Page access and pages_show_list permission.');
+
+  // Grey out pages already connected under any account
+  const connectedPageIds=new Set(overviewData.flatMap(a=>(a.meta_connections||[]).map(m=>String(m.page_id))));
+  document.getElementById('metaPageChoice').innerHTML=metaPages.map((x,i)=>{
+    const already=connectedPageIds.has(String(x.id));
+    const ig=x.instagram_business_account?.username?' — Instagram @'+esc(x.instagram_business_account.username):'';
+    return `<option value="${i}" ${already?'disabled':''}>${esc(x.name)}${ig}${already?' (already connected)':''}`;
+  }).join('');
+  updateMetaPageInfo();
+  document.getElementById('metaPageChoice').onchange=updateMetaPageInfo;
+  document.getElementById('metaPageModal').classList.add('open');
+}
+
+function updateMetaPageInfo(){
+  const p=metaPages[Number(document.getElementById('metaPageChoice').value)]||{};
+  const ig=p.instagram_business_account||{};
+  document.getElementById('metaPageInfo').textContent=ig.id?`Linked Instagram: @${ig.username||ig.id}`:'No linked Instagram Professional account detected. Facebook publishing will still work.';
+}
+
+async function completeMeta(){
+  const p=metaPages[Number(document.getElementById('metaPageChoice').value)]; if(!p) return;
+  const accountName = overviewData.find(a=>a.id===metaTargetAccountId)?.account_name || 'Meta Account';
+  try{
+    await api('/api/meta/oauth/complete',{method:'POST',body:JSON.stringify({page_id:p.id,account_name:accountName})});
+    closeMetaPage(); await refresh(); setMessage('msg','Meta account connected successfully.','success');
+  }catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function testMeta(id, btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Testing…';
+  try{ const r=await api('/api/meta/connections/'+id+'/test',{method:'POST'}); setMessage('msg',`Meta test passed for ${r.page_name}. ${r.instagram_username?'Instagram @'+r.instagram_username+' linked.':'No Instagram linked.'}`,'success'); await refresh(); }
+  catch(e){ setMessage('msg','Meta test failed: '+e.message,'error'); await refresh(); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+async function logoutMeta(id){
+  if(!confirm('Log out this Meta connection? Its Page mapping will be preserved.')) return;
+  try{ await api('/api/meta/connections/'+id+'/logout',{method:'POST'}); await refresh(); setMessage('msg','Meta account logged out.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function linkMetaToAccount(metaId){
+  const accountId=document.getElementById('linkAccSel-'+metaId)?.value;
+  if(!accountId) return;
+  try{ await api('/api/meta/connections/'+metaId+'/link',{method:'POST',body:JSON.stringify({account_id:Number(accountId)})}); await refresh(); setMessage('msg','Meta connection linked to account.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+// ── Gemini ────────────────────────────────────────────────────────────────────
+function openGeminiAdd(row=null){
+  document.getElementById('geminiModalTitle').textContent=row?'Reconnect Gemini Account':'Add Gemini Account';
+  document.getElementById('geminiName').value=row?.account_name||'';
+  document.getElementById('geminiSecretPath').value=row?.client_secret_path||'';
+  document.getElementById('geminiModal').classList.add('open');
+}
+
+async function connectGemini(){
+  const name=document.getElementById('geminiName').value.trim(), path=document.getElementById('geminiSecretPath').value.trim();
+  if(!name||!path) return setMessage('msg','Account name and Gemini client_secret.json are required.','error');
+  closeGeminiAdd(); setMessage('msg','Opening Google sign-in for Gemini…');
+  try{ const d=await api('/api/connections/gemini/connect',{method:'POST',body:JSON.stringify({account_name:name,client_secret_path:path})}); await refresh(); setMessage('msg','Gemini connected: '+d.connection.account_name,'success'); }
+  catch(e){ setMessage('msg','Gemini connection failed: '+e.message,'error'); }
+}
+
+async function testGemini(id, btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Testing…';
+  try{ const r=await api('/api/connections/gemini/test/'+id,{method:'POST'}); setMessage('msg',`Gemini test passed for ${r.email}. Model: ${r.default_model}`,'success'); await refresh(); }
+  catch(e){ setMessage('msg','Gemini test failed: '+e.message,'error'); await refresh(); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+async function logoutGemini(id){
+  const rows=(await api('/api/connections')).connections||[]; const row=rows.find(x=>Number(x.id)===Number(id));
+  if(!confirm(`Log out ${row?.account_name||row?.account_email||'this Gemini account'}?\n\nSettings will be preserved.`)) return;
+  try{ await api('/api/connections/gemini/logout/'+id,{method:'POST'}); await refresh(); setMessage('msg','Gemini account logged out.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+async function reconnectGemini(id){
+  const rows=(await api('/api/connections')).connections||[]; const row=rows.find(x=>Number(x.id)===Number(id));
+  if(!row) return; openGeminiAdd(row);
+  setMessage('msg','Account details loaded. Click "Connect with Google" to sign in again.','notice');
+}
+
+async function removeGemini(id){
+  if(!confirm('Remove this Gemini account permanently?')) return;
+  try{ await api('/api/connections/'+id,{method:'DELETE'}); await refresh(); setMessage('msg','Gemini connection removed.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
+// ── OpenAI ────────────────────────────────────────────────────────────────────────────────
+async function loadOaiConfig(){
+  try{
+    const d=await api('/api/openai/config');
+    if(d.has_key) document.getElementById('oaiKey').placeholder='API key saved (••••'+( d.api_key||'').slice(-4)+')';
+    document.getElementById('oaiEnabled').checked=!!d.enabled;
+    const sel=document.getElementById('oaiModel');
+    if(d.model){for(let o of sel.options){if(o.value===d.model){o.selected=true;break;}}}
+  }catch(e){console.error(e);}
+}
+async function oaiSave(){
+  const msg=document.getElementById('oaiMsg');
+  const key=document.getElementById('oaiKey').value.trim();
+  const model=document.getElementById('oaiModel').value;
+  const enabled=document.getElementById('oaiEnabled').checked;
+  try{
+    await api('/api/openai/config',{method:'POST',body:JSON.stringify({api_key:key,model,enabled})});
+    msg.innerHTML='<div class="notice success">✅ OpenAI config saved.</div>';
+    await loadOaiConfig();
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+async function oaiTest(){
+  const msg=document.getElementById('oaiMsg');
+  const key=document.getElementById('oaiKey').value.trim();
+  const model=document.getElementById('oaiModel').value;
+  msg.innerHTML='<div class="notice">Testing OpenAI connection...</div>';
+  try{
+    const d=await api('/api/openai/test',{method:'POST',body:JSON.stringify({api_key:key,model})});
+    msg.innerHTML='<div class="notice success">✅ OpenAI connected! Reply: '+esc(d.reply)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+
+async function openChatgptBrowserSession(){
+  const badge=document.getElementById('chatgptSessionBadge');
+  badge.innerHTML='<div class="notice">🌐 Launching Chrome window... Please sign in on chatgpt.com with your email &amp; password.</div>';
+  try{
+    const res=await api('/api/chatgpt/login-session',{method:'POST'});
+    badge.innerHTML='<div class="notice" style="background:#ecfdf5;color:#065f46">✓ '+esc(res.message)+'</div>';
+    setTimeout(checkChatgptSession, 3000);
+  }catch(e){badge.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+
+async function checkChatgptSession(){
+  const badge=document.getElementById('chatgptSessionBadge');
+  try{
+    const d=await api('/api/chatgpt/session-status');
+    if(d.cdp_active){
+      badge.innerHTML='<span class="badge" style="background:#dcfce7;color:#166534;font-size:12px;padding:4px 10px;font-weight:700">🟢 Live Chrome Window Active (CDP 9223)</span> <span class="muted" style="margin-left:6px">Ready for video analysis!</span>';
+    } else if(d.has_profile){
+      badge.innerHTML='<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:4px 10px;font-weight:700">🔵 Saved Profile Exists</span> <span class="muted" style="margin-left:6px">Persistent session saved. Click "Open ChatGPT Window" anytime to reconnect.</span>';
+    } else {
+      badge.innerHTML='<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:12px;padding:4px 10px;font-weight:700">⚪ Not Logged In Yet</span> <span class="muted" style="margin-left:6px">Click button above to sign in once.</span>';
+    }
+  }catch(e){badge.innerHTML='<span class="muted">Could not check session status.</span>';}
+}
+
+
+// ── Claude ────────────────────────────────────────────────────────────────────────────────
+async function loadClaudeConfig(){
+  try{
+    const d=await api('/api/claude/config');
+    if(d.has_key) document.getElementById('claudeKey').placeholder='API key saved (••••'+(d.api_key||'').slice(-4)+')';
+    document.getElementById('claudeEnabled').checked=!!d.enabled;
+    const sel=document.getElementById('claudeModel');
+    if(d.model){for(let o of sel.options){if(o.value===d.model){o.selected=true;break;}}}
+  }catch(e){console.error(e);}
+}
+async function claudeSave(){
+  const msg=document.getElementById('claudeMsg');
+  const key=document.getElementById('claudeKey').value.trim();
+  const model=document.getElementById('claudeModel').value;
+  const enabled=document.getElementById('claudeEnabled').checked;
+  try{
+    await api('/api/claude/config',{method:'POST',body:JSON.stringify({api_key:key,model,enabled})});
+    msg.innerHTML='<div class="notice success">✅ Claude config saved.</div>';
+    await loadClaudeConfig();
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+async function claudeTest(){
+  const msg=document.getElementById('claudeMsg');
+  const key=document.getElementById('claudeKey').value.trim();
+  const model=document.getElementById('claudeModel').value;
+  msg.innerHTML='<div class="notice">Testing Claude connection...</div>';
+  try{
+    const d=await api('/api/claude/test',{method:'POST',body:JSON.stringify({api_key:key,model})});
+    msg.innerHTML='<div class="notice success">✅ Claude connected! Reply: '+esc(d.reply)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+
+refresh();
+loadOaiConfig();
+loadClaudeConfig();
+checkChatgptSession();
+</script></body></html>

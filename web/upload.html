@@ -1,0 +1,1134 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Upload Studio — OmniCast Studio</title>
+<link rel="stylesheet" href="/static/layout.css?v=24">
+<style>
+.platform-targets{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.platform-card{border:2px solid #e5e7eb;border-radius:12px;padding:14px 18px;cursor:pointer;min-width:200px;flex:1;transition:border-color .15s,background .15s}
+.platform-card.selected{border-color:#2563eb;background:#eff6ff}
+.platform-card input[type=checkbox]{margin-right:8px;accent-color:#2563eb}
+.platform-card .plat-label{font-weight:700;font-size:14px}
+.platform-card .plat-sub{font-size:12px;color:#71809a;margin-top:4px}
+.platform-extra{margin-top:10px;padding:12px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;display:none}
+.platform-extra.show{display:block}
+#publishResults .result-row{padding:8px 0;border-bottom:1px solid #f0f2f7;font-size:13px}
+#publishResults .result-row:last-child{border-bottom:0}
+</style>
+</head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">OmniCast</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header>
+<main class="main">
+<h1>↥ Upload Video</h1>
+<p class="muted">Scan your folder, pick a video, generate metadata with AI, then choose which platforms to publish to.</p>
+
+<!-- Step 1: Channel + folder -->
+<div class="card">
+<label>YouTube Channel</label><select id="channel"></select>
+<label style="margin-top:12px">AI Analysis Provider &amp; Image Generation</label>
+<div class="row">
+  <div style="flex:1;min-width:200px">
+    <span style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Metadata Analysis AI</span>
+    <select id="provider" style="width:100%">
+      <option value="gemini" selected>✨ Gemini (Google Cloud)</option>
+      <option value="openai">🔵 ChatGPT / OpenAI (Vision)</option>
+      <option value="claude">🟣 Claude (Anthropic Vision)</option>
+    </select>
+  </div>
+  <div style="flex:1;min-width:240px">
+    <span style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Thumbnail Image Generation Engine</span>
+    <select id="thumbEngine" style="width:100%">
+      <option value="gemini" selected>🎨 Gemini Keyframes (High-CTR 3 Variants)</option>
+      <option value="flow">✨ Google Flow AI (Photorealistic / Reference Image)</option>
+      <option value="chatgpt">🤖 ChatGPT / DALL-E 3 (OpenAI Image Gen)</option>
+    </select>
+  </div>
+  <div style="flex:1;min-width:240px">
+    <span style="font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">Connected Account</span>
+    <select id="aiConnection" style="width:100%;display:none"></select>
+  </div>
+  <div style="margin-top:auto">
+    <a class="btn btn-secondary" href="/connections" style="text-decoration:none">🔌 Manage Connections</a>
+  </div>
+</div>
+<div id="aiConnectionMsg" class="muted" style="margin-bottom:10px"></div>
+<label>Video Folder</label>
+<div class="row"><input id="folder" placeholder="Saved folder for this channel"><button class="btn btn-secondary" onclick="browseFolder()">📂 Browse Folder...</button><button class="btn btn-primary" onclick="scan()">🔍 Scan Folder</button></div>
+<div id="scanmsg"></div>
+</div>
+
+<!-- Folder browser modal -->
+<div id="folderBrowser" class="modal"><div class="modal-box" style="max-width:760px"><h2>📂 Select Video Folder</h2><div class="row" style="gap:8px"><input id="folderPath" readonly style="flex:1"><button class="btn btn-secondary" onclick="folderUp()">⬆ Up</button></div><div id="folderEntries" style="margin-top:12px;max-height:420px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px"></div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeFolderBrowser()">Cancel</button><button class="btn btn-primary" onclick="selectCurrentFolder()">Select This Folder</button></div></div></div>
+
+<!-- Step 2: Video + metadata -->
+<div id="videoArea" style="display:none">
+<div class="card" style="margin-top:16px">
+<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+  <div style="flex:1;min-width:240px">
+    <label>🔍 Search Video</label>
+    <input id="videoSearch" placeholder="Search by title, filename or path…" oninput="filterVideoDropdown()">
+  </div>
+  <div style="min-width:160px">
+    <label>Status</label>
+    <select id="videoStatusFilter" onchange="filterVideoDropdown()">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="uploaded">Uploaded</option>
+      <option value="failed">Failed</option>
+    </select>
+  </div>
+</div>
+<label>Select Video</label><select id="video" onchange="pickVideo()"></select>
+<div id="videoInfo" class="notice" style="margin-top:8px"></div>
+<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;align-items:center">
+  <button class="btn btn-secondary" onclick="analyze()">🤖 Analyze Video &amp; Generate Metadata</button>
+  <button id="qcReviewBtn" class="btn btn-secondary" style="background:#f8fafc;border-color:#cbd5e1;display:none" onclick="openUploadQCPdf()">📋 View QC Review PDF</button>
+  <span id="qcStatusBadge" class="badge" style="display:none;font-size:11px"></span>
+  <span id="aiStatus" class="muted"></span>
+</div>
+<div id="aiSummary" class="notice" style="display:none;margin-top:8px"></div>
+<div id="visualAnalysis" class="notice" style="display:none;margin-top:8px"></div>
+
+<label style="margin-top:14px">Title</label><input id="title" maxlength="100" placeholder="Video title">
+<label>Description</label><textarea id="description" maxlength="5000" placeholder="Description"></textarea>
+<label>Hashtags</label><input id="hashtags" placeholder="#hindistory #animation #shorts">
+<label>Tags (comma separated)</label><input id="tags" placeholder="hindi story, animated story">
+<div class="row">
+  <div><label>Privacy</label><select id="privacy"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></div>
+  <div><label>Category</label><select id="category"><option value="24" selected>Entertainment</option><option value="22">People &amp; Blogs</option><option value="23">Comedy</option><option value="1">Film &amp; Animation</option></select></div>
+</div>
+
+<div style="margin-top:14px;padding:14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px">
+<strong style="font-size:13px">YouTube Studio Metadata</strong>
+<div class="row" style="margin-top:10px">
+  <div><label>AI / Synthetic content</label><select id="synthetic"><option value="yes" selected>Yes</option><option value="no">No</option></select></div>
+  <div><label>Video language</label><select id="videoLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option><option value="hinglish">Hindi / Hinglish</option></select></div>
+  <div><label>Title &amp; description language</label><select id="metadataLanguage"><option value="hi" selected>Hindi</option><option value="en">English</option></select></div>
+</div>
+<div class="row" style="margin-top:8px">
+  <div><label>Caption certification</label><select id="captionCertification"><option value="none" selected>None</option></select></div>
+  <div><label>Recording date</label><input id="recordingDate" type="date"></div>
+  <div><label>Video location</label><select id="videoLocation"><option value="India" selected>India</option><option value="">None</option></select></div>
+</div>
+<div class="muted" style="margin-top:8px;font-size:11px">AI disclosure, language and recording date are sent via the YouTube API. Caption Certification and Studio location are not exposed by the Data API.</div>
+</div>
+<label style="margin-top:10px"><input id="kids" type="checkbox" style="width:auto"> Made for kids</label>
+</div>
+
+<!-- Step 2.5: Thumbnails & A/B Testing Studio -->
+<div class="card" id="thumbStudioCard" style="margin-top:16px;display:none">
+  <div>
+    <h2 style="margin:0 0 4px">🎨 High-CTR Thumbnails &amp; A/B Testing Studio</h2>
+    <p class="muted" style="margin:0;font-size:13px">Preview and select your primary thumbnail, customize Google Flow AI prompts, or package 3 variants for YouTube A/B Test &amp; Compare.</p>
+  </div>
+
+  <div id="thumbStudioAlert" style="margin-top:10px"></div>
+
+  <!-- Google Flow Prompt & Config Studio -->
+  <div style="background:#0f172a;border-radius:10px;padding:14px;margin-top:12px;margin-bottom:14px;border:1px solid #334155;color:#f8fafc">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">⚡</span>
+        <strong style="font-size:13px;color:#f8fafc">Google Flow AI Prompt &amp; Ratio Controls</strong>
+        <span class="badge" style="background:#3b82f6;color:#fff;font-size:11px">Zero-Click</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:12px;flex-wrap:wrap">
+        <!-- Aspect Ratio Selector -->
+        <span style="color:#94a3b8;font-weight:600">Aspect Ratio:</span>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0">
+          <input type="radio" name="uploadFlowRatio" id="uploadFlowRatio916" value="9:16" style="width:auto;margin:0" checked>
+          <span>📱 9:16 Vertical</span>
+        </label>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0">
+          <input type="radio" name="uploadFlowRatio" id="uploadFlowRatio169" value="16:9" style="width:auto;margin:0">
+          <span>🖥️ 16:9 Widescreen</span>
+        </label>
+        <!-- Image Count -->
+        <span style="color:#94a3b8;font-weight:600;margin-left:6px">Count:</span>
+        <select id="uploadFlowCount" style="width:auto;padding:2px 8px;font-size:12px;border-radius:4px;background:#1e293b;color:#f8fafc;border:1px solid #475569">
+          <option value="1" selected>x1 Image</option>
+          <option value="2">x2 Images</option>
+          <option value="4">x4 Images</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Editable Prompt Textarea -->
+    <textarea id="uploadFlowPromptInput" rows="3" style="width:100%;box-sizing:border-box;background:#1e293b;color:#f8fafc;border:1px solid #475569;border-radius:6px;padding:8px 10px;font-size:12px;font-family:inherit;line-height:1.45;resize:vertical" placeholder="Enter or edit Google Flow prompt here..."></textarea>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="autoFlowUploadBtn" onclick="runUploadAutoFlow()">🤖 Auto-Generate with Flow (Zero-Click)</button>
+        <button class="btn btn-secondary btn-sm" style="background:#334155;color:#e2e8f0;border-color:#475569" onclick="sanitizeUploadPrompt()">🛡️ Make Policy-Safe</button>
+        <button class="btn btn-secondary btn-sm" id="copyFlowPromptBtn" onclick="copyUploadFlowPrompt()">📋 Copy Prompt</button>
+        <button class="btn btn-secondary btn-sm" style="background:#1e1b4b;color:#c7d2fe;border-color:#3730a3" onclick="openUploadFlowSession()">🔑 Connect Flow Session</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="recreateUploadThumbs()">🔄 Re-generate 3 Local Variants</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 Thumbnail Variant Cards -->
+  <div id="uploadThumbList" style="display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;margin-bottom:14px"></div>
+
+  <!-- YouTube Shorts Cover Baker Option -->
+  <div id="shortsBakeBox" style="margin-bottom:14px;padding:12px 14px;background:#fefce8;border:1px solid #fef08a;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div>
+      <div style="font-weight:700;color:#854d0e;font-size:13px;display:flex;align-items:center;gap:6px">
+        <span>🎬 YouTube Shorts Cover Baker:</span>
+        <span class="badge" style="background:#ca8a04;color:#fff;font-size:10px">Fix Grey Box</span>
+      </div>
+      <div style="font-size:12px;color:#a16207;margin-top:2px">
+        Stitch your selected thumbnail into the first 0.5s of the video using FFmpeg before uploading. YouTube Shorts will automatically display this cover on mobile!
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" id="bakeShortsThumbBtn" style="background:#854d0e;color:#fefce8;border-color:#713f12;font-weight:600" onclick="bakeSelectedThumbIntoVideo()">
+      🎬 Bake Thumbnail into Short (0.5s)
+    </button>
+  </div>
+
+  <!-- A/B Testing Suite -->
+  <div style="padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+    <label style="cursor:pointer;font-weight:700;display:flex;align-items:center;gap:8px;font-size:14px;color:#1e293b">
+      <input type="checkbox" id="chkABTest" style="width:auto" checked>
+      🎯 Auto-Package 3 Thumbnails &amp; Titles for A/B Testing (Test &amp; Compare)
+    </label>
+    <div class="muted" style="font-size:12px;margin-top:4px;margin-left:24px">
+      Automatically uploads the selected thumbnail to YouTube and preserves all 3 creative thumbnails plus title variations for YouTube Studio Test &amp; Compare experiments.
+    </div>
+
+    <!-- 3 Title Variants for quick selection -->
+    <div id="abTitlesBox" style="margin-top:12px;display:none">
+      <strong style="font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:0.5px">⚡ High-CTR Title Variations (Click to Use as Main Title):</strong>
+      <div id="abTitleOptions" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 3: Platform selection -->
+<div class="card" style="margin-top:16px">
+<h2 style="margin:0 0 6px">Publish To</h2>
+<p class="muted" style="margin:0 0 12px">Choose one or more platforms. Metadata above is shared across all selected platforms.</p>
+
+<!-- Multi-platform duplication sync banner -->
+<div id="platformSyncBanner" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#166534">
+  <div style="font-weight:700;display:flex;align-items:center;gap:6px">
+    <span>🛡️ Multi-Platform Duplication Sync:</span>
+    <span id="platformSyncText" style="font-weight:normal">Already published to:</span>
+  </div>
+  <div id="platformSyncList" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
+  <div style="font-size:11px;color:#15803d;margin-top:6px">Published platforms have been auto-unchecked to prevent duplicate uploads. Re-check any platform if you wish to re-publish.</div>
+</div>
+
+<div class="platform-targets">
+
+  <!-- YouTube -->
+  <div class="platform-card" id="cardYT" onclick="togglePlatform('yt')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkYT" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('yt',this.checked)">
+    <span class="plat-label">▶ YouTube</span></label>
+    <div class="plat-sub" id="ytSubLabel">Select a channel above</div>
+  </div>
+
+  <!-- Facebook Page Video -->
+  <div class="platform-card" id="cardFB" onclick="togglePlatform('fb')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkFB" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('fb',this.checked)">
+    <span class="plat-label">📘 Facebook Video</span></label>
+    <div class="plat-sub" id="fbSubLabel">No Meta page connected</div>
+  </div>
+
+  <!-- Facebook Reel -->
+  <div class="platform-card" id="cardFBR" onclick="togglePlatform('fbr')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkFBR" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('fbr',this.checked)">
+    <span class="plat-label">📘 Facebook Reel</span></label>
+    <div class="plat-sub" id="fbrSubLabel">No Meta page connected</div>
+  </div>
+
+  <!-- Instagram Reel -->
+  <div class="platform-card" id="cardIG" onclick="togglePlatform('ig')">
+    <label style="cursor:pointer"><input type="checkbox" id="chkIG" style="width:auto;margin-right:8px" onclick="event.stopPropagation();togglePlatform('ig',this.checked)">
+    <span class="plat-label">📸 Instagram Reel</span></label>
+    <div class="plat-sub" id="igSubLabel">No Instagram linked</div>
+  </div>
+
+</div>
+
+<!-- Meta page selector (shown when any Meta platform is checked) -->
+<div id="metaExtra" class="platform-extra" style="margin-top:12px">
+  <label>Connected Meta Page</label>
+  <select id="metaConnection" style="max-width:400px"></select>
+</div>
+
+<div style="margin-top:16px">
+  <label><input type="checkbox" id="approveCheck" style="width:auto"> I reviewed the video and approve publishing to all selected platforms.</label>
+</div>
+
+<div class="row" style="margin-top:14px;gap:10px;flex-wrap:wrap">
+  <button class="btn btn-primary" id="publishBtn" onclick="publishAll()">🚀 Publish to Selected Platforms</button>
+</div>
+<div id="publishResults" style="margin-top:12px"></div>
+</div>
+</div><!-- end videoArea -->
+
+</main></div></div>
+<script src="/static/common.js?v=25"></script>
+<script>
+
+let videos = [];
+let analysisPassed = false;
+let metaConnections = [];
+let folderBrowserChannel = '', folderBrowserCurrent = '', folderBrowserParent = '';
+
+function uiLog(message, level='INFO'){
+  fetch('/api/client-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,level})}).catch(()=>{});
+}
+// ── init ──────────────────────────────────────────────────────────────────────
+async function init(){
+  await loadChannels('channel');
+  await loadAIConnections();
+  document.getElementById('provider').onchange = () => { analysisPassed = false; loadAIConnections(); };
+  document.getElementById('channel').onchange = async () => {
+    const sel = document.getElementById('channel');
+    uiLog(`Channel selected: ${sel.options[sel.selectedIndex]?.text || sel.value}`);
+    await loadSavedFolder(); await loadMetaConnections(); updateYTLabel();
+  };
+  await loadSavedFolder();
+  await loadMetaConnections();
+  updateYTLabel();
+}
+
+// ── AI connections ────────────────────────────────────────────────────────────
+async function loadAIConnections(){
+  const provider = document.getElementById('provider').value;
+  const sel = document.getElementById('aiConnection');
+  const msg = document.getElementById('aiConnectionMsg');
+
+  if(provider === 'gemini'){
+    sel.style.display = 'block';
+    try {
+      const d = await api('/api/connections');
+      const rows = (d.connections||[]).filter(x => x.provider==='gemini');
+      sel.innerHTML = rows.map(x => `<option value="${x.id}" ${x.status==='logged_out'?'disabled':''}>${esc(x.account_name||x.account_email)} — ${esc(x.account_email)} — ${esc(x.model||'Gemini')}${x.status==='logged_out'?' (Logged out)':''}</option>`).join('') || '<option value="">No Gemini account connected</option>';
+      msg.textContent = rows.length ? 'Gemini Google OAuth account connected.' : 'Connect a Gemini account from Connections first.';
+    } catch(e) { msg.textContent = 'Failed loading Gemini connections.'; }
+  } else if(provider === 'openai'){
+    sel.style.display = 'none';
+    try {
+      const [d, s] = await Promise.all([api('/api/openai/config'), api('/api/chatgpt/session-status')]);
+      let statusHtml = '';
+      if(s.cdp_active){
+        statusHtml = `<span class="badge" style="background:#dcfce7;color:#166534;font-weight:700">🟢 Live ChatGPT Window Active</span>`;
+      } else if(s.has_profile){
+        statusHtml = `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700">🔵 Saved Profile Exists</span>`;
+      }
+      if(statusHtml || d.has_key){
+        msg.innerHTML = `✓ <strong>ChatGPT ready:</strong> ${statusHtml} ${d.has_key ? `(API Key Model: <code>${esc(d.model||'gpt-4o')}</code>)` : '(Browser Session)'} <button type="button" class="btn btn-secondary btn-sm" style="margin-left:8px;padding:3px 8px;font-size:11px" onclick="openChatgptBrowserSession()">🌐 Open Login Window</button>`;
+      } else {
+        msg.innerHTML = `⚠️ <strong>ChatGPT not connected:</strong> <button type="button" class="btn btn-primary btn-sm" style="margin-left:6px;padding:3px 8px;font-size:11px" onclick="openChatgptBrowserSession()">🌐 Open ChatGPT Window &amp; Log In</button> or <a href="/connections" style="color:#2563eb;font-weight:700;margin-left:4px">add API Key ↗</a>`;
+      }
+    } catch(e){ msg.textContent = 'Failed checking OpenAI / ChatGPT status.'; }
+  } else if(provider === 'claude'){
+    sel.style.display = 'none';
+    try {
+      const d = await api('/api/claude/config');
+      if(d.has_key){
+        msg.innerHTML = `✓ <strong>Claude ready:</strong> Model <code>${esc(d.model||'claude-3-5-sonnet')}</code> (${d.enabled?'Enabled':'Active'}).`;
+      } else {
+        msg.innerHTML = `⚠️ <strong>Claude key missing:</strong> <a href="/connections" style="color:#2563eb;font-weight:700">Add Claude API Key in Connections ↗</a>`;
+      }
+    } catch(e){ msg.textContent = 'Failed checking Claude status.'; }
+  }
+}
+
+// ── Meta connections ──────────────────────────────────────────────────────────
+async function loadMetaConnections(){
+  try{
+    const d = await api('/api/meta/connections');
+    metaConnections = (d.connections||[]).filter(x => x.status !== 'logged_out' && x.token_available);
+    const sel = document.getElementById('metaConnection');
+    sel.innerHTML = metaConnections.map(x => `<option value="${x.id}">${esc(x.page_name)}${x.instagram_username?' / @'+esc(x.instagram_username):''}</option>`).join('') || '<option value="">Connect Meta in Connections first</option>';
+    updateMetaLabels();
+  }catch(e){ console.error(e); }
+}
+
+function updateMetaLabels(){
+  const mc = metaConnections[0];
+  const pageName = mc ? esc(mc.page_name) : 'No Meta page connected';
+  const igName = mc && mc.instagram_username ? `@${esc(mc.instagram_username)}` : 'No Instagram linked';
+  document.getElementById('fbSubLabel').textContent = mc ? pageName : 'No Meta page connected';
+  document.getElementById('fbrSubLabel').textContent = mc ? pageName : 'No Meta page connected';
+  document.getElementById('igSubLabel').textContent = mc && mc.instagram_username ? igName : 'No Instagram linked';
+  if(!mc){ ['cardFB','cardFBR','cardIG'].forEach(id => { document.getElementById(id).style.opacity='0.5'; document.getElementById(id).style.pointerEvents='none'; }); }
+  else { ['cardFB','cardFBR','cardIG'].forEach(id => { document.getElementById(id).style.opacity=''; document.getElementById(id).style.pointerEvents=''; }); }
+  if(mc && mc.instagram_username){ document.getElementById('cardIG').style.opacity=''; document.getElementById('cardIG').style.pointerEvents=''; }
+  else { document.getElementById('cardIG').style.opacity='0.5'; document.getElementById('cardIG').style.pointerEvents='none'; }
+}
+
+function updateYTLabel(){
+  const sel = document.getElementById('channel');
+  const txt = sel.options[sel.selectedIndex]?.text || 'No channel selected';
+  document.getElementById('ytSubLabel').textContent = txt;
+}
+
+// ── platform toggle ───────────────────────────────────────────────────────────
+function togglePlatform(key, forceVal){
+  const map = {yt:'chkYT',fb:'chkFB',fbr:'chkFBR',ig:'chkIG'};
+  const cardMap = {yt:'cardYT',fb:'cardFB',fbr:'cardFBR',ig:'cardIG'};
+  const chk = document.getElementById(map[key]);
+  if(forceVal !== undefined) chk.checked = forceVal;
+  else chk.checked = !chk.checked;
+  document.getElementById(cardMap[key]).classList.toggle('selected', chk.checked);
+  const anyMeta = document.getElementById('chkFB').checked || document.getElementById('chkFBR').checked || document.getElementById('chkIG').checked;
+  document.getElementById('metaExtra').classList.toggle('show', anyMeta);
+}
+
+// ── folder ────────────────────────────────────────────────────────────────────
+async function loadSavedFolder(){
+  const c = document.getElementById('channel').value; if(!c) return;
+  try{
+    const d = await api('/api/folder?channel_id='+encodeURIComponent(c));
+    document.getElementById('folder').value = d.folder || '';
+    if(d.folder){ setMessage('scanmsg','Saved folder loaded. Click Scan Folder to detect new videos.','success'); await loadExistingInventory(c); }
+  }catch(e){ console.error(e); }
+}
+
+let filteredVideoIndices = [];
+
+function filterVideoDropdown(){
+  const search = (document.getElementById('videoSearch')?.value || '').toLowerCase().trim();
+  const statusFilter = (document.getElementById('videoStatusFilter')?.value || '').toLowerCase().trim();
+  const sel = document.getElementById('video');
+  if(!sel) return;
+
+  filteredVideoIndices = [];
+  const optionsHtml = [];
+
+  videos.forEach((v, originalIdx) => {
+    const title = (v.title || '').toLowerCase();
+    const filename = (v.filename || '').toLowerCase();
+    const fp = (v.file_path || v.path || '').toLowerCase();
+    const st = (v.status || '').toLowerCase();
+
+    if(statusFilter && st !== statusFilter) return;
+    if(search && !title.includes(search) && !filename.includes(search) && !fp.includes(search)) return;
+
+    filteredVideoIndices.push(originalIdx);
+    const label = `${v.title ? v.title + ' (' + v.filename + ')' : v.filename} — [${v.status}]`;
+    optionsHtml.push(`<option value="${originalIdx}">${esc(label)}</option>`);
+  });
+
+  sel.innerHTML = optionsHtml.length ? optionsHtml.join('') : '<option value="">No matching videos found</option>';
+  if(filteredVideoIndices.length){
+    sel.value = String(filteredVideoIndices[0]);
+    pickVideo();
+  }
+}
+
+async function loadExistingInventory(channel){
+  try{
+    const d = await api('/api/library?channel_id='+encodeURIComponent(channel));
+    videos = (d.videos||[]).map(v => { const p=v.file_path||v.path||''; return {...v,path:p,file_path:p}; });
+    document.getElementById('videoArea').style.display = videos.length ? 'block' : 'none';
+    if(videos.length){
+      filterVideoDropdown();
+    }
+  }catch(e){ console.error(e); }
+}
+
+async function browseFolder(){
+  const c = document.getElementById('channel').value;
+  if(!c) return setMessage('scanmsg','Connect a YouTube channel first.','error');
+  folderBrowserChannel = c;
+  document.getElementById('folderBrowser').classList.add('open');
+  await loadFolderBrowser(document.getElementById('folder').value.trim()||'');
+}
+
+async function loadFolderBrowser(path=''){
+  try{
+    const q = path ? '?path='+encodeURIComponent(path)+'&channel_id='+encodeURIComponent(folderBrowserChannel) : '?channel_id='+encodeURIComponent(folderBrowserChannel);
+    const d = await api('/api/folder/browse'+q);
+    folderBrowserCurrent = d.current; folderBrowserParent = d.parent||d.current;
+    document.getElementById('folderPath').value = d.current;
+    document.getElementById('folderEntries').innerHTML = (d.entries||[]).map(x => `<button class="btn btn-secondary" style="display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;border-radius:0;padding:12px" onclick='loadFolderBrowser(${JSON.stringify(x.path)})'>📁 ${esc(x.name)}</button>`).join('') || '<div class="muted" style="padding:16px">No subfolders.</div>';
+  }catch(e){ setMessage('scanmsg',e.message,'error'); }
+}
+
+async function folderUp(){ await loadFolderBrowser(folderBrowserParent); }
+function closeFolderBrowser(){ document.getElementById('folderBrowser').classList.remove('open'); }
+
+async function selectCurrentFolder(){
+  try{
+    const d = await api('/api/folder/select',{method:'POST',body:JSON.stringify({channel_id:folderBrowserChannel,folder:folderBrowserCurrent})});
+    document.getElementById('folder').value = d.folder; closeFolderBrowser();
+    setMessage('scanmsg',"Folder saved for this channel. You won't need to select it again.",'success');
+  }catch(e){ setMessage('scanmsg',e.message,'error'); }
+}
+
+async function scan(){
+  const channel = document.getElementById('channel').value, folder = document.getElementById('folder').value.trim();
+  if(!channel||!folder) return setMessage('scanmsg','Select a channel and enter a folder.','error');
+  uiLog(`Folder scan started: channel=${channel} folder=${folder}`);
+  setMessage('scanmsg','Scanning folder and calculating SHA-256 hashes. This may take time for large videos.');
+  try{
+    const d = await api('/api/scan',{method:'POST',body:JSON.stringify({channel_id:channel,folder})});
+    videos = (d.videos||[]).map(v => { const p=v.file_path||v.path||''; return {...v,path:p,file_path:p}; });
+    document.getElementById('videoArea').style.display = 'block';
+    filterVideoDropdown();
+    uiLog(`Folder scan complete: ${d.videos.length} video(s) found in ${folder}`);
+    setMessage('scanmsg',`Scan complete: ${d.videos.length} video(s). ${d.hashed||0} new/changed hashed; ${d.reused||0} reused.`,'success');
+  }catch(e){ uiLog(`Folder scan failed: ${e.message}`,'ERROR'); setMessage('scanmsg',e.message,'error'); }
+}
+
+// ── Thumbnail & A/B Testing Studio ──────────────────────────────────────────
+let selectedUploadThumbPath = '';
+let currentAbTitles = [];
+let uploadFlowPrompt = '';
+
+async function loadUploadThumbnails(videoId){
+  const studioCard = document.getElementById('thumbStudioCard');
+  const listEl = document.getElementById('uploadThumbList');
+  const alertEl = document.getElementById('thumbStudioAlert');
+  const abBox = document.getElementById('abTitlesBox');
+  const abOpts = document.getElementById('abTitleOptions');
+  if(!videoId){
+    studioCard.style.display = 'none';
+    return;
+  }
+  studioCard.style.display = 'block';
+  listEl.innerHTML = '<div class="muted tiny" style="padding:12px">Loading generated thumbnails…</div>';
+  alertEl.innerHTML = '';
+
+  try{
+    const d = await api(`/api/video/${videoId}/thumbnails`);
+    selectedUploadThumbPath = d.selected_path || '';
+    uploadFlowPrompt = d.flow_prompt || '';
+    currentAbTitles = d.ab_test_titles || [];
+
+    // Pre-fill editable Flow prompt and ratio settings
+    const promptInput = document.getElementById('uploadFlowPromptInput');
+    if(promptInput){
+      promptInput.value = uploadFlowPrompt;
+      promptInput.style.border = '1px solid #475569';
+      promptInput.style.background = '#1e293b';
+    }
+    const r916 = document.getElementById('uploadFlowRatio916');
+    const r169 = document.getElementById('uploadFlowRatio169');
+    if(r916 && r169){
+      if(d.is_vertical){ r916.checked = true; } else { r169.checked = true; }
+    }
+
+    // Render A/B title variation pills
+    if(currentAbTitles && currentAbTitles.length){
+      abBox.style.display = 'block';
+      abOpts.innerHTML = currentAbTitles.map((title, idx) => {
+        const letters = ['A (Hook)', 'B (Intrigue)', 'C (Viral)'];
+        return `
+          <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #cbd5e1;padding:8px 12px;border-radius:6px;cursor:pointer;transition:all 0.15s" data-title="${esc(title)}" onclick="setMainTitle(this.dataset.title)">
+            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700">${letters[idx] || 'Opt ' + (idx+1)}</span>
+            <span style="font-size:13px;color:#1e293b;flex:1">${esc(title)}</span>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" data-title="${esc(title)}" onclick="event.stopPropagation();setMainTitle(this.dataset.title)">Use Title</button>
+          </div>
+        `;
+      }).join('');
+    } else {
+      abBox.style.display = 'none';
+    }
+
+    // Render 3 thumbnail cards
+    const ts = Date.now();
+    const isVert = Boolean(d.is_vertical);
+    const aspectStyle = isVert ? 'width:130px;aspect-ratio:9/16;object-fit:cover;' : 'width:200px;aspect-ratio:16/9;object-fit:cover;';
+
+    if(!d.variants || !d.variants.length){
+      listEl.innerHTML = '<div class="muted tiny" style="padding:12px">No thumbnails generated yet. Click "Re-generate 3 Variants" above.</div>';
+      return;
+    }
+
+    listEl.innerHTML = d.variants.map((v, i) => {
+      const vPathNorm = String(v.path || '').replace(/\\/g, '/').toLowerCase();
+      const vFileNorm = String(v.filename || vPathNorm.split('/').pop() || '').toLowerCase();
+      const selNorm = String(selectedUploadThumbPath || '').replace(/\\/g, '/').toLowerCase();
+      const selFileNorm = String(selNorm.split('/').pop() || '');
+      const isSel = Boolean(selNorm && (
+        selNorm === vPathNorm ||
+        (selFileNorm && selFileNorm === vFileNorm) ||
+        (vFileNorm && selNorm.endsWith(vFileNorm))
+      ));
+      const isFlow = Boolean(v.is_flow);
+      const borderStyle = isSel 
+        ? 'border:2px solid #16a34a;box-shadow:0 0 0 2px rgba(22,163,74,0.25);background:#f0fdf4;' 
+        : (isFlow ? 'border:2px solid #6366f1;box-shadow:0 0 0 1px rgba(99,102,241,0.2);background:#faf5ff;' : 'border:1px solid #cbd5e1;background:#fff;');
+      const badgeStyle = isSel 
+        ? 'background:#16a34a;color:#fff;' 
+        : (isFlow ? 'background:#4338ca;color:#e0e7ff;' : 'background:#f1f5f9;color:#475569;');
+      const cardTitle = isFlow ? '✨ Google Flow AI' : (v.is_custom ? 'Custom Upload' : (v.name || 'Variant ' + (i+1)));
+      const btnText = isSel
+        ? (isFlow ? '✓ Flow Thumbnail Selected' : '✓ Selected for Upload')
+        : (isFlow ? '🎯 Select Flow Thumbnail' : 'Use This Thumbnail');
+      const btnStyle = isSel
+        ? ''
+        : (isFlow ? 'background:#4338ca;border-color:#3730a3;color:#fff' : '');
+      const thumbUrl = v.url ? `${v.url}&v=${ts}` : `/api/video/${videoId}/thumbnail?variant=${i+1}&v=${ts}`;
+      const downloadUrl = (v.url ? v.url : `/api/video/${videoId}/thumbnail?variant=${v.variant_index || (i+1)}`) + `&download=1`;
+      const downloadFilename = v.filename || `thumbnail_${videoId}_v${i+1}.png`;
+
+      return `
+        <div style="flex:0 0 auto;border-radius:10px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;${borderStyle};transition:all 0.15s">
+          <div style="display:flex;justify-content:space-between;width:100%;font-size:12px;font-weight:600;gap:6px">
+            <span class="badge" style="${badgeStyle}">${isSel ? '✓ Active Primary' : esc(cardTitle)}</span>
+            <span style="color:#64748b;font-size:11px">${isVert ? '9:16 Vertical' : '16:9 Wide'}</span>
+          </div>
+          <div style="cursor:pointer;position:relative" data-path="${esc(v.path)}" data-variant="${v.variant_index || (i+1)}" onclick="selectUploadThumbnail(${videoId}, this.dataset.path, Number(this.dataset.variant))" title="Click to select this thumbnail">
+            <img src="${thumbUrl}" alt="${esc(cardTitle)}" style="border-radius:6px;background:#0f172a;${aspectStyle};display:block" />
+          </div>
+          <div style="display:flex;gap:6px;width:100%">
+            <button type="button" class="btn ${isSel ? 'btn-primary' : (isFlow ? 'btn-primary' : 'btn-secondary')} btn-sm" style="flex:1;font-size:12px;padding:5px 8px;${btnStyle}" data-path="${esc(v.path)}" data-variant="${v.variant_index || (i+1)}" onclick="selectUploadThumbnail(${videoId}, this.dataset.path, Number(this.dataset.variant))">
+              ${btnText}
+            </button>
+            <a href="${downloadUrl}" download="${esc(downloadFilename)}" class="btn btn-secondary btn-sm" style="padding:5px 9px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center" title="Download thumbnail image">
+              ⬇️
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  }catch(err){
+    console.warn("Failed to load upload thumbnails:", err);
+    listEl.innerHTML = `<div class="muted tiny" style="padding:12px">Thumbnail preview unavailable: ${esc(err.message)}</div>`;
+  }
+}
+
+async function selectUploadThumbnail(videoId, path, variantIndex){
+  try{
+    selectedUploadThumbPath = path;
+    const res = await api(`/api/video/${videoId}/thumbnail/select`, {
+      method: 'POST',
+      body: JSON.stringify({ path, variant_index: variantIndex })
+    });
+    if(res && res.thumbnail_path){
+      selectedUploadThumbPath = res.thumbnail_path;
+    }
+    const v = videos[Number(document.getElementById('video').value)];
+    if(v) v.thumbnail_path = selectedUploadThumbPath;
+    await loadUploadThumbnails(videoId);
+    if(res && res.youtube_pushed){
+      setMessage('thumbStudioAlert', '✓ Thumbnail updated & auto-synced to live YouTube video!', 'success');
+    } else if(res && res.youtube_error){
+      const isShortSkip = res.youtube_error.toLowerCase().includes('short') || res.youtube_error.toLowerCase().includes('grey box') || res.youtube_error.toLowerCase().includes('skip');
+      setMessage('thumbStudioAlert', isShortSkip ? `✓ Thumbnail selected. ${res.youtube_error}` : `⚠️ Thumbnail selected locally, but YouTube sync returned: ${res.youtube_error}`, isShortSkip ? 'success' : 'error');
+    } else {
+      setMessage('thumbStudioAlert', '✓ Thumbnail selected as primary for upload!', 'success');
+    }
+  }catch(e){
+    setMessage('thumbStudioAlert', e.message, 'error');
+  }
+}
+
+async function bakeSelectedThumbIntoVideo(){
+  const v = videos[Number(document.getElementById('video').value)];
+  if(!v || !v.id) return setMessage('thumbStudioAlert', 'Select a video first.', 'error');
+  const alertEl = document.getElementById('thumbStudioAlert');
+  const btn = document.getElementById('bakeShortsThumbBtn');
+  if(btn) btn.disabled = true;
+  alertEl.innerHTML = '<div class="notice">⏳ Stitching thumbnail into first 0.5s of the video with FFmpeg...</div>';
+  try {
+    const res = await api(`/api/video/${v.id}/bake-thumbnail`, {
+      method: 'POST',
+      body: JSON.stringify({ thumbnail_path: selectedUploadThumbPath, duration: 0.5 })
+    });
+    alertEl.innerHTML = `<div class="notice success" style="background:#ecfdf5;color:#065f46">✓ ${esc(res.message || 'Thumbnail baked into video!')} Ready for upload.</div>`;
+    if(res && res.baked_path){
+      v.file_path = res.baked_path;
+      uiLog(`Bake success: New video created at ${res.baked_path}`);
+    }
+  } catch(err) {
+    alertEl.innerHTML = `<div class="notice error">Bake failed: ${esc(err.message)}</div>`;
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function openUploadFlowSession(){
+  const alertEl = document.getElementById('thumbStudioAlert');
+  alertEl.innerHTML = '<div class="notice">🌐 Launching Chrome window... Please log in to Google on flow.google.com once. Your session will be saved locally.</div>';
+  try{
+    const res = await api('/api/flow/login-session', { method: 'POST' });
+    alertEl.innerHTML = `<div class="notice" style="background:#ecfdf5;color:#065f46">✓ ${esc(res.message || 'Flow session connected!')}</div>`;
+  }catch(e){
+    alertEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">Failed to launch browser: ${esc(e.message)}</div>`;
+  }
+}
+
+async function openChatgptBrowserSession(){
+  const msgEl = document.getElementById('aiConnectionMsg');
+  msgEl.innerHTML = '<div class="notice">🌐 Launching Chrome window... Please log in to ChatGPT on chatgpt.com with your email/username and password.</div>';
+  try{
+    const res = await api('/api/chatgpt/login-session', { method: 'POST' });
+    msgEl.innerHTML = `<div class="notice" style="background:#ecfdf5;color:#065f46">✓ ${esc(res.message)}</div>`;
+    setTimeout(loadAIConnections, 3500);
+  }catch(e){
+    msgEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">Failed to launch browser: ${esc(e.message)}</div>`;
+  }
+}
+
+async function sanitizeUploadPrompt(autoRetry = false){
+  const promptInput = document.getElementById('uploadFlowPromptInput');
+  if(!promptInput) return;
+  const current = promptInput.value.trim();
+  if(!current) return;
+  try{
+    const res = await api('/api/flow/sanitize-prompt', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: current })
+    });
+    if(res && res.prompt){
+      promptInput.value = res.prompt;
+      promptInput.style.border = '2px solid #10b981';
+      promptInput.style.background = '#1e293b';
+      setTimeout(() => { promptInput.style.border = '1px solid #475569'; }, 2000);
+      if(autoRetry){
+        runUploadAutoFlow();
+      }
+    }
+  }catch(e){
+    console.warn("Sanitization error:", e);
+  }
+}
+
+async function runUploadAutoFlow(){
+  const v = videos[Number(document.getElementById('video').value)];
+  if(!v || !v.id) return setMessage('thumbStudioAlert', 'Select or analyze the video first to get a video record.', 'error');
+  const btn = document.getElementById('autoFlowUploadBtn');
+  const alertEl = document.getElementById('thumbStudioAlert');
+  const promptInput = document.getElementById('uploadFlowPromptInput');
+  const customPrompt = (promptInput?.value || '').trim();
+  const ratio = document.getElementById('uploadFlowRatio916')?.checked ? '9:16' : '16:9';
+  const count = Number(document.getElementById('uploadFlowCount')?.value || 1);
+
+  if(btn) btn.disabled = true;
+  alertEl.innerHTML = `<div class="notice">🤖 Configuring Google Flow (${ratio}, x${count}), entering prompt &amp; generating AI image in background...</div>`;
+
+  try{
+    const res = await api(`/api/video/${v.id}/flow/auto-generate`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt: customPrompt, aspect_ratio: ratio, count: count })
+    });
+    if(res.ok){
+      alertEl.innerHTML = `<div class="notice" style="background:#ecfdf5;color:#065f46">🎉 <strong>Success!</strong> ${esc(res.message)}</div>`;
+      if(promptInput){
+        promptInput.style.border = '1px solid #475569';
+        promptInput.style.background = '#1e293b';
+      }
+      const newPath = res.thumbnail_path || res.path || '';
+      if(newPath){
+        selectedUploadThumbPath = newPath;
+        if(v) v.thumbnail_path = newPath;
+      }
+      await loadUploadThumbnails(v.id);
+    } else {
+      if(res.reason === 'flow_login_needed'){
+        alertEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">⚠️ Google Flow requires login. Click <strong>"🔑 Connect Flow Session"</strong> to sign in once, then click Auto-Generate again.</div>`;
+      } else if(res.reason === 'policy_violation'){
+        if(promptInput){
+          promptInput.style.border = '2px solid #ef4444';
+          promptInput.style.background = '#281313';
+          promptInput.focus();
+        }
+        alertEl.innerHTML = `
+          <div class="notice" style="background:#451a03;color:#fde68a;border:1px solid #d97706">
+            ⚠️ <strong>Google Flow Policy Block:</strong> ${esc(res.message)}
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-primary" onclick="sanitizeUploadPrompt(true)">🛡️ Auto-Sanitize Prompt &amp; Retry Now</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('uploadFlowPromptInput').focus()">✏️ Edit Prompt Manually</button>
+            </div>
+          </div>
+        `;
+      } else {
+        alertEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">${esc(res.message)}</div>`;
+      }
+    }
+  }catch(err){
+    alertEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">Flow generation failed: ${esc(err.message)}</div>`;
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+function setMainTitle(newTitle){
+  if(!newTitle) return;
+  document.getElementById('title').value = newTitle;
+  const v = videos[Number(document.getElementById('video').value)];
+  if(v) v.title = newTitle;
+  uiLog(`Selected A/B title variant: "${newTitle}"`);
+}
+
+async function recreateUploadThumbs(engineOverride){
+  const v = videos[Number(document.getElementById('video').value)];
+  if(!v || !v.id) return setMessage('thumbStudioAlert', 'Select or analyze a video first.', 'error');
+  const alertEl = document.getElementById('thumbStudioAlert');
+  const engine = engineOverride || document.getElementById('thumbEngine')?.value || 'gemini';
+  alertEl.innerHTML = `<div class="notice">🎨 Generating thumbnails with <strong>${engine==='flow'?'Google Flow AI':'Gemini Keyframes'}</strong>...</div>`;
+  try {
+    const res = await api(`/api/video/${v.id}/thumbnail`, {
+      method: 'POST',
+      body: JSON.stringify({ engine })
+    });
+    alertEl.innerHTML = `<div class="notice" style="background:#ecfdf5;color:#065f46">✓ Successfully generated thumbnails using ${engine==='flow'?'Google Flow AI':'Gemini'}!</div>`;
+    await loadUploadThumbnails(v.id);
+  } catch(err) {
+    alertEl.innerHTML = `<div class="notice" style="background:#fef2f2;color:#991b1b">Thumbnail generation failed: ${esc(err.message)}</div>`;
+  }
+}
+
+function copyUploadFlowPrompt(){
+  const promptInput = document.getElementById('uploadFlowPromptInput');
+  const text = (promptInput?.value || uploadFlowPrompt || '').trim();
+  if(!text){
+    alert('Flow prompt is not available yet. Please run AI analysis first.');
+    return;
+  }
+  const btn = document.getElementById('copyFlowPromptBtn');
+  const showSuccess = () => {
+    if(btn){
+      btn.textContent = '✓ Copied Prompt!';
+      setTimeout(() => { btn.textContent = '📋 Copy Prompt'; }, 2000);
+    }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(showSuccess).catch(() => prompt('Copy prompt for Google Flow:', text));
+  } else {
+    prompt('Copy prompt for Google Flow:', text);
+  }
+}
+
+// ── video pick ────────────────────────────────────────────────────────────────
+async function pickVideo(){
+  const v = videos[Number(document.getElementById('video').value)]; if(!v) return;
+  const fp = v.file_path||v.path||'';
+  uiLog(`Video selected: ${v.filename} | path=${fp} | status=${v.status} | ai_status=${v.ai_status||'not_analyzed'}`);
+  analysisPassed = (v.ai_status==='completed') || Boolean(v.title && v.description);
+  document.getElementById('title').value = v.title || v.filename.replace(/\.[^.]+$/,'');
+  document.getElementById('description').value = v.description || '';
+  document.getElementById('tags').value = v.tags || '';
+  document.getElementById('hashtags').value = v.hashtags || '';
+  document.getElementById('videoInfo').textContent = `Path: ${fp} | SHA-256: ${v.sha256} | Status: ${v.status}`;
+  document.getElementById('aiSummary').style.display = v.ai_summary ? 'block' : 'none';
+  document.getElementById('aiSummary').textContent = v.ai_summary || '';
+  const vaBox = document.getElementById('visualAnalysis');
+  if(v.analysis_json){ try{ const aj=JSON.parse(v.analysis_json); const va=aj.visual_analysis||{}; if(va.visual_summary){ vaBox.style.display='block'; vaBox.innerHTML='<strong>Visual Analysis</strong><br>'+esc(va.visual_summary||'')+'<br><strong>Setting:</strong> '+esc(va.setting||'')+'  <strong>Confidence:</strong> '+esc(va.confidence||''); }else vaBox.style.display='none'; }catch(e){ vaBox.style.display='none'; } }else vaBox.style.display='none';
+  document.getElementById('aiStatus').textContent = v.ai_status && v.ai_status!=='not_analyzed' ? 'AI: '+v.ai_status : '';
+  
+  // Load thumbnails for selected video if available
+  if(v.id){
+    await loadUploadThumbnails(v.id);
+    await updateUploadQC(v.id);
+  } else {
+    // Try finding video_id from library if not directly in scanned item
+    try{
+      const lib = await api('/api/library?channel_id='+encodeURIComponent(document.getElementById('channel').value));
+      const found = (lib.videos||[]).find(x => (x.file_path||x.path)===fp);
+      if(found && found.id){
+        v.id = found.id;
+        v.thumbnail_path = found.thumbnail_path;
+        await loadUploadThumbnails(found.id);
+        await updateUploadQC(found.id);
+      } else {
+        document.getElementById('thumbStudioCard').style.display = 'none';
+        updateUploadQC(null);
+      }
+    }catch(e){
+      document.getElementById('thumbStudioCard').style.display = 'none';
+      updateUploadQC(null);
+    }
+  }
+
+  // Auto-fill Meta caption from description
+  const isMp4 = fp.toLowerCase().endsWith('.mp4');
+  if(!isMp4){ ['cardFB','cardFBR','cardIG'].forEach(id=>{ document.getElementById(id).style.opacity='0.4'; document.getElementById(id).style.pointerEvents='none'; }); }
+  else { updateMetaLabels(); }
+
+  // Sync multi-platform duplication state & protect against duplicate upload
+  updatePlatformSyncBanner(v);
+}
+
+function updatePlatformSyncBanner(v){
+  const banner = document.getElementById('platformSyncBanner');
+  const listEl = document.getElementById('platformSyncList');
+  if(!banner || !listEl) return;
+  if(!v){ banner.style.display = 'none'; return; }
+
+  let pubList = [];
+  if(Array.isArray(v.platforms_published)){
+    pubList = v.platforms_published;
+  } else if(typeof v.platforms_published === 'string' && v.platforms_published.trim()){
+    try { pubList = JSON.parse(v.platforms_published); } catch(e){}
+  }
+
+  const isYT = !!(v.youtube_video_id || (v.status === 'uploaded' && !v.facebook_video_id && !v.instagram_media_id) || pubList.includes('youtube'));
+  const isFB = !!(v.facebook_video_id || pubList.includes('facebook_video'));
+  const isFBR = !!(v.facebook_reel_id || pubList.includes('facebook_reel'));
+  const isIG = !!(v.instagram_media_id || pubList.includes('instagram_reel'));
+
+  const badges = [];
+  if(isYT){
+    const ytLink = v.youtube_video_id ? `https://youtu.be/${v.youtube_video_id}` : '#';
+    badges.push(`<a href="${ytLink}" target="_blank" rel="noopener" class="plat-badge-link yt" style="font-size:12px;padding:4px 9px" title="Watch on YouTube">✓ ${PLATFORM_SVGS.youtube} <span>YouTube (${v.youtube_video_id || 'Uploaded'})</span> <span class="plat-badge-arrow">↗</span></a>`);
+  }
+  if(isFB){
+    const fbLink = v.facebook_video_id ? `https://www.facebook.com/watch/?v=${v.facebook_video_id}` : '#';
+    badges.push(`<a href="${fbLink}" target="_blank" rel="noopener" class="plat-badge-link fb" style="font-size:12px;padding:4px 9px" title="Watch on Facebook">✓ ${PLATFORM_SVGS.facebook} <span>Facebook Video</span> <span class="plat-badge-arrow">↗</span></a>`);
+  }
+  if(isFBR){
+    const fbrLink = v.facebook_reel_id ? `https://www.facebook.com/reel/${v.facebook_reel_id}` : '#';
+    badges.push(`<a href="${fbrLink}" target="_blank" rel="noopener" class="plat-badge-link fb" style="font-size:12px;padding:4px 9px" title="Watch Facebook Reel">✓ ${PLATFORM_SVGS.facebook} <span>Facebook Reel</span> <span class="plat-badge-arrow">↗</span></a>`);
+  }
+  if(isIG){
+    const igLink = v.instagram_media_id ? `https://www.instagram.com/reel/${v.instagram_media_id}/` : '#';
+    badges.push(`<a href="${igLink}" target="_blank" rel="noopener" class="plat-badge-link ig" style="font-size:12px;padding:4px 9px" title="Watch Instagram Reel">✓ ${PLATFORM_SVGS.instagram} <span>Instagram Reel</span> <span class="plat-badge-arrow">↗</span></a>`);
+  }
+
+  if(badges.length){
+    banner.style.display = 'block';
+    listEl.innerHTML = badges.join(' ');
+    // Auto-uncheck already-published platforms to prevent accidental duplicate upload
+    if(isYT) togglePlatform('yt', false);
+    if(isFB) togglePlatform('fb', false);
+    if(isFBR) togglePlatform('fbr', false);
+    if(isIG) togglePlatform('ig', false);
+  } else {
+    banner.style.display = 'none';
+    listEl.innerHTML = '';
+  }
+}
+
+// ── analyze ───────────────────────────────────────────────────────────────────
+async function analyze(){
+  const v = videos[Number(document.getElementById('video').value)]; if(!v) return;
+  const fp = v.file_path||v.path||'';
+  if(!fp) return setMessage('scanmsg','No file path found. Please scan folder again.','error');
+  const provider = document.getElementById('provider').value;
+  const connectionId = document.getElementById('aiConnection').value;
+  const thumbnailEngine = document.getElementById('thumbEngine')?.value || 'gemini';
+  if(provider==='gemini' && !connectionId) return setMessage('scanmsg','Connect or select a Gemini account first. Open Connections.','error');
+  const provName = provider==='openai' ? 'ChatGPT' : (provider==='claude' ? 'Claude' : 'Gemini');
+  uiLog(`AI analyze started: file=${v.filename} provider=${provider} connection_id=${connectionId} engine=${thumbnailEngine}`);
+  const btns = document.querySelectorAll('button');
+  btns.forEach(b => { if(b.textContent.includes('Analyze')){ b.disabled=true; b.textContent='🤖 Analyzing…'; } });
+  document.getElementById('aiStatus').textContent = `${provName} video analysis running…`;
+  try{
+    const d = await api('/api/analyze',{method:'POST',body:JSON.stringify({
+      channel_id:document.getElementById('channel').value,
+      file_path:fp,
+      path:fp,
+      provider,
+      connection_id:provider==='gemini'&&connectionId?Number(connectionId):null,
+      thumbnail_engine:thumbnailEngine
+    })});
+    const md = d.metadata;
+    document.getElementById('title').value = md.title||'';
+    document.getElementById('description').value = md.description||'';
+    document.getElementById('hashtags').value = (md.hashtags||[]).join(' ');
+    document.getElementById('tags').value = (md.tags||[]).join(', ');
+    document.getElementById('aiSummary').style.display = 'block';
+    document.getElementById('aiSummary').textContent = 'AI Summary: '+(md.summary||'');
+    const va = d.visual_analysis||{};
+    if(va.visual_summary){ document.getElementById('visualAnalysis').style.display='block'; document.getElementById('visualAnalysis').innerHTML='<strong>Visual Analysis</strong><br>'+esc(va.visual_summary||'')+'<br><strong>Setting:</strong> '+esc(va.setting||'')+'  <strong>Confidence:</strong> '+esc(va.confidence||''); }
+    document.getElementById('aiStatus').textContent = `AI: PASSED | Provider: ${d.ai_provider||provider} | Model: ${d.vision_model||provider}`;
+    v.title=md.title; v.description=md.description; v.hashtags=(md.hashtags||[]).join(', '); v.tags=(md.tags||[]).join(', '); v.ai_status='completed'; v.ai_summary=md.summary; analysisPassed=true;
+    if(d.video_id){ v.id = d.video_id; }
+    uiLog(`AI analyze complete: file=${v.filename} title="${md.title?.substring(0,60)}" hashtags=${(md.hashtags||[]).join(' ')}`);
+    setMessage('scanmsg',`${provName} AI metadata generated. Review thumbnails & publish.`,'success');
+    
+    // Automatically display the 3 newly generated thumbnails and A/B titles
+    if(v.id){
+      await loadUploadThumbnails(v.id);
+      await updateUploadQC(v.id);
+    }
+  }catch(e){ uiLog(`AI analyze failed: file=${v.filename} error=${e.message}`,'ERROR'); document.getElementById('aiStatus').textContent='AI: FAILED'; setMessage('scanmsg',e.message,'error'); }
+  finally{ btns.forEach(b => { if(b.textContent.includes('Analyzing')){ b.disabled=false; b.textContent='🤖 Analyze Video & Generate Metadata'; } }); }
+}
+
+let currentUploadQC = null;
+
+async function updateUploadQC(videoId) {
+  const btn = document.getElementById('qcReviewBtn');
+  const badge = document.getElementById('qcStatusBadge');
+  if (!videoId) {
+    if (btn) btn.style.display = 'none';
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  try {
+    const data = await api(`/api/video/${videoId}/review`);
+    currentUploadQC = data;
+    if (btn) {
+      btn.style.display = 'inline-block';
+      btn.textContent = data.pdf_available ? '📄 View QC Review PDF' : '📋 Generate QC Review PDF';
+    }
+    if (badge) {
+      badge.style.display = 'inline-block';
+      const verdict = data.review_verdict || (data.review && data.review.professional_verdict) || 'IN REVIEW';
+      const score = data.review_score ? Number(data.review_score).toFixed(1) + '/10' : '';
+      badge.textContent = `QC: ${verdict} ${score}`;
+      if (verdict.includes('READY') || verdict.includes('PROFESSIONAL') || data.review_status === 'approved') {
+        badge.style.background = '#dcfce7'; badge.style.color = '#15803d'; badge.style.border = '1px solid #bbf7d0';
+      } else if (verdict.includes('GOOD')) {
+        badge.style.background = '#fef9c3'; badge.style.color = '#854d0e'; badge.style.border = '1px solid #fde047';
+      } else {
+        badge.style.background = '#fee2e2'; badge.style.color = '#b91c1c'; badge.style.border = '1px solid #fecaca';
+      }
+    }
+  } catch (e) {
+    console.warn('QC load failed', e);
+  }
+}
+
+function openUploadQCPdf() {
+  const v = videos[Number(document.getElementById('video').value)];
+  const vidId = v?.id || currentUploadQC?.video_id;
+  if (!vidId) return alert('Select or analyze a video first.');
+  window.open(`/api/video/${vidId}/review/pdf`, '_blank');
+}
+
+// ── publish all ───────────────────────────────────────────────────────────────
+async function publishAll(){
+  const ytChecked  = document.getElementById('chkYT').checked;
+  const fbChecked  = document.getElementById('chkFB').checked;
+  const fbrChecked = document.getElementById('chkFBR').checked;
+  const igChecked  = document.getElementById('chkIG').checked;
+  const approved   = document.getElementById('approveCheck').checked;
+
+  if(!ytChecked && !fbChecked && !fbrChecked && !igChecked)
+    return setMessage('publishResults','Select at least one platform to publish to.','error');
+  if(!approved)
+    return setMessage('publishResults','Check the approval box before publishing.','error');
+
+  const v = videos[Number(document.getElementById('video').value)];
+  if(!v) return setMessage('publishResults','Select a video first.','error');
+  const fp = v.file_path||v.path||'';
+
+  if(ytChecked && !analysisPassed)
+    return setMessage('publishResults','Run AI analysis first before uploading to YouTube.','error');
+
+  const title       = document.getElementById('title').value;
+  const description = document.getElementById('description').value;
+  const hashtags    = document.getElementById('hashtags').value.split(/\s+/).map(x=>x.trim()).filter(Boolean);
+  const tags        = document.getElementById('tags').value.split(',').map(x=>x.trim()).filter(Boolean);
+  const metaConnId  = document.getElementById('metaConnection').value;
+
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true; btn.textContent = 'Publishing…';
+  document.getElementById('publishResults').innerHTML = '';
+  uiLog(`Publish started: platforms=${[ytChecked&&'YouTube',fbChecked&&'Facebook Video',fbrChecked&&'Facebook Reel',igChecked&&'Instagram Reel'].filter(Boolean).join(',')} file=${v.filename} title="${title?.substring(0,60)}"`);
+
+  const results = [];
+
+  // YouTube
+  if(ytChecked){
+    try{
+      const payload = {
+        channel_id: document.getElementById('channel').value, file_path:fp, path:fp,
+        title, description, hashtags, tags,
+        privacy_status: document.getElementById('privacy').value,
+        category_id: document.getElementById('category').value,
+        made_for_kids: document.getElementById('kids').checked,
+        contains_synthetic_media: document.getElementById('synthetic').value==='yes',
+        video_language: document.getElementById('videoLanguage').value,
+        title_description_language: document.getElementById('metadataLanguage').value,
+        caption_certification: document.getElementById('captionCertification').value,
+        recording_date: document.getElementById('recordingDate').value||'',
+        video_location: document.getElementById('videoLocation').value,
+        thumbnail_path: selectedUploadThumbPath || v.thumbnail_path || '',
+        ab_test_thumbnails: document.getElementById('chkABTest')?.checked ?? true,
+        ab_test_titles: currentAbTitles || []
+      };
+      const d = await api('/api/upload',{method:'POST',body:JSON.stringify(payload)});
+      v.status = 'uploaded';
+      if(d.youtube_video_id) v.youtube_video_id = d.youtube_video_id;
+      let plExtra = '';
+      if(d.playlist && d.playlist.playlist_title){
+        plExtra = `<br><span style="color:#059669;font-size:12px;font-weight:600">✓ Auto-assigned to playlist: "${esc(d.playlist.playlist_title)}"</span>`;
+      } else if(d.playlist_error){
+        plExtra = `<br><span style="color:#b45309;font-size:12px">ℹ️ Playlist notice: ${esc(d.playlist_error)}</span>`;
+      }
+      if(d.updated){
+        const updateMsg = `Already uploaded to channel. Pushed new AI metadata & thumbnail to YouTube! Video: "<strong>${esc(title || v.title || v.filename)}</strong>" — <a href="https://youtu.be/${d.youtube_video_id}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600">View on YouTube ↗</a>${plExtra}`;
+        uiLog(`YouTube metadata sync complete: file=${v.filename} yt_id=${d.youtube_video_id}`);
+        results.push({platform:'YouTube',ok:true,msg:updateMsg,html:true});
+      } else {
+        const uploadMsg = `Uploaded! Title: "<strong>${esc(title || v.title || v.filename)}</strong>" — <a href="https://youtu.be/${d.youtube_video_id}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600">View on YouTube ↗</a>${plExtra}`;
+        uiLog(`YouTube upload complete: file=${v.filename} yt_id=${d.youtube_video_id}`);
+        results.push({platform:'YouTube',ok:true,msg:uploadMsg,html:true});
+      }
+      try { await load(); } catch(e){}
+    }catch(e){
+      const errStr = e.message || '';
+      if(v.youtube_video_id || v.status === 'uploaded'){
+        const existingInfo = `Already on YouTube as "<strong>${esc(v.title || v.filename)}</strong>" (ID: ${v.youtube_video_id || 'linked'}) — <a href="https://youtu.be/${v.youtube_video_id}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600">View on YouTube ↗</a> · Inventory synced.`;
+        results.push({platform:'YouTube',ok:true,msg:existingInfo,html:true});
+      } else {
+        uiLog(`YouTube upload failed: file=${v.filename} error=${errStr}`,'ERROR');
+        results.push({platform:'YouTube',ok:false,msg:errStr});
+      }
+    }
+  }
+
+  // Facebook / Instagram (need video_id from library)
+  const anyMeta = fbChecked||fbrChecked||igChecked;
+  if(anyMeta){
+    if(!metaConnId){ results.push({platform:'Meta',ok:false,msg:'No Meta page selected.'}); }
+    else if(!fp.toLowerCase().endsWith('.mp4')){ results.push({platform:'Meta',ok:false,msg:'Meta publishing requires an MP4 file.'}); }
+    else {
+      // Ensure video is in library to get its id
+      let videoId = v.id;
+      if(!videoId){
+        try{ const lib=await api('/api/library?channel_id='+encodeURIComponent(document.getElementById('channel').value)); const found=(lib.videos||[]).find(x=>(x.file_path||x.path)===fp); videoId=found?.id; }catch(e){}
+      }
+      if(!videoId){ results.push({platform:'Meta',ok:false,msg:'Video not found in library. Scan folder first.'}); }
+      else {
+        const caption = [description, hashtags.join(' ')].filter(Boolean).join('\n\n');
+        const destinations = [];
+        if(fbChecked)  destinations.push({key:'Facebook Video', dest:'facebook_video'});
+        if(fbrChecked) destinations.push({key:'Facebook Reel',  dest:'facebook_reel'});
+        if(igChecked)  destinations.push({key:'Instagram Reel', dest:'instagram_reel'});
+        for(const {key,dest} of destinations){
+          try{
+            uiLog(`Meta publish started: destination=${dest} file=${v.filename} page_connection_id=${metaConnId}`);
+            const r = await api('/api/meta/publish',{method:'POST',body:JSON.stringify({connection_id:Number(metaConnId),video_id:videoId,destination:dest,title,caption,approved:true})});
+            uiLog(`Meta publish complete: destination=${dest} file=${v.filename} meta_id=${r.result?.id||''} post_id=${r.result?.post_id||''}`);
+            const postId = r.result?.post_id||'';
+            const metaId = r.result?.id||'see Meta dashboard';
+            const postLink = postId ? ` — <a href="https://www.facebook.com/${postId}" target="_blank" rel="noopener">View Post ↗</a>` : '';
+            results.push({platform:key,ok:true,msg:`Published. Meta ID: ${metaId}${postLink}`,html:true});
+          }catch(e){ uiLog(`Meta publish failed: destination=${dest} file=${v.filename} error=${e.message}`,'ERROR'); results.push({platform:key,ok:false,msg:e.message}); }
+        }
+      }
+    }
+  }
+
+  // Render results
+  document.getElementById('publishResults').innerHTML = results.map(r =>
+    `<div class="result-row">${r.ok?'✅':'❌'} <strong>${esc(r.platform)}:</strong> ${r.html ? r.msg : esc(r.msg)}</div>`
+  ).join('');
+
+  btn.disabled = false; btn.textContent = '🚀 Publish to Selected Platforms';
+  document.getElementById('approveCheck').checked = false;
+}
+
+init().catch(e => console.error(e));
+</script></body></html>

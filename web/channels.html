@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Channels & Accounts — OmniCast Studio</title>
+<link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">OmniCast</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main"><h1>YouTube Channels</h1>
+<div class="card" style="padding:14px 18px"><button class="btn btn-primary btn-sm" onclick="connect()">+ Connect YouTube Channel</button> <a class="btn btn-secondary btn-sm" href="/connections" style="text-decoration:none">🔌 All Connections</a><div id="msg"></div></div>
+<div class="card" style="margin-top:14px;padding:14px 18px"><div id="list"></div></div>
+<div id="modal" class="modal"><div class="modal-box"><h2>Select Channel</h2><p class="muted">Google OAuth returned these YouTube channels. Choose the channel you want to store.</p>
+<select id="choice"></select><div class="row" style="margin-top:16px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="complete()">Connect Selected Channel</button></div></div></div>
+</main></div></div></div>
+<script src="/static/common.js?v=24"></script><script>
+let candidates=[];
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+async function refresh(){
+  const d = await api("/api/channels");
+  document.getElementById("list").innerHTML = d.channels.length ? d.channels.map(c => {
+    const cUrl = c.channel_handle ? ('https://www.youtube.com/' + c.channel_handle) : ('https://www.youtube.com/channel/' + c.channel_id);
+    return `
+    <div class="row" style="padding:12px 0;border-bottom:1px solid #edf0f5;align-items:center">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <a href="${esc(cUrl)}" target="_blank" rel="noopener" class="plat-badge-link yt" style="font-size:14px;padding:6px 12px" title="Open YouTube Channel">
+          ${PLATFORM_SVGS.youtube} <strong>${esc(c.channel_name)}</strong> <span class="plat-badge-arrow">↗</span>
+        </a>
+        <div class="muted tiny">${esc(c.channel_id)}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge uploaded" style="font-size:11px">CONNECTED</span>
+        <button class="btn btn-danger btn-sm" onclick="removeChannel('${esc(c.channel_id)}')">Remove</button>
+      </div>
+    </div>`;
+  }).join("") : "<p class='muted'>No connected channels.</p>";
+}
+async function connect(){setMessage("msg","Opening Google sign-in…");
+ try{const d=await api("/api/connect",{method:"POST"});candidates=d.channels;
+ document.getElementById("choice").innerHTML=candidates.map((c,i)=>`<option value="${i}">${esc(c.channel_name)} — ${esc(c.channel_id)}</option>`).join("");
+ document.getElementById("modal").classList.add("open");setMessage("msg","Google authentication completed. Select your channel.","success");
+ }catch(e){setMessage("msg",e.message,"error")}}
+async function complete(){const c=candidates[Number(document.getElementById("choice").value)];if(!c)return;
+ try{await api("/api/connect/complete",{method:"POST",body:JSON.stringify(c)});closeModal();await refresh();setMessage("msg","Channel connected successfully.","success")}
+ catch(e){setMessage("msg",e.message,"error")}}
+async function removeChannel(id){if(!confirm("Remove this channel and its saved token?"))return;
+ await api("/api/channels/"+encodeURIComponent(id),{method:"DELETE"});refresh();}
+refresh();
+</script></body></html>

@@ -1,0 +1,646 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Logs — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=25">
+  <style>
+    .filter-panel {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .preset-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .pill-btn {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pill-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .pill-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 2px 4px rgba(37,99,235,0.25);
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px 16px;
+      align-items: flex-end;
+    }
+    .field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 5px;
+    }
+    .dt-input, .select-input, .text-input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.15s ease;
+    }
+    .dt-input:focus, .select-input:focus, .text-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+    }
+    .actions-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .stat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .stat-badge.error { background: #fee2e2; color: #b91c1c; }
+    .stat-badge.warning { background: #fef3c7; color: #b45309; }
+    .stat-badge.info { background: #e0f2fe; color: #0369a1; }
+    .log-viewer-wrapper {
+      position: relative;
+      background: #090d16;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .viewer-header {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    pre#log {
+      margin: 0;
+      padding: 16px;
+      max-height: 68vh;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    /* Syntax highlighting */
+    .lvl-error { color: #f87171; font-weight: 700; background: rgba(239,68,68,0.12); padding: 0 4px; border-radius: 4px; }
+    .lvl-warn  { color: #fbbf24; font-weight: 700; background: rgba(245,158,11,0.12); padding: 0 4px; border-radius: 4px; }
+    .lvl-info  { color: #38bdf8; font-weight: 600; }
+    .tag-opt   { color: #a78bfa; font-weight: 700; }
+    .tag-thumb { color: #34d399; font-weight: 700; }
+    .tag-yt    { color: #fb7185; font-weight: 700; }
+    .tag-ai    { color: #60a5fa; font-weight: 700; }
+    .log-ts    { color: #64748b; }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse-green 1.8s infinite;
+    }
+    @keyframes pulse-green {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a>
+    <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav active" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status">
+    <div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div>
+    <div class="status-detail">Local creator workspace</div>
+    <a href="/logs" class="sidebar-log-btn">Open Logs</a>
+  </div>
+</aside>
+
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="mobile-brand">OmniCast</div>
+      <div>
+        <div class="top-greeting">Application Diagnostics & Activity Logs <span>✦</span></div>
+        <div class="top-subtitle">Real-time inspection of upload jobs, AI analysis, A/B optimizer & scheduler events</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div>
+      <button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button>
+      <div class="profile-chip">
+        <div class="profile-avatar">C</div>
+        <div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div>
+        <span class="chevron">⌄</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main" style="max-width:1440px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div>
+        <h1 style="margin:0 0 4px 0">Activity Logs</h1>
+        <p class="muted" style="margin:0">Filtered inspection with date and time range criteria</p>
+      </div>
+      <div class="btn-row">
+        <button id="autoBtn" class="btn btn-primary" onclick="toggleAutoReload()">⚡ Auto-reload: ON (2.5s)</button>
+        <button class="btn btn-secondary" onclick="loadLogs(false)">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <!-- Date & Time Range Filtering Card -->
+    <div class="filter-panel">
+      <!-- Quick Range Presets -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <span class="field-label" style="margin:0">Quick Time Presets:</span>
+        <div class="preset-pills" style="margin:0">
+          <button class="pill-btn active" data-preset="all" onclick="applyPreset('all')">All Recent</button>
+          <button class="pill-btn" data-preset="15m" onclick="applyPreset('15m')">Last 15m</button>
+          <button class="pill-btn" data-preset="1h" onclick="applyPreset('1h')">Last 1 Hour</button>
+          <button class="pill-btn" data-preset="6h" onclick="applyPreset('6h')">Last 6 Hours</button>
+          <button class="pill-btn" data-preset="24h" onclick="applyPreset('24h')">Last 24 Hours</button>
+          <button class="pill-btn" data-preset="today" onclick="applyPreset('today')">Today</button>
+        </div>
+      </div>
+
+      <!-- Specific Range Controls Grid -->
+      <div class="filter-grid">
+        <div>
+          <label class="field-label" for="startDate">From (Date & Time)</label>
+          <input type="datetime-local" id="startDate" class="dt-input" onchange="onCustomDateChange()" />
+        </div>
+        <div>
+          <label class="field-label" for="endDate">To (Date & Time)</label>
+          <input type="datetime-local" id="endDate" class="dt-input" onchange="onCustomDateChange()" />
+        </div>
+        <div>
+          <label class="field-label" for="levelFilter">Log Level</label>
+          <select id="levelFilter" class="select-input" onchange="loadLogs()">
+            <option value="">All Levels (INFO, WARN, ERROR)</option>
+            <option value="ERROR">🚨 ERROR only</option>
+            <option value="WARNING">⚠️ WARNING &amp; ERROR</option>
+            <option value="INFO">ℹ️ INFO &amp; above</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="keywordFilter">Search Text / Component</label>
+          <input id="keywordFilter" class="text-input" placeholder="e.g. [OPTIMIZER], 403, [THUMB], Gemini..." oninput="onKeywordInput()" />
+        </div>
+        <div>
+          <label class="field-label" for="logSource">Log Scope / Source</label>
+          <select id="logSource" class="select-input" onchange="loadLogs()">
+            <option value="app" selected>📦 Application Logs (app.log)</option>
+            <option value="all">🌐 All Logs (Server &amp; App)</option>
+          </select>
+        </div>
+        <div style="max-width:140px">
+          <label class="field-label" for="maxLines">Max Lines</label>
+          <select id="maxLines" class="select-input" onchange="loadLogs()">
+            <option value="500">500 lines</option>
+            <option value="1000" selected>1,000 lines</option>
+            <option value="2500">2,500 lines</option>
+            <option value="5000">5,000 lines</option>
+            <option value="10000">10,000 lines</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action & Badge Bar -->
+      <div class="actions-bar">
+        <div class="btn-row" id="statsRow">
+          <span class="stat-badge info" id="countBadge">Showing 0 entries</span>
+          <span class="stat-badge error" id="errorCountBadge" style="display:none">0 Errors</span>
+          <span class="stat-badge warning" id="warnCountBadge" style="display:none">0 Warnings</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="clearRangeFilters()">↺ Reset Range</button>
+          <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="exportLogs()">📥 Export / Download</button>
+          <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="clearViewer()">Clear Display</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terminal-grade Log Viewer -->
+    <div class="log-viewer-wrapper">
+      <div class="viewer-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="liveStatusBadge" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#10b981">
+            <span class="pulse-dot"></span> Live
+          </span>
+          <span style="color:#475569">·</span>
+          <span id="pathLabel" style="color:#94a3b8">logs/app.log</span>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center">
+          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:#cbd5e1;font-size:12px;user-select:none">
+            <input type="checkbox" id="autoScrollCheck" checked /> Auto-scroll to latest
+          </label>
+          <span id="renderedCount" style="color:#64748b">0 lines displayed</span>
+        </div>
+      </div>
+      <pre id="log">Loading logs...</pre>
+    </div>
+  </main>
+</div>
+</div>
+
+<script src="/static/common.js?v=25"></script>
+<script>
+let currentRawLines = [];
+let autoTimer = null;
+let activePreset = 'all';
+let isFetching = false;
+const AUTO_RELOAD_INTERVAL_MS = 2000;
+
+// Format Date object to YYYY-MM-DDTHH:mm for datetime-local input
+function toLocalDatetimeString(date) {
+  const pad = n => String(n).padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function updateLiveBadge(state, timeStr) {
+  const badge = document.getElementById('liveStatusBadge');
+  if (!badge) return;
+  const nowStr = timeStr || new Date().toLocaleTimeString();
+  if (state === 'live') {
+    badge.innerHTML = `<span class="pulse-dot"></span> Live (${nowStr})`;
+    badge.style.color = '#10b981';
+  } else if (state === 'paused') {
+    badge.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8"></span> Paused`;
+    badge.style.color = '#94a3b8';
+  } else if (state === 'error') {
+    badge.innerHTML = `⚠️ Sync reconnecting (${nowStr})`;
+    badge.style.color = '#f59e0b';
+  }
+}
+
+function startAutoReload() {
+  if (autoTimer) clearInterval(autoTimer);
+  const btn = document.getElementById('autoBtn');
+  if (btn) {
+    btn.innerHTML = '⚡ Auto-reload: <strong>ON (2s)</strong>';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  }
+  updateLiveBadge('live');
+  autoTimer = setInterval(() => {
+    loadLogs(true);
+  }, AUTO_RELOAD_INTERVAL_MS);
+  try { localStorage.setItem('omnicast_logs_autoreload', 'on'); } catch (_) {}
+}
+
+function stopAutoReload() {
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+  const btn = document.getElementById('autoBtn');
+  if (btn) {
+    btn.innerHTML = '⏱️ Auto-reload: <strong>OFF</strong>';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  }
+  updateLiveBadge('paused');
+  try { localStorage.setItem('omnicast_logs_autoreload', 'off'); } catch (_) {}
+}
+
+function toggleAutoReload() {
+  if (autoTimer) {
+    stopAutoReload();
+  } else {
+    startAutoReload();
+    loadLogs(false);
+  }
+}
+
+function applyPreset(preset) {
+  activePreset = preset;
+  document.querySelectorAll('.pill-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.preset === preset);
+  });
+
+  const now = new Date();
+  const startInput = document.getElementById('startDate');
+  const endInput = document.getElementById('endDate');
+
+  if (preset === 'all') {
+    startInput.value = '';
+    endInput.value = '';
+  } else if (preset === '15m') {
+    const s = new Date(now.getTime() - 15 * 60 * 1000);
+    startInput.value = toLocalDatetimeString(s);
+    endInput.value = toLocalDatetimeString(now);
+  } else if (preset === '1h') {
+    const s = new Date(now.getTime() - 60 * 60 * 1000);
+    startInput.value = toLocalDatetimeString(s);
+    endInput.value = toLocalDatetimeString(now);
+  } else if (preset === '6h') {
+    const s = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+    startInput.value = toLocalDatetimeString(s);
+    endInput.value = toLocalDatetimeString(now);
+  } else if (preset === '24h') {
+    const s = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    startInput.value = toLocalDatetimeString(s);
+    endInput.value = toLocalDatetimeString(now);
+  } else if (preset === 'today') {
+    const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    startInput.value = toLocalDatetimeString(s);
+    endInput.value = toLocalDatetimeString(now);
+  }
+
+  loadLogs(false);
+}
+
+function onCustomDateChange() {
+  activePreset = 'custom';
+  document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+  loadLogs(false);
+}
+
+let keywordDebounce = null;
+function onKeywordInput() {
+  clearTimeout(keywordDebounce);
+  keywordDebounce = setTimeout(() => {
+    render();
+  }, 150);
+}
+
+function clearRangeFilters() {
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  document.getElementById('levelFilter').value = '';
+  document.getElementById('keywordFilter').value = '';
+  if (document.getElementById('logSource')) document.getElementById('logSource').value = 'app';
+  applyPreset('all');
+}
+
+async function loadLogs(isAuto = false) {
+  if (isFetching) return;
+  isFetching = true;
+
+  const refreshBtn = document.querySelector('button[onclick="loadLogs(false)"]');
+  if (!isAuto && refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Loading…';
+  }
+
+  // If a time-window preset is active (other than 'all' or 'custom'), update window dynamically
+  const now = new Date();
+  if (activePreset === '15m') {
+    const s = new Date(now.getTime() - 15 * 60 * 1000);
+    document.getElementById('startDate').value = toLocalDatetimeString(s);
+    document.getElementById('endDate').value = toLocalDatetimeString(now);
+  } else if (activePreset === '1h') {
+    const s = new Date(now.getTime() - 60 * 60 * 1000);
+    document.getElementById('startDate').value = toLocalDatetimeString(s);
+    document.getElementById('endDate').value = toLocalDatetimeString(now);
+  } else if (activePreset === '6h') {
+    const s = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+    document.getElementById('startDate').value = toLocalDatetimeString(s);
+    document.getElementById('endDate').value = toLocalDatetimeString(now);
+  } else if (activePreset === '24h') {
+    const s = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    document.getElementById('startDate').value = toLocalDatetimeString(s);
+    document.getElementById('endDate').value = toLocalDatetimeString(now);
+  } else if (activePreset === 'today') {
+    const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    document.getElementById('startDate').value = toLocalDatetimeString(s);
+    document.getElementById('endDate').value = toLocalDatetimeString(now);
+  }
+
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+  const level = document.getElementById('levelFilter').value;
+  const source = document.getElementById('logSource') ? document.getElementById('logSource').value : 'app';
+  const maxLines = document.getElementById('maxLines').value || 1000;
+
+  const params = new URLSearchParams();
+  params.set('lines', maxLines);
+  if (start) params.set('start', start);
+  if (end) params.set('end', end);
+  if (level) params.set('level', level);
+  if (source) params.set('source', source);
+
+  try {
+    const res = await api(`/api/logs?${params.toString()}`);
+    const newLines = res.lines || [];
+
+    // Check if lines actually changed to avoid wasteful DOM repaints
+    const changed = newLines.length !== currentRawLines.length ||
+      (newLines.length > 0 && newLines[newLines.length - 1] !== currentRawLines[currentRawLines.length - 1]);
+
+    currentRawLines = newLines;
+    document.getElementById('pathLabel').textContent = res.path || 'logs/app.log';
+
+    if (changed || !isAuto) {
+      render();
+    }
+    if (autoTimer) {
+      updateLiveBadge('live', new Date().toLocaleTimeString());
+    }
+  } catch (err) {
+    if (!isAuto) {
+      document.getElementById('log').textContent = 'Error loading logs: ' + err.message;
+    } else {
+      updateLiveBadge('error', new Date().toLocaleTimeString());
+    }
+  } finally {
+    isFetching = false;
+    if (!isAuto && refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '🔄 Refresh';
+    }
+  }
+}
+
+function highlightLine(line) {
+  let safe = line
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Highlight log levels
+  if (safe.includes('| ERROR |')) {
+    safe = safe.replace(/\|\s*ERROR\s*\|/, '<span class="lvl-error">| ERROR |</span>');
+  } else if (safe.includes('| WARNING |')) {
+    safe = safe.replace(/\|\s*WARNING\s*\|/, '<span class="lvl-warn">| WARNING |</span>');
+  } else if (safe.includes('| INFO |')) {
+    safe = safe.replace(/\|\s*INFO\s*\|/, '<span class="lvl-info">| INFO |</span>');
+  }
+
+  // Highlight component tags
+  safe = safe.replace(/(\[OPTIMIZER\])/g, '<span class="tag-opt">$1</span>');
+  safe = safe.replace(/(\[THUMB\])/g, '<span class="tag-thumb">$1</span>');
+  safe = safe.replace(/(\[YOUTUBE\])/g, '<span class="tag-yt">$1</span>');
+  safe = safe.replace(/(\[AI\])/g, '<span class="tag-ai">$1</span>');
+
+  // Format timestamp prefix
+  safe = safe.replace(/^(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d+)/, '<span class="log-ts">$1</span>');
+
+  return safe;
+}
+
+function render() {
+  const q = (document.getElementById('keywordFilter').value || '').trim().toLowerCase();
+  let displayed = currentRawLines;
+
+  if (q) {
+    displayed = displayed.filter(line => line.toLowerCase().includes(q));
+  }
+
+  let errorCount = 0;
+  let warnCount = 0;
+  for (const l of displayed) {
+    if (l.includes('| ERROR |') || l.includes('ERROR:')) errorCount++;
+    if (l.includes('| WARNING |') || l.includes('WARNING:')) warnCount++;
+  }
+
+  // Update badges
+  document.getElementById('countBadge').textContent = `Showing ${displayed.length} matching entries`;
+
+  const errBadge = document.getElementById('errorCountBadge');
+  if (errorCount > 0) {
+    errBadge.textContent = `${errorCount} Error${errorCount > 1 ? 's' : ''}`;
+    errBadge.style.display = 'inline-flex';
+  } else {
+    errBadge.style.display = 'none';
+  }
+
+  const warnBadge = document.getElementById('warnCountBadge');
+  if (warnCount > 0) {
+    warnBadge.textContent = `${warnCount} Warning${warnCount > 1 ? 's' : ''}`;
+    warnBadge.style.display = 'inline-flex';
+  } else {
+    warnBadge.style.display = 'none';
+  }
+
+  document.getElementById('renderedCount').textContent = `${displayed.length} lines`;
+
+  const logEl = document.getElementById('log');
+  if (!displayed.length) {
+    logEl.innerHTML = '<span style="color:#94a3b8">No log entries found for the selected date, time range, and filters.</span>';
+    return;
+  }
+
+  logEl.innerHTML = displayed.map(highlightLine).join('\n');
+
+  if (document.getElementById('autoScrollCheck').checked) {
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+function clearViewer() {
+  document.getElementById('log').innerHTML = '<span style="color:#94a3b8">Viewer cleared. Click "Refresh" to reload.</span>';
+  document.getElementById('renderedCount').textContent = '0 lines';
+}
+
+function exportLogs() {
+  const content = currentRawLines.join('\n');
+  if (!content) {
+    alert('No log entries to export.');
+    return;
+  }
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `app_logs_${new Date().toISOString().slice(0,19).replace(/[:T]/g, '_')}.log`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+window.addEventListener('beforeunload', () => {
+  if (autoTimer) clearInterval(autoTimer);
+});
+
+// Initial load with 'all' preset so full recent log is displayed without date-window exclusion
+applyPreset('all');
+
+// Auto-reload defaults to ON (2 seconds)
+try {
+  const savedPref = localStorage.getItem('omnicast_logs_autoreload');
+  if (savedPref !== 'off') {
+    startAutoReload();
+  } else {
+    stopAutoReload();
+  }
+} catch (_) {
+  startAutoReload();
+}
+</script>
+</body>
+</html>

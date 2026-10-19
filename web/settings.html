@@ -1,0 +1,540 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Settings — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=24">
+  <style>
+    .status-card { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+    .status-val { font-weight: 600; }
+    .action-group { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .tag-badge { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 6px; font-size: 12px; margin: 2px; }
+  </style>
+</head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">OmniCast</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main">
+    <h1>Settings & System Health</h1>
+
+    <!-- Environment & Task Execution Policy Card -->
+    <div class="card" style="margin-bottom: 24px;border:1px solid #e2e8f0;background:#ffffff">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="margin:0">🌍 System Environment &amp; Task Policy</h2>
+          <p class="muted" style="margin:4px 0 0">Controls whether background tasks execute automatically (PROD) or stand by for one-shot testing (DEV).</p>
+        </div>
+        <span id="envBadge" class="badge" style="padding:6px 14px;font-size:13px;font-weight:750">Loading…</span>
+      </div>
+      <div id="envPolicySummary" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-top:14px;font-size:13px;line-height:1.5">
+        Loading environment rules…
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#64748b">
+        To configure, set <code>YLA_APP_ENV=development</code> or <code>YLA_APP_ENV=production</code> in your <code>.env</code> file.
+      </div>
+    </div>
+
+    <!-- Gemini AI Card -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h2>🤖 Gemini AI Configuration</h2>
+      <p class="muted">Gemini is the only AI provider in this release. Video understanding and metadata generation run through your connected Gemini account(s). No local LLM or local AI service is required.</p>
+      <div id="aiNotice" class="notice">Checking Gemini status...</div>
+      <div class="status-card">
+        <div class="status-row"><span>AI Provider</span><span id="aiServiceVal" class="status-val">Checking...</span></div>
+        <div class="status-row"><span>Default Model</span><span id="aiModelStatusVal" class="status-val">Checking...</span></div>
+        <div class="status-row"><span>Connected Gemini Accounts</span><span id="aiModelsList" class="status-val">Checking...</span></div>
+        <div class="status-row"><span>FFmpeg Video Engine</span><span id="aiFfmpegVal" class="status-val">Checking...</span></div>
+      </div>
+      <div class="action-group">
+        <button class="btn btn-secondary" onclick="checkAIStatus()">🔄 Refresh Gemini Status</button>
+        <a class="btn btn-primary" href="/connections" style="text-decoration:none">🔌 Manage Gemini Connections</a>
+      </div>
+      <div id="aiActionMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Telegram Notifications Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>📱 Telegram Notifications</h2>
+      <p class="muted">Get instant Telegram messages for uploads, failures, and token expiry. <a href="https://t.me/BotFather" target="_blank" rel="noopener">Create a bot via @BotFather</a> to get your Bot Token, then message your bot and use <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> to get your Chat ID.</p>
+      <div class="row" style="flex-wrap:wrap;gap:14px;margin-top:10px">
+        <div style="flex:1;min-width:220px"><label>Bot Token</label><input id="tgToken" placeholder="123456789:ABCdef..." autocomplete="off"></div>
+        <div style="flex:1;min-width:160px"><label>Chat ID</label><input id="tgChatId" placeholder="-100123456789 or 123456789" autocomplete="off"></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Application URL in Notifications <span class="muted" style="font-weight:normal">(Web link included in Telegram messages)</span></label>
+        <input id="tgAppUrl" placeholder="http://localhost:9000 or https://your-public-domain.com" autocomplete="off">
+        <div class="muted" style="font-size:11px;margin-top:4px">Leave blank to use current host or YLA_PUBLIC_BASE_URL. Include full protocol (http:// or https://).</div>
+      </div>
+      <div style="margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="tgEnabled" style="width:auto"> Enable Telegram notifications
+        </label>
+      </div>
+      <div style="margin-top:4px;font-size:12px;color:#71809a">Notifications sent for: ✅ YouTube upload complete &nbsp;❌ Upload failed &nbsp;🤖 Scheduled upload &nbsp;📘 Facebook/Instagram publish &nbsp;⚡ Video performance optimization &nbsp;⚠️ Token expiry (max once per 24h)</div>
+      <div class="action-group" style="margin-top:12px">
+        <button class="btn btn-secondary" onclick="tgTest()">📨 Send Test Message</button>
+        <button class="btn btn-primary" onclick="tgSave()">💾 Save Telegram Config</button>
+      </div>
+      <div id="tgMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Cross-Platform Syndication & Outro CTA Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>🔗 Cross-Platform Syndication &amp; Outro CTAs</h2>
+      <p class="muted">
+        Automatically cross-promote your content across YouTube, Facebook, and Instagram. Cross-link your published videos in descriptions and comments, and append platform-tailored call-to-action outros.
+      </p>
+
+      <div style="margin-top:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px;">
+        <h3 style="margin-top:0; margin-bottom:8px; font-size:15px; color:#1e293b;">🎬 End-of-Video Outro Cards (Automated FFmpeg Stitching)</h3>
+        <p class="muted" style="font-size:13px; margin-bottom:12px;">
+          Appends high-conversion platform-specific outro cards at the end of every video before upload:
+        </p>
+        <ul style="font-size:13px; color:#475569; margin-bottom:12px; padding-left:20px; line-height:1.6;">
+          <li><strong>YouTube</strong>: <em>"Like, Share &amp; Subscribe"</em> with channel name and subscription badge</li>
+          <li><strong>Facebook</strong>: <em>"Like, Share &amp; Follow Page"</em> with your page badge</li>
+          <li><strong>Instagram</strong>: <em>"Like, Comment &amp; Follow"</em> with your @handle badge</li>
+        </ul>
+
+        <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+            <input type="checkbox" id="enableOutros" style="width:auto"> Enable Platform-Specific Outros
+          </label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:13px; color:#475569; margin:0;">Duration (seconds):</label>
+            <input id="outroDuration" type="number" step="0.5" min="1" max="15" value="3.5" style="width:70px; padding:4px 8px;">
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:12px; background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px; font-size:12px; color:#475569;">
+          <strong>🎨 Custom Video Outro Support (Clipchamp, Premiere, CapCut):</strong><br>
+          Prefer your own animated outro? Create a 3–5s clip on <a href="https://clipchamp.com/en/" target="_blank" rel="noopener">Clipchamp</a> or your video editor and place the MP4 file in:
+          <code id="outrosDirLabel" style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">data/outros/</code><br>
+          <div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;" id="customOutroBadges">
+            <span id="badgeYt" class="tag-badge">YouTube Custom: <span>Checking...</span></span>
+            <span id="badgeFb" class="tag-badge">Facebook Custom: <span>Checking...</span></span>
+            <span id="badgeIg" class="tag-badge">Instagram Custom: <span>Checking...</span></span>
+          </div>
+          <div class="muted" style="margin-top:4px;">If a custom MP4 is present in <code>data/outros/outro_&lt;platform&gt;.mp4</code>, OmniCast automatically rescales and concatenates it instead of the generated card!</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px;">
+        <h3 style="margin-top:0; margin-bottom:8px; font-size:15px; color:#1e293b;">🌐 Cross-Platform Links in Descriptions &amp; Comments</h3>
+        <p class="muted" style="font-size:13px; margin-bottom:12px;">
+          Drive traffic between platforms. Once a video is published, OmniCast injects companion links directly into the YouTube description and posts pinned/top comments on Facebook and Instagram.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="enableCrossLinks" style="width:auto">
+            <span><strong>Cross-Link in Descriptions:</strong> Append Facebook &amp; Instagram links to YouTube video description (and vice-versa).</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="postCrossComments" style="width:auto">
+            <span><strong>Cross-Platform First Comment:</strong> Automatically post comments linking companion posts as soon as publishing completes.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="action-group" style="margin-top:16px">
+        <button class="btn btn-primary" onclick="saveSyndicationSettings()">💾 Save Syndication &amp; Outro Config</button>
+        <button class="btn btn-secondary" onclick="loadSyndicationConfig()">🔄 Reload</button>
+      </div>
+      <div id="syndicationMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Video Optimizer Daytime Schedule Window Card -->
+    <div class="card" style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <h2>⚡ 7-15 Day Video Optimizer Operating Window</h2>
+        <span id="optWinLiveBadge" class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700">Checking Window…</span>
+      </div>
+      <p class="muted">
+        The video optimizer audits videos that have been live for 7–15 days and auto-pivots underperforming titles and thumbnails.
+        To avoid disturbing viewers and triggering algorithmic penalties at night, <strong>video details are only updated during the daytime window</strong>.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-top:12px">
+        <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #e2e8f0">
+          <label style="display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="optAutoEnabled" checked style="width:18px;height:18px" />
+            <span>Enable Automatic Background Performance Optimization (7-15 Day A/B Engine)</span>
+          </label>
+          <div class="muted tiny" style="margin-top:4px;margin-left:26px">When enabled, audits underperforming videos during daytime hours and rotates titles/thumbnails automatically with rate-limited pacing.</div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+          <div>
+            <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px">⏱️ Pacing Gap Between Videos</label>
+            <select id="optGapSeconds" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600">
+              <option value="1.0">1.0 second</option>
+              <option value="1.5" selected>1.5 seconds (Recommended)</option>
+              <option value="2.0">2.0 seconds</option>
+              <option value="3.0">3.0 seconds</option>
+              <option value="5.0">5.0 seconds</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px">📦 Videos Per Channel Per Run</label>
+            <select id="optBatchLimit" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600">
+              <option value="1" selected>1 video (Enforced)</option>
+              <option value="2">2 videos</option>
+              <option value="5">5 videos</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px">⏳ Cooldown Per Channel</label>
+            <select id="optChannelCooldown" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600">
+              <option value="2.0" selected>Wait 2 hours (Required)</option>
+              <option value="3.0">Wait 3 hours</option>
+              <option value="4.0">Wait 4 hours</option>
+              <option value="6.0">Wait 6 hours</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px">☀️ Day Start Time</label>
+            <select id="optStartHour" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600">
+              <option value="6">06:00 AM</option>
+              <option value="7">07:00 AM</option>
+              <option value="8" selected>08:00 AM (Recommended)</option>
+              <option value="9">09:00 AM</option>
+              <option value="10">10:00 AM</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px">🌙 Night Start Time (Day End)</label>
+            <select id="optEndHour" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600">
+              <option value="19">07:00 PM (19:00)</option>
+              <option value="20">08:00 PM (20:00)</option>
+              <option value="21" selected>09:00 PM (21:00) (Recommended)</option>
+              <option value="22">10:00 PM (22:00)</option>
+              <option value="23">11:00 PM (23:00)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="optWinSummary" style="margin-top:12px;font-size:12px;color:#475569;line-height:1.5">
+          Loading schedule rules…
+        </div>
+      </div>
+
+      <div class="action-group" style="margin-top:16px">
+        <button class="btn btn-primary" onclick="saveOptimizerWindowConfig()">💾 Save Operating Window</button>
+        <button class="btn btn-secondary" onclick="loadOptimizerWindowConfig()">🔄 Refresh</button>
+      </div>
+      <div id="optWinMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Backup & Restore Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>💾 Backup &amp; Restore</h2>
+      <p class="muted">Export the full database (schedules, channels, connections, video library) as a <code>.db</code> file. Import a backup to restore all settings. The app will save an automatic pre-restore backup before overwriting.</p>
+      <div class="action-group">
+        <button class="btn btn-primary" onclick="backupDb()">⬇ Download Backup</button>
+        <label class="btn btn-secondary" style="cursor:pointer;margin:0">
+          ⬆ Restore from Backup
+          <input type="file" id="restoreFile" accept=".db" style="display:none" onchange="restoreDb(this)">
+        </label>
+      </div>
+      <div id="backupMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- OAuth Credentials Card -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h2>🔑 YouTube OAuth & Channel Authentication</h2>
+      <p class="muted">
+        Authentication uses Desktop OAuth configured via <code>credentials/client_secret.json</code>.
+        Tokens and refresh keys are securely encrypted in Windows Credential Manager.
+      </p>
+      <div class="notice success">
+        ✅ Desktop OAuth client is loaded from <code>credentials/client_secret.json</code>.
+      </div>
+      <a href="/channels" class="btn btn-secondary" style="display:inline-block; text-decoration:none;">📺 Manage YouTube Channels</a>
+    </div>
+
+    <!-- Security & Privacy Card -->
+    <div class="card">
+      <h2>🛡️ Security & Privacy</h2>
+      <p class="muted">
+        All videos, hashes, and transcripts remain strictly on your local disk (<code>uploader.db</code>).
+        Never commit or share your <code>credentials/client_secret.json</code> or OAuth tokens.
+      </p>
+    </div>
+
+    <!-- Local Users Card (Phase 20) -->
+    <div class="card" style="margin-top:18px">
+      <h2>🔐 Local Users</h2>
+      <p class="muted">Only signed-in users can access the uploader. Admin can create additional editor logins.</p>
+      <div class="row">
+        <div><label>New Username</label><input id="newUser" placeholder="editor1"></div>
+        <div><label>Password</label><input id="newPass" type="password" placeholder="Minimum 8 characters"></div>
+        <div style="align-self:end"><button class="btn btn-primary" onclick="createLocalUser()">Add User</button></div>
+      </div>
+      <div id="userMsg" style="margin-top:10px"></div>
+      <div id="users" style="margin-top:12px"></div>
+      <hr style="margin:20px 0;border:0;border-top:1px solid #edf0f5">
+      <h3>Change My Password</h3>
+      <div class="row">
+        <div><label>Current Password</label><input id="oldPass" type="password"></div>
+        <div><label>New Password</label><input id="newMyPass" type="password"></div>
+        <div style="align-self:end"><button class="btn btn-secondary" onclick="changeMyPassword()">Change Password</button></div>
+      </div>
+      <div id="passMsg" style="margin-top:10px"></div>
+    </div>
+  </main></div></div>
+</div>
+
+<script src="/static/common.js?v=24"></script>
+<script>
+async function checkAIStatus(){const n=document.getElementById('aiNotice');try{const d=await api('/api/ai/status');document.getElementById('aiServiceVal').textContent=d.provider||'gemini';document.getElementById('aiModelStatusVal').textContent=d.model||'gemini';document.getElementById('aiModelsList').textContent=(d.connections||0)+' connected';document.getElementById('aiFfmpegVal').textContent='Check system health for FFmpeg';n.className=d.connected?'notice success':'notice';n.textContent=d.connected?'\u2705 Gemini is connected and ready for video analysis.':'\u26a0\ufe0f No Gemini account is connected. Open Connections to connect one.';}catch(e){n.className='notice error';n.textContent=e.message;}}
+
+async function loadTgConfig(){try{const d=await api('/api/telegram/config');document.getElementById('tgToken').value=d.bot_token||'';document.getElementById('tgChatId').value=d.chat_id||'';document.getElementById('tgEnabled').checked=d.enabled===true;document.getElementById('tgAppUrl').value=d.app_url||d.effective_app_url||'';}catch(e){console.error('loadTgConfig failed:',e.message);}}
+async function tgSave(){const msg=document.getElementById('tgMsg');try{await api('/api/telegram/config',{method:'POST',body:JSON.stringify({bot_token:document.getElementById('tgToken').value.trim(),chat_id:document.getElementById('tgChatId').value.trim(),enabled:document.getElementById('tgEnabled').checked,app_url:document.getElementById('tgAppUrl').value.trim()})});msg.innerHTML='<div class="notice success">\u2705 Telegram config saved.</div>';}catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}}
+async function tgTest(){const msg=document.getElementById('tgMsg');const token=document.getElementById('tgToken').value.trim();const chatId=document.getElementById('tgChatId').value.trim();const appUrl=document.getElementById('tgAppUrl').value.trim();if(!token||!chatId){msg.innerHTML='<div class="notice error">Enter Bot Token and Chat ID first.</div>';return;}try{msg.innerHTML='<div class="notice">Sending test message...</div>';await api('/api/telegram/test',{method:'POST',body:JSON.stringify({bot_token:token,chat_id:chatId,app_url:appUrl})});msg.innerHTML='<div class="notice success">\u2705 Test message sent! Check your Telegram.</div>';}catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}}
+
+async function backupDb(){
+  const msg=document.getElementById('backupMsg');
+  try{
+    msg.innerHTML='<div class="notice">Creating backup...</div>';
+    const r=await fetch('/api/backup',{method:'POST'});
+    if(!r.ok){const d=await r.json().catch(()=>({detail:'Backup failed'}));throw new Error(d.detail||'Backup failed');}
+    const blob=await r.blob();
+    const cd=r.headers.get('content-disposition')||'';
+    const fname=cd.match(/filename="?([^"]+)"?/)?.[1]||'yla_backup.db';
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();URL.revokeObjectURL(a.href);
+    msg.innerHTML='<div class="notice success">\u2705 Backup downloaded: '+esc(fname)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+}
+
+async function restoreDb(input){
+  const msg=document.getElementById('backupMsg');
+  const file=input.files[0]; if(!file) return;
+  if(!file.name.endsWith('.db')){msg.innerHTML='<div class="notice error">Select a .db backup file.</div>';input.value='';return;}
+  if(!confirm('Restore database from "'+file.name+'"?\n\nThe app will save an automatic pre-restore backup first.\nAll current data will be replaced. Continue?')){input.value='';return;}
+  try{
+    msg.innerHTML='<div class="notice">Uploading and restoring backup...</div>';
+    const buf=await file.arrayBuffer();
+    const r=await fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:buf});
+    const d=await r.json().catch(()=>({detail:'Restore failed'}));
+    if(!r.ok) throw new Error(d.detail||'Restore failed');
+    msg.innerHTML='<div class="notice success">\u2705 '+esc(d.message)+'</div>';
+  }catch(e){msg.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+  input.value='';
+}
+async function createLocalUser(){
+  try{
+    await api('/api/users',{method:'POST',body:JSON.stringify({username:document.getElementById('newUser').value,password:document.getElementById('newPass').value,role:'editor'})});
+    document.getElementById('userMsg').textContent='User created.';
+    document.getElementById('newUser').value='';
+    document.getElementById('newPass').value='';
+    loadUsers();
+  }catch(e){
+    document.getElementById('userMsg').textContent=e.message;
+  }
+}
+async function changeMyPassword(){
+  try{
+    await api('/api/users/password',{method:'POST',body:JSON.stringify({old_password:document.getElementById('oldPass').value,new_password:document.getElementById('newMyPass').value})});
+    document.getElementById('passMsg').textContent='Password changed successfully.';
+    document.getElementById('oldPass').value='';
+    document.getElementById('newMyPass').value='';
+  }catch(e){
+    document.getElementById('passMsg').textContent=e.message;
+  }
+}
+async function loadSyndicationConfig() {
+  try {
+    const d = await api('/api/settings/syndication');
+    document.getElementById('enableOutros').checked = d.enable_platform_outros !== false;
+    document.getElementById('outroDuration').value = d.outro_duration || 3.5;
+    document.getElementById('enableCrossLinks').checked = d.enable_cross_platform_links !== false;
+    document.getElementById('postCrossComments').checked = d.post_cross_comments !== false;
+    if (d.outros_dir) {
+      document.getElementById('outrosDirLabel').textContent = d.outros_dir;
+    }
+    const coutros = d.custom_outros || {};
+    const bYt = document.getElementById('badgeYt');
+    const bFb = document.getElementById('badgeFb');
+    const bIg = document.getElementById('badgeIg');
+    if (bYt) bYt.innerHTML = 'YouTube Custom: ' + (coutros.youtube ? '<b style="color:#16a34a">Active</b>' : '<span style="color:#64748b">Auto-generated</span>');
+    if (bFb) bFb.innerHTML = 'Facebook Custom: ' + (coutros.facebook ? '<b style="color:#16a34a">Active</b>' : '<span style="color:#64748b">Auto-generated</span>');
+    if (bIg) bIg.innerHTML = 'Instagram Custom: ' + (coutros.instagram ? '<b style="color:#16a34a">Active</b>' : '<span style="color:#64748b">Auto-generated</span>');
+  } catch(e) {
+    console.error('loadSyndicationConfig error:', e);
+  }
+}
+
+async function saveSyndicationSettings() {
+  const msg = document.getElementById('syndicationMsg');
+  try {
+    msg.innerHTML = '<div class="notice">Saving syndication settings...</div>';
+    await api('/api/settings/syndication', {
+      method: 'POST',
+      body: JSON.stringify({
+        enable_platform_outros: document.getElementById('enableOutros').checked,
+        outro_duration: parseFloat(document.getElementById('outroDuration').value) || 3.5,
+        enable_cross_platform_links: document.getElementById('enableCrossLinks').checked,
+        post_cross_comments: document.getElementById('postCrossComments').checked
+      })
+    });
+    msg.innerHTML = '<div class="notice success">✅ Syndication and outro settings saved successfully!</div>';
+    loadSyndicationConfig();
+  } catch(e) {
+    msg.innerHTML = '<div class="notice error">' + esc(e.message) + '</div>';
+  }
+}
+
+async function loadOptimizerWindowConfig() {
+  const badge = document.getElementById('optWinLiveBadge');
+  const summary = document.getElementById('optWinSummary');
+  try {
+    const d = await api('/api/settings/optimizer-window');
+    document.getElementById('optStartHour').value = String(d.start_hour || 8);
+    document.getElementById('optEndHour').value = String(d.end_hour || 21);
+    if (document.getElementById('optGapSeconds')) {
+      document.getElementById('optGapSeconds').value = String(d.gap_seconds || 1.5);
+    }
+    if (document.getElementById('optBatchLimit')) {
+      document.getElementById('optBatchLimit').value = String(d.batch_limit || 1);
+    }
+    if (document.getElementById('optChannelCooldown')) {
+      document.getElementById('optChannelCooldown').value = String(d.channel_cooldown_hours || 2.0);
+    }
+    if (document.getElementById('optAutoEnabled')) {
+      document.getElementById('optAutoEnabled').checked = d.auto_optimizer_enabled === true;
+    }
+
+    if (badge) {
+      if (!d.auto_optimizer_enabled) {
+        badge.textContent = '⏸️ Optimizer Disabled';
+        badge.style.background = '#f1f5f9';
+        badge.style.color = '#64748b';
+        badge.style.border = '1px solid #cbd5e1';
+      } else if (d.is_daytime) {
+        badge.textContent = `☀️ Daytime Active (${d.start_time_12h} – ${d.end_time_12h})`;
+        badge.style.background = '#ecfdf5';
+        badge.style.color = '#047857';
+        badge.style.border = '1px solid #a7f3d0';
+      } else {
+        badge.textContent = `🌙 Night Pause (Resumes at ${d.start_time_12h})`;
+        badge.style.background = '#fff7ed';
+        badge.style.color = '#c2410c';
+        badge.style.border = '1px solid #fed7aa';
+      }
+    }
+
+    if (summary) {
+      summary.innerHTML = `
+        <strong>Current Status:</strong> Local Time is <strong>${esc(d.current_local_time)}</strong> (${esc(d.current_local_time_full)}).<br>
+        • <strong>Per-Channel Pacing:</strong> Updates <strong>at most 1 video per channel</strong>, then enforces a strict <strong>${d.channel_cooldown_hours || 2.0}-hour cooldown</strong> before that channel can update another video.<br>
+        • <strong>Safety Gap:</strong> Enforces a <strong>${d.gap_seconds || 1.5}s delay</strong> between sequential API requests.<br>
+        • <strong>Daytime Window (${esc(d.start_time_12h)} – ${esc(d.end_time_12h)}):</strong> Video optimizer audits underperforming videos and rotates metadata &amp; thumbnails with pacing.<br>
+        • <strong>Night Window (${esc(d.end_time_12h)} – ${esc(d.start_time_12h)}):</strong> All video details updates are strictly blocked. Scheduled audits pause until morning.
+      `;
+    }
+  } catch(e) {
+    console.error('loadOptimizerWindowConfig error:', e);
+  }
+}
+
+async function saveOptimizerWindowConfig() {
+  const msg = document.getElementById('optWinMsg');
+  const startH = parseInt(document.getElementById('optStartHour').value, 10);
+  const endH = parseInt(document.getElementById('optEndHour').value, 10);
+  const gapSec = parseFloat(document.getElementById('optGapSeconds')?.value || 1.5);
+  const batchLim = parseInt(document.getElementById('optBatchLimit')?.value || 1, 10);
+  const chCooldown = parseFloat(document.getElementById('optChannelCooldown')?.value || 2.0);
+  const autoEnabled = !!document.getElementById('optAutoEnabled')?.checked;
+
+  if (startH >= endH) {
+    msg.innerHTML = '<div class="notice error">Day Start Time must be earlier than Night Start Time.</div>';
+    return;
+  }
+
+  try {
+    msg.innerHTML = '<div class="notice">Saving optimizer settings...</div>';
+    await api('/api/settings/optimizer-window', {
+      method: 'POST',
+      body: JSON.stringify({
+        start_hour: startH,
+        end_hour: endH,
+        gap_seconds: gapSec,
+        batch_limit: batchLim,
+        channel_cooldown_hours: chCooldown,
+        auto_optimizer_enabled: autoEnabled
+      })
+    });
+    msg.innerHTML = '<div class="notice success">✅ Optimizer settings saved! (1 video/channel, ' + chCooldown + 'h cooldown, Window: ' + startH + ':00 – ' + endH + ':00)</div>';
+    loadOptimizerWindowConfig();
+  } catch(e) {
+    msg.innerHTML = '<div class="notice error">' + esc(e.message) + '</div>';
+  }
+}
+
+async function loadEnvironmentInfo() {
+  const badge = document.getElementById('envBadge');
+  const summary = document.getElementById('envPolicySummary');
+  try {
+    const d = await api('/api/scheduler/mode');
+    const isDev = !!d.is_dev;
+    const env = (d.environment || (isDev ? 'development' : 'production')).toUpperCase();
+    if (badge) {
+      if (isDev) {
+        badge.textContent = `🟡 DEV MODE (${env})`;
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        badge.style.border = '1px solid #fde68a';
+      } else {
+        badge.textContent = `🟢 PROD MODE (${env})`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.border = '1px solid #bbf7d0';
+      }
+    }
+    if (summary) {
+      if (isDev) {
+        summary.innerHTML = `
+          <strong>Development Server Rule Active:</strong><br>
+          • <strong>Automatic Background Tasks Disabled:</strong> The scheduler will <strong>NEVER</strong> automatically perform background uploads, auto-optimizer sweeps, or retry loops.<br>
+          • <strong>One-Shot Testing:</strong> When you manually trigger a schedule or audit, it executes <strong>exactly once for testing</strong> and stops.<br>
+          • <strong>Optimizer Throttling:</strong> Enforces <strong>at most 1 video per channel</strong> followed by at least 2 hours of cooldown.
+        `;
+      } else {
+        summary.innerHTML = `
+          <strong>Production Server Rule Active:</strong><br>
+          • <strong>Automated Tasks Active:</strong> Scheduled uploads, Smart Auto Agent, and retry queues run automatically based on timetable.<br>
+          • <strong>Periodic Daytime Audits:</strong> 7-15 day video performance optimizer audits underperforming videos during 8:00 AM – 9:00 PM with 1-video / 2-hour per channel cooldown.
+        `;
+      }
+    }
+  } catch(e) {
+    console.error('loadEnvironmentInfo error:', e);
+  }
+}
+
+if(document.getElementById('users'))loadUsers();
+checkAIStatus();
+loadTgConfig();
+loadSyndicationConfig();
+loadOptimizerWindowConfig();
+loadEnvironmentInfo();
+</script>
+</body>
+</html>

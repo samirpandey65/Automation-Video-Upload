@@ -1,0 +1,7 @@
+{
+  "task_id": "task-thumbnail-playlist",
+  "task_description": "Add AI Thumbnail Generator and Smart Playlist Manager features to the FastAPI+SQLite YouTube auto-uploader. Feature 1: analyze existing Gemini analysis JSON, render 1280x720 PNG thumbnails with Pillow in viral Indian YouTube style (vivid gradient, bold text, emoji), serve via REST. Feature 2: classify video genre from analysis JSON, check/create YouTube playlist via Data API v3, add video to matching playlist. Both features include UI buttons in library.html.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

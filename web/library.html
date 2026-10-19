@@ -1,0 +1,2423 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Video Library — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=24">
+  <style>
+    .video-thumb-cell {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      min-width: 360px;
+    }
+    .thumb-box {
+      width: 140px;
+      height: 78px;
+      aspect-ratio: 16/9;
+      flex: 0 0 140px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e2e8f0;
+      position: relative;
+      cursor: pointer;
+      background: #0f172a;
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .thumb-box:hover {
+      transform: scale(1.03);
+      border-color: #635bff;
+      box-shadow: 0 8px 24px rgba(99, 91, 255, 0.22);
+    }
+    .thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #0f172a;
+      display: block;
+    }
+    .thumb-box-empty {
+      width: 140px;
+      height: 78px;
+      aspect-ratio: 16/9;
+      flex: 0 0 140px;
+      border-radius: 8px;
+      border: 2px dashed #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.16s ease;
+      text-align: center;
+      padding: 6px;
+    }
+    .thumb-box-empty:hover {
+      border-color: #635bff;
+      color: #635bff;
+      background: #f5f3ff;
+    }
+    .thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+    .thumb-box:hover .thumb-overlay {
+      opacity: 1;
+    }
+    .thumb-tag {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #22c55e;
+      font-size: 9px;
+      font-weight: 850;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    .flow-box {
+      background: linear-gradient(135deg, #1e1b4b, #0f172a);
+      border: 1px solid #4338ca;
+      border-radius: 14px;
+      padding: 16px;
+      color: #fff;
+      margin-top: 18px;
+    }
+    .flow-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .flow-head h3 {
+      margin: 0;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #c7d2fe;
+    }
+    .flow-prompt-area {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid #312e81;
+      border-radius: 10px;
+      color: #e0e7ff;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 70px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .drop-zone {
+      border: 2px dashed #6366f1;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      background: rgba(99, 102, 241, 0.08);
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.18s;
+    }
+    .drop-zone:hover {
+      background: rgba(99, 102, 241, 0.18);
+    }
+    .variant-card {
+      flex: 1;
+      min-width: 320px;
+      max-width: 380px;
+      text-align: center;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      transition: transform 0.16s ease;
+    }
+    .variant-card:hover {
+      transform: translateY(-2px);
+    }
+    .genre-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      background: #f1f5f9;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+    <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status">
+    <div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div>
+    <div class="status-detail">Local creator workspace</div>
+    <a href="/logs" class="sidebar-log-btn">Open Logs</a>
+  </div>
+</aside>
+
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="mobile-brand">OmniCast</div>
+      <div>
+        <div class="top-greeting">Creator Control Center <span>✦</span></div>
+        <div class="top-subtitle">Manage your channels, videos and automated uploads</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div>
+      <button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button>
+      <div class="profile-chip">
+        <div class="profile-avatar">C</div>
+        <div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div>
+        <span class="chevron">⌄</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="margin:0 0 6px">Video Library</h1>
+        <p class="muted" style="margin:0">Browse videos, inspect viral thumbnails, and manage automated genre playlists.</p>
+      </div>
+      <div id="statusToast"></div>
+    </div>
+
+    <div class="toolbar">
+      <div><label>Channel</label><select id="channel"></select></div>
+      <div style="min-width:210px"><label>Platform &amp; Status</label><select id="statusFilter" onchange="render()"><option value="">All Statuses &amp; Platforms</option><option value="pending">⏳ Pending (Not Uploaded)</option><option value="uploaded">✓ Uploaded (Any Platform)</option><option value="youtube">▶ YouTube Uploaded</option><option value="facebook">📘 Facebook Uploaded</option><option value="instagram">📸 Instagram Uploaded</option><option value="failed">❌ Failed</option></select></div>
+      <div style="min-width:280px"><label>Search</label><input id="searchInput" placeholder="Filter by title, filename or path…" oninput="render()" /></div>
+      <button class="btn btn-secondary" onclick="load()">🔄 Refresh</button>
+      <button class="btn btn-primary" onclick="openBulkOptimizerModal()" style="background:linear-gradient(135deg,#d97706,#b45309);border-color:#b45309;font-weight:750">⚡ Optimize Old Video Titles</button>
+      <button class="btn btn-primary" onclick="openRetrofitPlaylistModal()" style="background:linear-gradient(135deg,#635bff,#4338ca);border-color:#4338ca;font-weight:750">📂 Retrofit Playlists</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Video &amp; Thumbnail</th>
+            <th>AI &amp; Genre</th>
+            <th>Playlist</th>
+            <th>Status</th>
+            <th>Platforms &amp; Sync</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div id="player" class="modal">
+      <div class="modal-box" style="width:min(1000px,100%)">
+        <div class="row"><h2 id="pTitle">Video Preview</h2><button class="btn btn-secondary" onclick="closePlayer()">Close</button></div>
+        <video id="video" controls playsinline style="width:100%;max-height:70vh;background:#000;border-radius:10px"></video>
+      </div>
+    </div>
+
+    <!-- Analytics Modal -->
+    <div id="analytics" class="modal">
+      <div class="modal-box" style="width:min(1000px,100%)">
+        <div class="row"><h2 id="aTitle">Performance</h2><button class="btn btn-secondary" onclick="closeAnalytics()">Close</button></div>
+        <div id="aBody">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Advanced Thumbnail Manager Modal -->
+    <div id="thumbModal" class="modal">
+      <div class="modal-box" style="width:min(1250px,96%)">
+        <div class="row" style="margin-bottom:14px">
+          <div>
+            <h2 id="thumbModalTitle" style="margin:0">Thumbnail Studio</h2>
+            <div id="thumbModalSubtitle" class="muted tiny">Manage high-CTR variants and generate for free with Google Flow</div>
+          </div>
+          <button class="btn btn-secondary" onclick="closeThumb()">✕ Close</button>
+        </div>
+        <div id="thumbBody">Loading…</div>
+      </div>
+    </div>
+
+    <!-- 7-15 Day Automated Optimizer & A/B Testing Modal -->
+    <div id="optimizerModal" class="modal">
+      <div class="modal-box" style="width:min(900px,96%)">
+        <div class="row" style="margin-bottom:14px">
+          <div>
+            <h2 id="optModalTitle" style="margin:0">⚡ 7-15 Day Performance Optimizer & A/B Testing</h2>
+            <div id="optModalSubtitle" class="muted tiny">Automated issue diagnosis, metadata re-targeting, and high-CTR thumbnail rotation</div>
+          </div>
+          <button class="btn btn-secondary" onclick="closeOptimizerModal()">✕ Close</button>
+        </div>
+        <div id="optimizerBody" style="margin-top:14px;max-height:65vh;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- Publish to Facebook & Instagram (Meta) Modal -->
+    <div id="metaPublishModal" class="modal">
+      <div class="modal-box" style="width:min(620px,96%)">
+        <div class="row" style="margin-bottom:14px">
+          <div>
+            <h2 id="metaModalTitle" style="margin:0">🌐 Publish to Meta (Facebook &amp; Instagram)</h2>
+            <div id="metaModalSubtitle" class="muted tiny">Sync and publish this video directly to connected Facebook and Instagram pages</div>
+          </div>
+          <button class="btn btn-secondary" onclick="closeMetaModal()">✕ Close</button>
+        </div>
+        <div id="metaModalBody">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Community Post & Teaser Modal -->
+    <div id="communityModal" class="modal">
+      <div class="modal-box" style="width:min(680px,96%);max-height:90vh;overflow-y:auto">
+        <div class="row" style="margin-bottom:14px">
+          <div>
+            <h2 id="commModalTitle" style="margin:0">📢 Multi-Platform Community Post &amp; Teaser</h2>
+            <div id="commModalSubtitle" class="muted tiny">Publish interactive teaser announcements and polls across Facebook Page feed and YouTube</div>
+          </div>
+          <button class="btn btn-secondary" onclick="closeCommunityModal()">✕ Close</button>
+        </div>
+        <div id="communityModalBody">Loading teaser…</div>
+      </div>
+    </div>
+
+    <!-- AI Video Director QC Review & PDF Package Modal -->
+    <div id="qcModal" class="modal">
+      <div class="modal-box" style="width:min(1100px,96%);max-height:90vh;display:flex;flex-direction:column">
+        <div class="row" style="margin-bottom:14px;align-items:flex-start">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:22px">🎬</span>
+              <h2 id="qcModalTitle" style="margin:0">AI Director QC Review Package</h2>
+              <span id="qcVerdictBadge" class="badge" style="font-size:12px;padding:3px 10px;font-weight:700">Loading…</span>
+            </div>
+            <div id="qcModalSubtitle" class="muted tiny" style="margin-top:4px">28-Phase Quality Control &amp; Universal Director Audit</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a id="qcDownloadPdfBtn" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:none;background:#2563eb">📄 Download PDF Package</a>
+            <button class="btn btn-secondary btn-sm" onclick="closeQCModal()">✕ Close</button>
+          </div>
+        </div>
+        <div id="qcModalBody" style="overflow-y:auto;flex:1;padding-right:6px">Loading review package…</div>
+        <div id="qcModalFooter" style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:14px">
+          <div class="muted tiny">Strict Quality Gate: without approval of reviewer, upload remains held.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="rerunCurrentQC()">↻ Re-run QC Audit</button>
+            <button class="btn btn-secondary btn-sm" style="background:#fef2f2;color:#b91c1c;border-color:#fecaca" onclick="rejectCurrentQC()">⚠️ Require Rework</button>
+            <button class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#15803d" onclick="approveCurrentQC()">✓ Approve for Publish</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Old Video Optimization Modal -->
+    <div id="bulkOptimizerModal" class="modal">
+      <div class="modal-box" style="width:min(1100px,96%);max-height:92vh;display:flex;flex-direction:column">
+        <div class="row" style="margin-bottom:14px;align-items:flex-start">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:22px">⚡</span>
+              <h2 style="margin:0">Old Video Bulk Optimization &amp; Cleanup Engine</h2>
+            </div>
+            <div class="muted tiny" style="margin-top:4px">Scan and clean old published videos: strips prompt leaks, eliminates repetitive boilerplate suffixes, and applies clean hook-first titles.</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="closeBulkOptimizerModal()">✕ Close</button>
+        </div>
+
+        <!-- Daytime Operating Window Status Banner -->
+        <div id="bulkWindowBanner" style="padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0">
+          <span id="bulkWindowText">Evaluating daytime operating window…</span>
+          <span id="bulkTimeText" class="tiny" style="font-weight:700"></span>
+        </div>
+
+        <!-- Diagnostic Summary Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px">
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+            <div class="muted tiny font-bold uppercase">Videos Scanned</div>
+            <div id="bulkScanned" style="font-size:20px;font-weight:800;color:#0f172a;margin-top:2px">0</div>
+          </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px">
+            <div class="muted tiny font-bold uppercase" style="color:#92400e">Flagged for Cleanup</div>
+            <div id="bulkFlagged" style="font-size:20px;font-weight:800;color:#d97706;margin-top:2px">0</div>
+          </div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
+            <div class="muted tiny font-bold uppercase" style="color:#166534">Already Clean / Optimal</div>
+            <div id="bulkClean" style="font-size:20px;font-weight:800;color:#16a34a;margin-top:2px">0</div>
+          </div>
+        </div>
+
+        <!-- Table of Flagged Videos -->
+        <div id="bulkTableWrap" style="overflow-y:auto;flex:1;border:1px solid #e2e8f0;border-radius:8px;max-height:48vh">
+          <div id="bulkLoading" style="padding:40px;text-align:center" class="muted">Scanning published video library…</div>
+          <table id="bulkTable" style="width:100%;border-collapse:collapse;display:none;font-size:12px">
+            <thead>
+              <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase">
+                <th style="padding:8px;width:36px"><input type="checkbox" id="bulkSelectAll" checked onchange="toggleSelectAllBulk(this.checked)" /></th>
+                <th style="padding:8px">Current YouTube Title</th>
+                <th style="padding:8px">Detected Flaws</th>
+                <th style="padding:8px">Proposed Hook Title</th>
+              </tr>
+            </thead>
+            <tbody id="bulkBody"></tbody>
+          </table>
+        </div>
+
+        <div id="bulkFooter" style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:14px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px">
+              <input type="checkbox" id="chkAutoApplyYoutube" checked style="width:auto" />
+              <span>Push changes directly to YouTube Data API (Updates live titles)</span>
+            </label>
+            <span class="badge" style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:600">⏱️ Safe 1.5s gap between videos</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="closeBulkOptimizerModal()">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="btnExecuteBulk" onclick="executeBulkOptimization()" style="background:linear-gradient(135deg,#d97706,#b45309);border-color:#b45309;font-weight:750">⚡ Clean &amp; Optimize Selected</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Playlist Retrofit Modal -->
+    <div id="retrofitPlaylistModal" class="modal">
+      <div class="modal-box" style="width:min(1050px,96%);max-height:92vh;display:flex;flex-direction:column">
+        <div class="row" style="margin-bottom:14px;align-items:flex-start">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:22px">📂</span>
+              <h2 style="margin:0">Batch Playlist Retrofit Utility</h2>
+              <span id="rfBadge" class="badge" style="font-size:12px;padding:3px 10px;font-weight:700;background:#e0e7ff;color:#4338ca">Ready</span>
+            </div>
+            <div class="muted tiny" style="margin-top:4px">Automatically evaluate previously uploaded videos in <code>video_inventory</code> and assign them to matching genre &amp; series playlists on YouTube. Sequences multi-part series (Part 1 ➔ Part 2 ➔ Part 3) and preserves existing YouTube playlists.</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="closeRetrofitPlaylistModal()">✕ Close</button>
+        </div>
+
+        <!-- Controls & Options -->
+        <div style="background:#f8fafc;padding:14px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <div>
+              <label class="tiny font-bold uppercase muted" style="display:block;margin-bottom:4px">Target Channel</label>
+              <select id="rfChannelSelect" style="min-width:200px;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;font-size:13px"></select>
+            </div>
+            <div>
+              <label class="tiny font-bold uppercase muted" style="display:block;margin-bottom:4px">Batch Limit</label>
+              <select id="rfLimitSelect" style="padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;font-size:13px">
+                <option value="25">First 25 Videos</option>
+                <option value="50">First 50 Videos</option>
+                <option value="100">First 100 Videos</option>
+                <option value="500">500 Videos</option>
+                <option value="0" selected>All Videos (~7,700)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600">
+              <input type="checkbox" id="rfDryRun" checked style="width:auto" />
+              <span>Dry Run Simulation (Preview only, no live YouTube changes)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600">
+              <input type="checkbox" id="rfCreateSeries" style="width:auto" />
+              <span>Create dedicated series playlists for multi-part stories</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px">
+              <input type="checkbox" id="rfForceAll" style="width:auto" />
+              <span>Re-evaluate all videos (even if already assigned)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Metric Badges -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
+          <div style="background:#fff;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;text-align:center">
+            <div class="muted tiny font-bold uppercase">Videos Evaluated</div>
+            <div id="rfStatEvaluated" style="font-size:22px;font-weight:800;color:#1e293b;margin-top:2px">0</div>
+          </div>
+          <div style="background:#fff;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;text-align:center">
+            <div class="muted tiny font-bold uppercase" style="color:#2563eb">Assigned to Playlist</div>
+            <div id="rfStatAssigned" style="font-size:22px;font-weight:800;color:#2563eb;margin-top:2px">0</div>
+          </div>
+          <div style="background:#fff;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;text-align:center">
+            <div class="muted tiny font-bold uppercase" style="color:#16a34a">Existing Reused</div>
+            <div id="rfStatReused" style="font-size:22px;font-weight:800;color:#16a34a;margin-top:2px">0</div>
+          </div>
+          <div style="background:#fff;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;text-align:center">
+            <div class="muted tiny font-bold uppercase" style="color:#7c3aed">New Created</div>
+            <div id="rfStatCreated" style="font-size:22px;font-weight:800;color:#7c3aed;margin-top:2px">0</div>
+          </div>
+          <div style="background:#fff;padding:10px 14px;border-radius:8px;border:1px solid #e2e8f0;text-align:center">
+            <div class="muted tiny font-bold uppercase" style="color:#d97706">Series Sequenced</div>
+            <div id="rfStatSeries" style="font-size:22px;font-weight:800;color:#d97706;margin-top:2px">0</div>
+          </div>
+        </div>
+
+        <!-- Live Terminal / Log Viewer -->
+        <div style="flex:1;background:#0f172a;border-radius:8px;padding:14px;color:#f8fafc;font-family:ui-monospace,Menlo,Monaco,monospace;font-size:11.5px;line-height:1.6;overflow-y:auto;max-height:36vh;border:1px solid #1e293b" id="rfTerminal">
+          <span style="color:#94a3b8">Ready to run batch playlist retrofit. Click 'Run Batch Retrofit' below to start.</span>
+        </div>
+
+        <!-- Footer Actions -->
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:14px">
+          <div id="rfStatusMsg" class="muted tiny">Respects existing YouTube playlists &amp; never duplicates lists.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="closeRetrofitPlaylistModal()">Close</button>
+            <button class="btn btn-primary btn-sm" id="btnExecuteRetrofit" onclick="startBatchRetrofit()" style="background:linear-gradient(135deg,#635bff,#4338ca);border-color:#4338ca;font-weight:750">⚡ Run Batch Retrofit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+
+<script src="/static/common.js?v=24"></script>
+<script>
+let libraryVideos = [];
+let activeThumbVideoId = null;
+let currentChannelData = null;
+let currentMetaConns = [];
+
+const GENRE_EMOJIS = {
+  "Horror": "👻", "Comedy": "😂", "Roast": "🔥", "Reaction": "😱",
+  "Meme": "⭐", "Movie Recap": "🎬", "Gaming": "🎮", "News": "🚨",
+  "Education": "📚", "Motivation": "💡", "Music": "🎵", "Drama": "🎭",
+  "Action": "⚡", "Crime": "🔍", "Entertainment": "🌟"
+};
+
+async function init() {
+  await loadChannels('channel');
+  const params = new URLSearchParams(window.location.search);
+  const st = params.get('status');
+  if (st && ['pending', 'uploaded', 'failed'].includes(st)) document.getElementById('statusFilter').value = st;
+  const q = params.get('search');
+  if (q) document.getElementById('searchInput').value = q;
+  document.getElementById('channel').onchange = load;
+  await load();
+}
+
+async function load() {
+  const c = document.getElementById('channel').value;
+  if (!c) return;
+  const d = await api('/api/library?channel_id=' + encodeURIComponent(c));
+  libraryVideos = d.videos || [];
+  currentChannelData = d.channel || null;
+  currentMetaConns = d.meta_connections || [];
+  render();
+}
+
+function detectGenre(v) {
+  try {
+    const raw = v.analysis_json;
+    if (raw) {
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const text = (data.summary || '') + ' ' + (data.style || '') + ' ' + (v.filename || '');
+      const tLower = text.toLowerCase();
+      if (tLower.includes('horror') || tLower.includes('scary') || tLower.includes('bhoot')) return 'Horror';
+      if (tLower.includes('roast') || tLower.includes('troll') || tLower.includes('exposed')) return 'Roast';
+      if (tLower.includes('comedy') || tLower.includes('funny') || tLower.includes('laugh')) return 'Comedy';
+      if (tLower.includes('meme') || tLower.includes('reels')) return 'Meme';
+      if (tLower.includes('recap') || tLower.includes('movie')) return 'Movie Recap';
+      if (tLower.includes('reaction') || tLower.includes('react')) return 'Reaction';
+      if (tLower.includes('news') || tLower.includes('breaking')) return 'News';
+      if (tLower.includes('music') || tLower.includes('song')) return 'Music';
+    }
+  } catch(e){}
+  const fn = (v.filename || '').toLowerCase();
+  if (fn.includes('meme') || fn.includes('reels')) return 'Meme';
+  if (fn.includes('funny') || fn.includes('comedy') || fn.includes('baby')) return 'Comedy';
+  if (fn.includes('roast')) return 'Roast';
+  if (fn.includes('recap')) return 'Movie Recap';
+  return 'Entertainment';
+}
+
+function render() {
+  const st = document.getElementById('statusFilter').value;
+  const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  let vids = libraryVideos;
+  if (st) {
+    if (st === 'pending') {
+      vids = vids.filter(v => {
+        let p = [];
+        try { p = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []); } catch(e){}
+        return v.status === 'pending' && !v.youtube_video_id && !p.length;
+      });
+    } else if (st === 'uploaded') {
+      vids = vids.filter(v => {
+        let p = [];
+        try { p = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []); } catch(e){}
+        return v.status === 'uploaded' || Boolean(v.youtube_video_id) || p.length > 0;
+      });
+    } else if (st === 'youtube') {
+      vids = vids.filter(v => {
+        let p = [];
+        try { p = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []); } catch(e){}
+        return Boolean(v.youtube_video_id) || p.includes('youtube');
+      });
+    } else if (st === 'facebook') {
+      vids = vids.filter(v => {
+        let p = [];
+        try { p = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []); } catch(e){}
+        return Boolean(v.facebook_video_id || v.facebook_reel_id) || p.includes('facebook_video') || p.includes('facebook_reel');
+      });
+    } else if (st === 'instagram') {
+      vids = vids.filter(v => {
+        let p = [];
+        try { p = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []); } catch(e){}
+        return Boolean(v.instagram_media_id) || p.includes('instagram_reel');
+      });
+    } else if (st === 'failed') {
+      vids = vids.filter(v => v.status === 'failed');
+    }
+  }
+
+  if (q) vids = vids.filter(v =>
+    (v.filename || '').toLowerCase().includes(q) ||
+    (v.file_path || '').toLowerCase().includes(q) ||
+    (v.title || '').toLowerCase().includes(q)
+  );
+
+  const tbody = document.getElementById('body');
+  if (!vids.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px" class="muted">No matching videos found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = vids.map(v => {
+    const genre = detectGenre(v);
+    const emoji = GENRE_EMOJIS[genre] || '🌟';
+    const ts = Date.now();
+    const hasThumb = Boolean(v.thumbnail_path);
+
+    const thumbHtml = hasThumb
+      ? `<div class="thumb-box" onclick="showThumbnail(${v.id})" title="Click to view all generated variants or choose thumbnail">
+           <img src="/api/video/${v.id}/thumbnail?v=${ts}" alt="Thumbnail"
+                onerror="this.parentElement.outerHTML='<div class=\\'thumb-box-empty\\' onclick=\\'showThumbnail(${v.id})\\'>+ Thumbnail<br><span style=\\'font-size:9px\\'>Generate</span></div>'" />
+           <span class="thumb-tag">✓ Active</span>
+           <div class="thumb-overlay">🔍 Variants</div>
+         </div>`
+      : `<div class="thumb-box-empty" onclick="showThumbnail(${v.id})" title="Click to generate viral thumbnail via Google Flow or local AI">
+           <span style="font-size:16px;margin-bottom:2px">🖼️</span>
+           <span>+ Thumbnail</span>
+           <span style="font-size:9px;color:#64748b;margin-top:2px">Click to create</span>
+         </div>`;
+
+    const playlistHtml = v.youtube_playlist_id
+      ? `<a href="https://www.youtube.com/playlist?list=${encodeURIComponent(v.youtube_playlist_id)}" target="_blank" class="badge" style="background:#e0f2fe;color:#0369a1;text-decoration:none" title="Open YouTube Playlist">
+           📂 ${esc(genre)} Playlist
+         </a>`
+      : (v.status === 'uploaded'
+          ? `<button class="btn btn-secondary btn-sm" onclick="assignPlaylist(${v.id})" title="Check or auto-create playlist for ${esc(genre)}">📂 + Add Playlist</button>`
+          : `<span class="muted tiny">Auto on upload</span>`
+        );
+
+    // Multi-Platform Publish & Smart Links
+    let publishedList = [];
+    try {
+      publishedList = typeof v.platforms_published === 'string' ? JSON.parse(v.platforms_published || '[]') : (v.platforms_published || []);
+      if (!Array.isArray(publishedList)) publishedList = [];
+    } catch(e) { publishedList = []; }
+
+    if (v.youtube_video_id && !publishedList.includes('youtube')) publishedList.push('youtube');
+    if (v.facebook_video_id && !publishedList.includes('facebook_video')) publishedList.push('facebook_video');
+    if (v.facebook_reel_id && !publishedList.includes('facebook_reel')) publishedList.push('facebook_reel');
+    if (v.instagram_media_id && !publishedList.includes('instagram_reel')) publishedList.push('instagram_reel');
+
+    const firstMeta = currentMetaConns[0] || {};
+    const channelMeta = {
+      channelName: currentChannelData?.channel_name || v.channel_name || '',
+      fbPageName: firstMeta.page_name || '',
+      igUsername: firstMeta.instagram_username || ''
+    };
+    const platformHtml = renderVideoPlatformLinks(v, channelMeta);
+
+    const isUploadedAny = publishedList.length > 0 || v.status === 'uploaded';
+    let statusBadge = isUploadedAny
+      ? `<span class="badge uploaded" title="${publishedList.join(', ')}">uploaded (${publishedList.length})</span>`
+      : `<span class="badge ${esc(v.status)}">${esc(v.status)}</span>`;
+
+    let qcBadge = '';
+    const rStat = v.review_status || 'pending';
+    const rScore = v.review_score ? Number(v.review_score).toFixed(1) + '/10' : '';
+    if (rStat === 'approved') {
+      qcBadge = `<span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;font-size:10px" title="QC Director Approved">✓ QC Approved ${rScore}</span>`;
+    } else if (rStat === 'rework_needed' || v.status === 'held_for_review') {
+      qcBadge = `<span class="badge" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:10px" title="${esc(v.error_message || 'QC Rework Required')}">⚠️ QC Held ${rScore}</span>`;
+    } else if (rStat === 'needs_approval') {
+      qcBadge = `<span class="badge" style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;font-size:10px" title="Director Approval Needed">🟡 QC Needs Sign-off ${rScore}</span>`;
+    } else {
+      qcBadge = `<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:10px" title="QC Audit Pending">QC Pending</span>`;
+    }
+
+    return `<tr>
+      <td>
+        <div class="video-thumb-cell">
+          ${thumbHtml}
+          <div>
+            <strong style="font-size:14px;color:#1e293b">${esc(v.title || v.filename)}</strong>
+            <div class="muted tiny" style="margin-top:4px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.file_path || v.path)}">${esc(v.filename)}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+          <span class="genre-badge">${emoji} ${esc(genre)}</span>
+          <span class="badge ${esc(v.ai_status || 'not_analyzed')}">${esc(v.ai_status || 'not_analyzed')}</span>
+        </div>
+      </td>
+      <td>${playlistHtml}</td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${statusBadge}
+          ${qcBadge}
+        </div>
+      </td>
+      <td>${platformHtml}</td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="playVideo(${v.id}, '${esc(v.filename)}')">▶ Play</button>
+          <button class="btn btn-secondary btn-sm" onclick="showThumbnail(${v.id})">🖼️ Thumbnail</button>
+          <button class="btn btn-secondary btn-sm" style="background:#f8fafc;color:#0f172a;border-color:#cbd5e1" onclick="openQCModal(${v.id}, '${esc(v.title || v.filename)}')" title="28-Phase Director QC Package & PDF">📋 QC Review PDF</button>
+          ${rStat !== 'approved' ? `<button class="btn btn-secondary btn-sm" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0" onclick="quickApproveQC(${v.id})" title="Approve Video for Publish">✓ Approve</button>` : ''}
+          <button class="btn btn-secondary btn-sm" style="background:#e0f2fe;color:#0369a1;border-color:#bae6fd" onclick="openMetaPublishModal(${v.id})" title="Publish to Facebook &amp; Instagram">🌐 Publish Meta</button>
+          ${!v.is_short ? `<button class="btn btn-secondary btn-sm" style="background:#fff7ed;color:#c2410c;border-color:#ffedd5" onclick="openCommunityModal(${v.id}, '${esc(v.title || v.filename)}')" title="Publish Community Teaser &amp; Poll to Facebook &amp; YouTube (Long Videos Only)">📢 Community Post</button>` : ''}
+          ${isUploadedAny ? `<button class="btn btn-secondary btn-sm" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe" onclick="syncCrossLinks(${v.id})" title="Syndicate Cross-Platform Links to Descriptions and Comments">🔗 Cross-Link</button>` : ''}
+          ${isUploadedAny ? `<button class="btn btn-primary btn-sm" onclick="showAnalytics(${v.id}, '${esc(v.filename)}')">📊 Analytics</button>` : ''}
+          ${isUploadedAny ? `<button class="btn btn-secondary btn-sm" style="background:#fef3c7;color:#92400e;border-color:#fde68a" onclick="openOptimizerModal(${v.id}, '${esc(v.title || v.filename)}')" title="Audit 7-15 day performance & auto A/B test metadata/thumbnails">⚡ Optimize ${v.auto_optimized_count ? `(${v.auto_optimized_count})` : ''}</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function playVideo(id, name) {
+  document.getElementById('pTitle').textContent = name;
+  const v = document.getElementById('video');
+  v.src = '/api/video/' + id + '/stream';
+  document.getElementById('player').classList.add('open');
+  v.play().catch(() => {});
+}
+
+function closePlayer() {
+  const v = document.getElementById('video');
+  v.pause();
+  v.removeAttribute('src');
+  v.load();
+  document.getElementById('player').classList.remove('open');
+}
+
+async function syncCrossLinks(id) {
+  try {
+    const res = await api('/api/syndicate/cross-links/' + id, { method: 'POST' });
+    const cMsg = (res.posted_comments && res.posted_comments.length > 0)
+      ? res.posted_comments.join(', ')
+      : 'None required';
+    alert('✅ Cross-Platform Links Synced!\n\nYouTube description updated: ' + (res.updated_youtube_description ? 'Yes' : 'No') + '\nComments posted to: ' + cMsg);
+    load();
+  } catch(e) {
+    alert('❌ Cross-link sync failed: ' + e.message);
+  }
+}
+
+async function showAnalytics(id, name) {
+  document.getElementById('aTitle').textContent = name + ' — YouTube Performance';
+  document.getElementById('aBody').innerHTML = 'Loading analytics…';
+  document.getElementById('analytics').classList.add('open');
+  try {
+    const d = await api('/api/video/' + id + '/analytics?days=28');
+    renderAnalytics(d.analytics, d.video);
+  } catch(e) {
+    document.getElementById('aBody').innerHTML = `<div class="notice error">${esc(e.message)}<br><br>Tip: reconnect this YouTube channel from YouTube Channels so the Analytics permission is granted.</div>`;
+  }
+}
+
+function fmtSec(x) {
+  x = Number(x || 0);
+  const m = Math.floor(x / 60), s = Math.round(x % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function renderAnalytics(a, v) {
+  const s = a.summary || {};
+  const trend = a.trend || [];
+  const cards = [
+    ['Views', s.views], ['Likes', s.likes], ['Comments', s.comments],
+    ['Watch time', Number(s.estimatedMinutesWatched || 0).toFixed(1) + ' min'],
+    ['Avg duration', fmtSec(s.averageViewDuration)],
+    ['Avg viewed', Number(s.averageViewPercentage || 0).toFixed(1) + '%'],
+    ['Subscribers +', s.subscribersGained], ['Shares', s.shares]
+  ];
+  let max = Math.max(1, ...trend.map(x => Number(x.views || 0)));
+  const ret = a.retention || {};
+  const retHtml = ret.diagnosis ? `
+    <div class="card" style="margin-top:16px;background:${ret.bottleneck === 'low_ctr' ? '#f0fdf4;border-color:#bbf7d0' : (ret.bottleneck === 'hook_dropoff' ? '#fff1f2;border-color:#fecdd3' : '#f8fafc')}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0;font-size:15px">🎯 Retention & Hook Bottleneck Analysis</h3>
+        <span class="badge" style="${ret.bottleneck === 'low_ctr' ? 'background:#dcfce7;color:#15803d' : (ret.bottleneck === 'hook_dropoff' ? 'background:#fee2e2;color:#991b1b' : 'background:#f1f5f9;color:#475569')}">
+          ${ret.bottleneck === 'low_ctr' ? '✓ High Retention / Low CTR' : (ret.bottleneck === 'hook_dropoff' ? '⚠️ Hook Drop-off Detected' : 'Balanced')}
+        </span>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.5">${esc(ret.diagnosis)}</p>
+      <div class="muted tiny" style="margin-top:6px">Average viewed percentage: <strong>${ret.average_view_percentage}%</strong> | Avg view duration: <strong>${fmtSec(ret.average_view_duration_seconds)}</strong></div>
+    </div>
+  ` : '';
+
+  document.getElementById('aBody').innerHTML = `
+    <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+      ${cards.map(c => `<div class="card"><div class="muted">${c[0]}</div><div class="metric" style="font-size:22px">${esc(c[1] ?? 0)}</div></div>`).join('')}
+    </div>
+    ${retHtml}
+    <div class="card" style="margin-top:16px">
+      <h3>Views — Last ${esc(trend.length || 0)} days</h3>
+      <div style="display:flex;align-items:end;gap:4px;height:180px">
+        ${trend.map(x => `<div title="${esc(x.day)}: ${esc(x.views)} views" style="flex:1;height:${Math.max(3, (Number(x.views || 0)/max) * 150)}px;background:#2563eb;border-radius:4px 4px 0 0"></div>`).join('')}
+      </div>
+      <div class="muted" style="margin-top:8px">${esc(a.start_date)} → ${esc(a.end_date)}</div>
+    </div>
+    <div style="margin-top:16px"><a class="btn btn-secondary" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.youtube_video_id)}" target="_blank">↗ Open YouTube</a></div>`;
+}
+
+function closeAnalytics() {
+  document.getElementById('analytics').classList.remove('open');
+}
+
+/* ================================================================
+   ADVANCED THUMBNAIL MANAGER & GOOGLE FLOW STUDIO
+   ================================================================ */
+async function showThumbnail(id) {
+  activeThumbVideoId = id;
+  const vid = libraryVideos.find(v => v.id === id);
+  document.getElementById('thumbModalTitle').textContent = `Thumbnail Studio — ${vid ? vid.filename : 'Video #' + id}`;
+  document.getElementById('thumbModal').classList.add('open');
+  document.getElementById('thumbBody').innerHTML = '<div style="text-align:center;padding:32px" class="muted">⏳ Loading thumbnail studio…</div>';
+
+  try {
+    const data = await api('/api/video/' + id + '/thumbnails');
+    if (!data.variants || data.variants.length === 0) {
+      // Auto-generate if none exist yet
+      await generateThumbs(id);
+    } else {
+      renderThumbStudio(id, data);
+    }
+  } catch (err) {
+    // If endpoint fails, attempt generating
+    await generateThumbs(id);
+  }
+}
+
+async function generateThumbs(id) {
+  document.getElementById('thumbBody').innerHTML = `
+    <div style="text-align:center;padding:36px">
+      <div style="font-size:28px;margin-bottom:8px">⚡</div>
+      <h3 style="margin:0 0 6px">Generating 3 High-CTR Viral Thumbnails</h3>
+      <p class="muted" style="margin:0 0 16px">Extracting keyframe and rendering Roast, Breaking & Trending variants…</p>
+    </div>`;
+
+  try {
+    const d = await api('/api/video/' + id + '/thumbnail', { method: 'POST' });
+    const vid = libraryVideos.find(v => v.id === id);
+    if (vid && d.selected_path) {
+      vid.thumbnail_path = d.selected_path;
+    }
+    render(); // refresh row
+    const fullData = await api('/api/video/' + id + '/thumbnails');
+    renderThumbStudio(id, fullData);
+  } catch (e) {
+    document.getElementById('thumbBody').innerHTML = `
+      <div class="notice error">${esc(e.message)}</div>
+      <p style="text-align:center"><button class="btn btn-secondary" onclick="generateThumbs(${id})">🔄 Retry Generation</button></p>`;
+  }
+}
+
+function renderThumbStudio(id, data) {
+  const vid = libraryVideos.find(v => v.id === id) || {};
+  const variants = data.variants || [];
+  const selectedPath = data.selected_path || vid.thumbnail_path || '';
+  const flowPrompt = data.flow_prompt || '';
+  const ts = Date.now();
+
+  const isVert = !!data.is_vertical;
+  const cardWidth = isVert ? '210px' : '290px';
+  const cardAspect = isVert ? '9/16' : '16/9';
+
+  const variantCards = variants.map(v => {
+    const vPathNorm = String(v.path || '').replace(/\\/g, '/').toLowerCase();
+    const vFileNorm = String(v.filename || vPathNorm.split('/').pop() || '').toLowerCase();
+    const selNorm = String(selectedPath || '').replace(/\\/g, '/').toLowerCase();
+    const selFileNorm = String(selNorm.split('/').pop() || '');
+    const isSelected = Boolean(selNorm && (
+      selNorm === vPathNorm ||
+      (selFileNorm && selFileNorm === vFileNorm) ||
+      (vFileNorm && selNorm.endsWith(vFileNorm))
+    ));
+
+    const isFlow = !!v.is_flow;
+    const borderCol = isSelected ? '#22c55e' : (isFlow ? '#6366f1' : '#e2e8f0');
+    const bgCol = isSelected ? '#f0fdf4' : (isFlow ? '#faf5ff' : '#fff');
+    const downloadUrl = (v.url ? v.url : `/api/video/${id}/thumbnail?variant=${v.variant_index}`) + `&download=1`;
+    const downloadFilename = v.filename || `thumbnail_${id}_v${v.variant_index}.png`;
+
+    return `
+      <div class="variant-card" style="width:${cardWidth};flex:0 0 ${cardWidth};border:3px solid ${borderCol};background:${bgCol};border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.06)">
+        <div style="position:relative;aspect-ratio:${cardAspect};background:#0f172a;overflow:hidden;cursor:pointer" onclick="previewVariantInSim(${id}, '${esc(v.url)}', this.closest('.variant-card').querySelector('[data-path]')?.dataset.path || '', ${v.variant_index})">
+          <img src="${v.url}&v=${ts}" style="width:100%;height:100%;object-fit:cover;display:block" alt="${esc(v.name)}" />
+          ${isSelected ? `<span style="position:absolute;top:8px;left:8px;background:#16a34a;color:#fff;font-size:11px;font-weight:850;padding:4px 8px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">✓ ACTIVE PRIMARY</span>` : ''}
+          ${isFlow ? `<span style="position:absolute;top:8px;right:8px;background:#4338ca;color:#e0e7ff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:6px">✨ Flow AI</span>` : ''}
+        </div>
+        <div style="padding:10px;display:flex;flex-direction:column;gap:6px">
+          <strong style="font-size:12px;color:#1e293b;line-height:1.3">${esc(v.name)}</strong>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" style="flex:1;font-size:11px;padding:3px 6px" onclick="previewVariantInSim(${id}, '${esc(v.url)}', this.closest('.variant-card').querySelector('[data-path]')?.dataset.path || '', ${v.variant_index})">👁️ Preview</button>
+            <a href="${downloadUrl}" download="${esc(downloadFilename)}" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;text-decoration:none;display:inline-flex;align-items:center;color:#475569" title="Download thumbnail image">⬇️ Download</a>
+            ${isSelected
+              ? `<div style="flex:2;color:#15803d;font-weight:800;font-size:11px;padding:5px;background:#dcfce7;border:1px solid #bbf7d0;border-radius:6px;text-align:center">✓ Active Default</div>`
+              : `<button class="btn btn-primary btn-sm" style="flex:2;background:#4338ca;border-color:#3730a3;font-weight:700;font-size:11px;padding:5px 8px" data-path="${esc(v.path)}" data-variant="${v.variant_index}" onclick="selectThumbnail(${id}, this.dataset.path, Number(this.dataset.variant))">
+                  ⭐ Set Default
+                </button>`
+            }
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const youtubeUploadBtn = (vid.youtube_video_id || vid.status === 'uploaded')
+    ? `<button class="btn btn-primary btn-sm" onclick="uploadThumbToYouTube(${id})">📤 Set as YouTube Thumbnail</button>`
+    : '';
+
+  document.getElementById('thumbBody').innerHTML = `
+    <div id="thumbAlert"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="generateThumbs(${id})">🔄 Re-generate 3 Viral Variants</button>
+        ${youtubeUploadBtn}
+      </div>
+      <div class="muted tiny">
+        <span class="badge" style="background:#e0e7ff;color:#3730a3">${isVert ? '📱 9:16 Vertical (Shorts/Reels)' : '🖥️ 16:9 Widescreen'}</span>
+        Selected: <code>${esc(selectedPath ? selectedPath.split(/[\\\\/]/).pop() : 'None')}</code>
+      </div>
+    </div>
+
+    <!-- Variants Grid -->
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:24px">
+      ${variantCards}
+    </div>
+
+    <!-- Contrast & Color Pop Heatmap Simulator -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px;color:#f8fafc">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div>
+          <strong style="font-size:14px;color:#38bdf8">🎨 Contrast &amp; Color Pop Simulator</strong>
+          <div style="font-size:11px;color:#94a3b8">Simulate how this thumbnail visually pops against YouTube Dark Mode, Light Mode, and mobile feeds</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" style="background:#1e293b;color:#f8fafc;border-color:#475569" onclick="setSimMode('dark')">🌙 Dark Mode</button>
+          <button class="btn btn-secondary btn-sm" style="background:#f1f5f9;color:#0f172a;border-color:#cbd5e1" onclick="setSimMode('light')">☀️ Light Mode</button>
+          <button class="btn btn-secondary btn-sm" style="background:#3b82f6;color:#fff;border-color:#2563eb" onclick="setSimMode('saturated')">🔥 High Saturation Pop</button>
+        </div>
+      </div>
+      <div id="simContainer" style="display:flex;gap:12px;align-items:center;background:#000;padding:14px;border-radius:10px;transition:all 0.2s">
+        <div style="position:relative;width:180px;aspect-ratio:${cardAspect};overflow:hidden;border-radius:8px">
+          <img id="simThumbImg" src="/api/video/${id}/thumbnail?v=${ts}" style="width:100%;height:100%;object-fit:cover" alt="Active Thumbnail" />
+          <span style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.8);color:#fff;font-size:10px;padding:2px 4px;border-radius:4px;font-weight:700">0:45</span>
+        </div>
+        <div style="flex:1">
+          <div id="simTitleText" style="font-weight:700;font-size:14px;color:#fff;margin-bottom:4px;line-height:1.3">${esc(vid.title || vid.filename)}</div>
+          <div style="font-size:12px;color:#94a3b8">Channel Name • 12K views • 2 hours ago</div>
+          <div id="simContrastBadge" style="margin-top:8px;display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;background:#0369a1;color:#e0f2fe">
+            Visual Contrast Rating: High (Stands out in feed)
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button id="simSetDefaultBtn" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#15803d;font-weight:700" onclick="applySimulatedThumbnailAsDefault(${id})">
+              ⭐ Set as Default Thumbnail
+            </button>
+            <button id="simApplyPopBtn" class="btn btn-secondary btn-sm" style="background:#dc2626;border-color:#b91c1c;color:#fff;font-weight:700" onclick="applyPopThumbnail(${id})">
+              🔥 Apply High-Saturation Pop &amp; Set as Default
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Flow Free AI Studio Integration -->
+    <div class="flow-box">
+      <div class="flow-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <h3><span>✨</span> Google Flow Creative Studio (Zero-Click AI)</h3>
+        <div style="display:flex;align-items:center;gap:12px;font-size:12px;flex-wrap:wrap">
+          <span style="color:#c7d2fe;font-weight:600">Aspect Ratio:</span>
+          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0;color:#e0e7ff">
+            <input type="radio" name="libFlowRatio" id="libFlowRatio916" value="9:16" style="width:auto;margin:0" ${isVert ? 'checked' : ''}>
+            <span>📱 9:16 Vertical</span>
+          </label>
+          <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0;color:#e0e7ff">
+            <input type="radio" name="libFlowRatio" id="libFlowRatio169" value="16:9" style="width:auto;margin:0" ${!isVert ? 'checked' : ''}>
+            <span>🖥️ 16:9 Widescreen</span>
+          </label>
+          <span style="color:#c7d2fe;font-weight:600;margin-left:6px">Count:</span>
+          <select id="libFlowCount" style="width:auto;padding:2px 8px;font-size:12px;border-radius:4px;background:#1e1b4b;color:#f8fafc;border:1px solid #4338ca">
+            <option value="1" selected>x1 Image</option>
+            <option value="2">x2 Images</option>
+            <option value="4">x4 Images</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#c7d2fe;margin:0 0 10px">
+        Want custom photorealistic AI thumbnails? Google Flow (<code>flow.google.com</code>) generates free images.
+        You can edit the prompt below directly or auto-generate with 1 click.
+      </p>
+
+      <textarea id="flowPromptArea" class="flow-prompt-area" rows="3" style="width:100%;box-sizing:border-box;resize:vertical;font-family:inherit" placeholder="Enter or customize Google Flow prompt...">${esc(flowPrompt)}</textarea>
+
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <button id="autoFlowBtn" class="btn btn-primary btn-sm" onclick="runAutomatedFlowGeneration(${id})">🤖 Auto-Generate from Flow (Zero-Click)</button>
+        <button class="btn btn-secondary btn-sm" style="background:#312e81;color:#c7d2fe;border-color:#4338ca" onclick="sanitizeLibraryPrompt(${id})">🛡️ Make Policy-Safe</button>
+        <button class="btn btn-secondary btn-sm" style="background:#1e1b4b;color:#c7d2fe;border-color:#3730a3" onclick="openFlowSessionLogin()">🔑 Connect Flow Session (1-Time)</button>
+        <button id="copyPromptBtn" class="btn btn-secondary btn-sm" style="background:#312e81;color:#fff;border-color:#4338ca;cursor:pointer" onclick="copyFlowPrompt()">📋 Copy Prompt</button>
+        <a class="btn btn-secondary btn-sm" href="https://flow.google.com" target="_blank" rel="noopener">🌐 Open Flow ↗</a>
+      </div>
+
+      <!-- Drag & Drop / Upload from Flow -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('flowFileInput').click()">
+        <input type="file" id="flowFileInput" accept="image/*" style="display:none" onchange="uploadFlowImage(${id}, this.files[0])" />
+        <div style="font-size:22px;margin-bottom:4px">📥</div>
+        <strong style="color:#c7d2fe;font-size:13px">Drop your downloaded thumbnail from Google Flow here, or click to upload</strong>
+        <div style="color:#a5b4fc;font-size:11px;margin-top:2px">Supports PNG, JPG, WebP. Automatically sets as this video's active thumbnail!</div>
+      </div>
+    </div>`;
+
+  setupDropZone(id);
+}
+
+let currentSimulatedPath = '';
+let currentSimulatedVariantIndex = null;
+
+function previewVariantInSim(id, url, path, variantIndex) {
+  const img = document.getElementById('simThumbImg');
+  if (img) img.src = url;
+  currentSimulatedPath = path || '';
+  currentSimulatedVariantIndex = variantIndex;
+  const b = document.getElementById('simContrastBadge');
+  if (b) {
+    b.textContent = 'Previewing Variant: Click below to Set as Default or apply Pop filter';
+    b.style.background = '#4338ca';
+    b.style.color = '#e0e7ff';
+  }
+}
+
+async function applySimulatedThumbnailAsDefault(id) {
+  await selectThumbnail(id, currentSimulatedPath, currentSimulatedVariantIndex);
+}
+
+async function applyPopThumbnail(id) {
+  const alertEl = document.getElementById('thumbAlert');
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Applying high-saturation contrast pop & saving thumbnail…</div>';
+  try {
+    const res = await api('/api/video/' + id + '/thumbnail/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: currentSimulatedPath || '',
+        variant_index: currentSimulatedVariantIndex,
+        apply_pop: true
+      })
+    });
+    const vid = libraryVideos.find(v => v.id === id);
+    if (vid) vid.thumbnail_path = res.thumbnail_path;
+    render();
+    const fullData = await api('/api/video/' + id + '/thumbnails');
+    renderThumbStudio(id, fullData);
+    const ytNotice = res.youtube_pushed ? ' (Auto-synced to live YouTube video!)' : '';
+    if (alertEl) alertEl.innerHTML = `<div class="notice success">🔥 High-Saturation Pop thumbnail created & set as default!${ytNotice}</div>`;
+  } catch(e) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Failed applying pop thumbnail: ${esc(e.message)}</div>`;
+  }
+}
+
+function setSimMode(mode) {
+  const c = document.getElementById('simContainer');
+  const img = document.getElementById('simThumbImg');
+  const t = document.getElementById('simTitleText');
+  const b = document.getElementById('simContrastBadge');
+  if (!c || !img) return;
+
+  if (mode === 'dark') {
+    c.style.background = '#0f0f0f';
+    if (t) t.style.color = '#f1f1f1';
+    img.style.filter = 'none';
+    if (b) {
+      b.textContent = '🌙 Dark Mode Appearance: Clean separation against black background';
+      b.style.background = '#0369a1';
+      b.style.color = '#e0f2fe';
+    }
+  } else if (mode === 'light') {
+    c.style.background = '#ffffff';
+    if (t) t.style.color = '#0f0f0f';
+    img.style.filter = 'none';
+    if (b) {
+      b.textContent = '☀️ Light Mode Appearance: Vibrant card edges pop clearly on white';
+      b.style.background = '#fef3c7';
+      b.style.color = '#92400e';
+    }
+  } else if (mode === 'saturated') {
+    c.style.background = '#18181b';
+    if (t) t.style.color = '#ffffff';
+    img.style.filter = 'contrast(125%) saturate(135%) brightness(105%)';
+    if (b) {
+      b.textContent = '🔥 High Saturation Heatmap: Maximum thumbnail pop & hook power';
+      b.style.background = '#dc2626';
+      b.style.color = '#ffffff';
+    }
+  }
+}
+
+function setupDropZone(id) {
+  const dz = document.getElementById('dropZone');
+  if (!dz) return;
+  ['dragenter', 'dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.style.background = 'rgba(99, 102, 241, 0.28)'; }, false));
+  ['dragleave', 'drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.style.background = 'rgba(99, 102, 241, 0.08)'; }, false));
+  dz.addEventListener('drop', ev => {
+    const dt = ev.dataTransfer;
+    if (dt && dt.files && dt.files[0]) {
+      uploadFlowImage(id, dt.files[0]);
+    }
+  });
+}
+
+function copyFlowPrompt() {
+  const ta = document.getElementById('flowPromptArea');
+  if (!ta) return;
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch (e) {
+    copied = false;
+  }
+
+  const btn = document.getElementById('copyPromptBtn');
+  const showSuccess = () => {
+    if (btn) {
+      btn.innerHTML = '✓ Copied to Clipboard!';
+      btn.style.background = '#059669';
+      btn.style.borderColor = '#10b981';
+      setTimeout(() => {
+        btn.innerHTML = '📋 Copy Prompt for Flow';
+        btn.style.background = '#312e81';
+        btn.style.borderColor = '#4338ca';
+      }, 2500);
+    }
+  };
+
+  if (copied) {
+    showSuccess();
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value)
+      .then(showSuccess)
+      .catch(() => {
+        prompt('Copy prompt for Google Flow (Ctrl+C, Enter):', ta.value);
+      });
+  } else {
+    prompt('Copy prompt for Google Flow (Ctrl+C, Enter):', ta.value);
+  }
+}
+
+async function uploadFlowImage(id, file) {
+  if (!file) return;
+  const alertEl = document.getElementById('thumbAlert');
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Uploading custom thumbnail from Google Flow…</div>';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`/api/video/${id}/thumbnail/upload-custom`, {
+      method: 'POST',
+      body: formData
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Upload failed');
+
+    const vid = libraryVideos.find(v => v.id === id);
+    if (vid) vid.thumbnail_path = d.path;
+    render(); // refresh row
+
+    const fullData = await api('/api/video/' + id + '/thumbnails');
+    renderThumbStudio(id, fullData);
+
+    const alertBox = document.getElementById('thumbAlert');
+    if (alertBox) alertBox.innerHTML = '<div class="notice success">✓ Custom Flow thumbnail uploaded and set as active!</div>';
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Upload failed: ${esc(err.message)}</div>`;
+  }
+}
+
+async function openFlowSessionLogin() {
+  const alertEl = document.getElementById('thumbAlert');
+  if (alertEl) alertEl.innerHTML = '<div class="notice">🌐 Launching visible Chrome browser window. Please log into your Google Account on flow.google.com once. Your session will be saved automatically.</div>';
+  try {
+    const res = await api('/api/flow/login-session', { method: 'POST' });
+    if (alertEl) alertEl.innerHTML = `<div class="notice success">✓ ${esc(res.message || 'Session saved successfully!')}</div>`;
+  } catch (e) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Failed to launch browser: ${esc(e.message)}</div>`;
+  }
+}
+
+async function sanitizeLibraryPrompt(id, autoRetry = false) {
+  const ta = document.getElementById('flowPromptArea');
+  if (!ta) return;
+  const current = ta.value.trim();
+  if (!current) return;
+  try {
+    const res = await api('/api/flow/sanitize-prompt', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: current })
+    });
+    if (res && res.prompt) {
+      ta.value = res.prompt;
+      ta.style.border = '2px solid #10b981';
+      setTimeout(() => { ta.style.border = '1px solid #4338ca'; }, 2000);
+      if (autoRetry) {
+        runAutomatedFlowGeneration(id);
+      }
+    }
+  } catch (e) {
+    console.warn("Sanitization error:", e);
+  }
+}
+
+async function runAutomatedFlowGeneration(id) {
+  const btn = document.getElementById('autoFlowBtn');
+  const alertEl = document.getElementById('thumbAlert');
+  const ta = document.getElementById('flowPromptArea');
+  const customPrompt = (ta?.value || '').trim();
+  const ratio = document.getElementById('libFlowRatio916')?.checked ? '9:16' : '16:9';
+  const count = Number(document.getElementById('libFlowCount')?.value || 1);
+
+  if (btn) btn.disabled = true;
+  if (alertEl) alertEl.innerHTML = `<div class="notice">🤖 Configuring Google Flow (${ratio}, x${count}), entering prompt, and downloading AI image...</div>`;
+
+  try {
+    const res = await api(`/api/video/${id}/flow/auto-generate`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt: customPrompt, aspect_ratio: ratio, count: count })
+    });
+    if (res.ok) {
+      if (alertEl) alertEl.innerHTML = `<div class="notice success">🎉 <strong>Success!</strong> ${esc(res.message)}</div>`;
+      if (ta) ta.style.border = '1px solid #4338ca';
+      const newPath = res.thumbnail_path || res.path || '';
+      const vid = libraryVideos.find(v => v.id === id);
+      if (vid && newPath) {
+        vid.thumbnail_path = newPath;
+      }
+      const fullData = await api('/api/video/' + id + '/thumbnails');
+      renderThumbStudio(id, fullData);
+      await load();
+    } else {
+      if (res.reason === 'flow_login_needed') {
+        if (alertEl) alertEl.innerHTML = `<div class="notice error">⚠️ Google Flow requires login. Click <strong>"🔑 Connect Flow Session (1-Time)"</strong> above to log in once, then click Auto-Generate again.</div>`;
+      } else if (res.reason === 'policy_violation') {
+        if (ta) {
+          ta.style.border = '2px solid #ef4444';
+          ta.focus();
+        }
+        if (alertEl) alertEl.innerHTML = `
+          <div class="notice error">
+            ⚠️ <strong>Google Flow Policy Block:</strong> ${esc(res.message)}
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-primary" onclick="sanitizeLibraryPrompt(${id}, true)">🛡️ Auto-Sanitize Prompt &amp; Retry Now</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('flowPromptArea').focus()">✏️ Edit Prompt Manually</button>
+            </div>
+          </div>
+        `;
+      } else {
+        if (alertEl) alertEl.innerHTML = `<div class="notice error">Automated generation: ${esc(res.message)}</div>`;
+      }
+    }
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Flow Automation failed: ${esc(err.message)}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function selectThumbnail(id, path, variantIndex) {
+  try {
+    const payload = {};
+    if (path) payload.path = path;
+    if (variantIndex != null) payload.variant_index = variantIndex;
+
+    const res = await api('/api/video/' + id + '/thumbnail/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const vid = libraryVideos.find(v => v.id === id);
+    if (vid) vid.thumbnail_path = res.thumbnail_path || path;
+    render(); // update row
+
+    const fullData = await api('/api/video/' + id + '/thumbnails');
+    renderThumbStudio(id, fullData);
+
+    const alertEl = document.getElementById('thumbAlert');
+    const ytNotice = res.youtube_pushed ? ' (Auto-synced to live YouTube video!)' : (res.youtube_error ? ` (YouTube sync error: ${res.youtube_error})` : '');
+    if (alertEl) alertEl.innerHTML = `<div class="notice success">✓ Primary default thumbnail updated successfully!${ytNotice}</div>`;
+  } catch (e) {
+    const alertEl = document.getElementById('thumbAlert');
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Select failed: ${esc(e.message)}</div>`;
+  }
+}
+
+async function uploadThumbToYouTube(id) {
+  const alertEl = document.getElementById('thumbAlert');
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Setting thumbnail on YouTube…</div>';
+  try {
+    const res = await api('/api/video/' + id + '/thumbnail/upload', { method: 'POST' });
+    if (res && res.skipped) {
+      if (alertEl) alertEl.innerHTML = `<div class="notice" style="background:#2a2510;border-color:#b45309;color:#fde047;border-left:4px solid #f59e0b;">ℹ️ ${esc(res.message || 'Skipped API upload for YouTube Short to avoid mobile grey box. Use mobile frame selection or bake thumbnail into video.')}</div>`;
+    } else {
+      if (alertEl) alertEl.innerHTML = '<div class="notice success">✓ Thumbnail successfully uploaded to YouTube!</div>';
+    }
+  } catch (e) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">YouTube thumbnail update failed: ${esc(e.message)}</div>`;
+  }
+}
+
+async function assignPlaylist(id) {
+  try {
+    const d = await api('/api/video/' + id + '/playlist', { method: 'POST' });
+    const msg = d.created
+      ? `🎉 Created new playlist "${d.playlist_title}" and added video!`
+      : `✓ Added video to existing playlist "${d.playlist_title}"!`;
+    const vid = libraryVideos.find(v => v.id === id);
+    if (vid) vid.youtube_playlist_id = d.playlist_id;
+    render();
+    setMessage('statusToast', msg, 'success');
+  } catch(e) {
+    setMessage('statusToast', e.message, 'error');
+  }
+}
+
+function closeThumb() {
+  document.getElementById('thumbModal').classList.remove('open');
+  activeThumbVideoId = null;
+}
+
+let activeOptVideoId = null;
+
+async function openOptimizerModal(id, title) {
+  activeOptVideoId = id;
+  document.getElementById('optModalTitle').textContent = `⚡ 7-15 Day Optimizer: ${title}`;
+  document.getElementById('optimizerBody').innerHTML = '<div style="padding:20px;text-align:center">Loading performance history and audit data…</div>';
+  document.getElementById('optimizerModal').classList.add('open');
+
+  try {
+    const data = await api(`/api/video/${id}/optimization-history`);
+    renderOptimizerModal(data);
+  } catch (err) {
+    document.getElementById('optimizerBody').innerHTML = `<div class="notice error">Failed to load optimizer data: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderOptimizerModal(data) {
+  const history = data.history || [];
+  const body = document.getElementById('optimizerBody');
+
+  let historyHtml = '';
+  if (history.length === 0) {
+    historyHtml = '<div class="muted tiny" style="padding:12px;background:#f8fafc;border-radius:8px">No A/B optimizations applied yet. The system automatically inspects this video every 7–15 days.</div>';
+  } else {
+    historyHtml = history.map((item, idx) => {
+      const cycleNum = item.cycle || (idx + 1);
+      const appliedTitle = item.new_title || item.applied_title || '';
+      const viewsCount = item.views_prior != null ? item.views_prior : (item.views != null ? item.views : '0');
+      const thumbVariant = item.thumbnail_variant || (item.ab_title_index_used != null ? item.ab_title_index_used + 1 : (idx % 3 + 1));
+      const hasThumb = Boolean(item.thumbnail_path || item.thumbnail_updated);
+      const thumbName = item.thumbnail_path ? item.thumbnail_path.split(/[\\/]/).pop() : '';
+      const remotePushed = item.push_title_ok ? '<span class="badge" style="background:#dcfce7;color:#15803d;margin-left:6px">✓ Pushed to YouTube</span>' : (item.push_title_ok === false ? '<span class="badge" style="background:#fef3c7;color:#b45309;margin-left:6px">Saved Locally</span>' : '');
+
+      return `
+      <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;background:#f8fafc">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <strong>Cycle #${cycleNum} — ${esc(item.timestamp ? new Date(item.timestamp).toLocaleString() : '')}</strong>
+          <div>
+            <span class="badge" style="background:#e0f2fe;color:#0369a1">A/B Variant #${thumbVariant}</span>
+            ${remotePushed}
+          </div>
+        </div>
+        <div style="font-size:13px;margin-bottom:4px">
+          <strong>Views at audit:</strong> ${viewsCount} | <strong>Diagnosis:</strong> <span style="color:#d97706">${esc(item.diagnosis || 'Underperforming (Low CTR/Pacing)')}</span>
+        </div>
+        <div style="font-size:13px;margin-bottom:4px">
+          <strong>Applied Title:</strong> <span style="font-weight:600;color:#0f172a">${esc(appliedTitle)}</span>
+        </div>
+        <div class="muted tiny">
+          <strong>Thumbnail Updated:</strong> ${hasThumb ? `✓ Yes (Variant #${thumbVariant}${thumbName ? ` · ${esc(thumbName)}` : ''})` : 'No change'}
+        </div>
+      </div>
+      `;
+    }).reverse().join('');
+  }
+
+  const win = data.operating_window;
+  const isNight = win && !win.is_daytime;
+
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:700;color:#1e40af;font-size:15px">Autonomous 7-15 Day Optimizer Status</span>
+          ${win ? (win.is_daytime ?
+            `<span style="padding:2px 8px;border-radius:6px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:11px;font-weight:700">☀️ Daytime Active (${esc(win.start_time_12h)} – ${esc(win.end_time_12h)})</span>` :
+            `<span style="padding:2px 8px;border-radius:6px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:11px;font-weight:700">🌙 Night Pause (Resumes ${esc(win.start_time_12h)})</span>`
+          ) : ''}
+        </div>
+        <div style="font-size:13px;color:#3b82f6;margin-top:4px">
+          Audited every 7–15 days by scheduler during daytime. Total Optimizations Applied: <strong>${data.auto_optimized_count}</strong>
+        </div>
+        <div class="muted tiny" style="margin-top:4px">
+          Last Check: ${data.last_performance_check_at ? new Date(data.last_performance_check_at).toLocaleString() : 'Pending first cycle'}
+          • Operating Window: <strong>8:00 AM – 9:00 PM</strong> (Night updates blocked)
+        </div>
+      </div>
+      <div>
+        <button id="optRunBtn" class="btn btn-primary" onclick="runManualOptimization(${data.video_id})">
+          🚀 Run Performance Audit & Fix Now
+        </button>
+      </div>
+    </div>
+
+    ${isNight ? `
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.4">
+        🌙 <strong>Night Protection Active:</strong> Current time is <strong>${esc(win?.current_local_time || '')}</strong>. As configured, the optimizer will NOT update video details after 9:00 PM to avoid disturbing viewers. Automatic audits and details updates resume tomorrow at <strong>8:00 AM</strong>.
+      </div>
+    ` : ''}
+
+    <div id="optAlert"></div>
+
+    <div style="font-weight:700;margin-bottom:10px;font-size:14px">A/B Testing & Optimization History</div>
+    <div style="max-height:380px;overflow-y:auto">
+      ${historyHtml}
+    </div>
+  `;
+}
+
+async function runManualOptimization(id, allowNight = false) {
+  const btn = document.getElementById('optRunBtn');
+  const alertEl = document.getElementById('optAlert');
+  if (btn) btn.disabled = true;
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Fetching YouTube statistics, checking operating window, and evaluating performance...</div>';
+
+  try {
+    const res = await api(`/api/video/${id}/audit-optimize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allow_night: allowNight, force: true })
+    });
+    const result = res.result || {};
+
+    if (result.status === 'outside_daytime_window') {
+      if (alertEl) alertEl.innerHTML = `
+        <div class="notice" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px">
+          🌙 <strong>Night Pause Active:</strong> ${esc(result.reason)}<br>
+          <div style="font-size:12px;margin-top:6px;color:#c2410c">Video details can only be updated between <strong>${esc(result.operating_window || '8:00 AM – 9:00 PM')}</strong>.</div>
+          <div style="margin-top:10px">
+            <button class="btn btn-secondary btn-sm" style="border-color:#fed7aa;color:#9a3412;background:#ffedd5" onclick="runManualOptimization(${id}, true)">
+              ⚡ Override Night Pause &amp; Update Now
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (result.status === 'optimized') {
+      if (alertEl) alertEl.innerHTML = `<div class="notice success">🎉 <strong>Optimization Applied!</strong> Video details updated.<br>Applied Title: <strong>${esc(result.new_title || '')}</strong> (Cycle #${result.cycle})</div>`;
+    } else if (result.status === 'performing_well') {
+      if (alertEl) alertEl.innerHTML = `<div class="notice success">✅ <strong>Performing Well:</strong> Video has ${result.view_count} views and meets current performance benchmarks. (Days Live: ${result.days_live})</div>`;
+    } else {
+      if (alertEl) alertEl.innerHTML = `<div class="notice">ℹ️ ${esc(result.reason || result.status)}</div>`;
+    }
+
+    // Refresh history
+    const data = await api(`/api/video/${id}/optimization-history`);
+    renderOptimizerModal(data);
+    await load(); // refresh main table
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Optimization error: ${esc(err.message)}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function closeOptimizerModal() {
+  document.getElementById('optimizerModal').classList.remove('open');
+  activeOptVideoId = null;
+}
+
+async function clipShortVideo(id, filename) {
+  const startStr = prompt(`Crop 9:16 vertical Short/Reel from "${filename}"\n\nEnter start time in seconds (e.g. 0 for beginning, 30 for 30s in):`, "0");
+  if (startStr === null) return;
+  const startTime = parseFloat(startStr) || 0.0;
+
+  setMessage('statusToast', `⏳ Clipping 9:16 vertical Short from "${filename}" (start: ${startTime}s)...`);
+  try {
+    const res = await api(`/api/video/${id}/clip-short`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_time: startTime, duration: 55.0 })
+    });
+    setMessage('statusToast', `🎉 Successfully created 9:16 vertical Short "${res.filename}"! Added to library.`, 'success');
+    await load();
+  } catch (err) {
+    setMessage('statusToast', `Clipping failed: ${err.message}`, 'error');
+  }
+}
+
+let activeMetaVideoId = null;
+
+async function openMetaPublishModal(id) {
+  activeMetaVideoId = id;
+  const vid = libraryVideos.find(v => v.id === id);
+  if (!vid) return;
+  document.getElementById('metaModalTitle').textContent = `Publish "${vid.title || vid.filename}" to Meta`;
+  document.getElementById('metaModalBody').innerHTML = '<div style="text-align:center;padding:24px" class="muted">Loading connected Meta pages…</div>';
+  document.getElementById('metaPublishModal').classList.add('open');
+
+  try {
+    const d = await api('/api/meta/connections');
+    const conns = (d.connections || []).filter(c => c.status === 'connected');
+    if (!conns.length) {
+      document.getElementById('metaModalBody').innerHTML = `
+        <div class="notice">
+          <strong>No connected Facebook Page found.</strong><br>
+          Please connect your Meta account and select a Page from <a href="/connections" style="color:var(--brand);font-weight:700">Connections</a> first.
+        </div>
+      `;
+      return;
+    }
+
+    const defaultTitle = esc(vid.title || vid.filename || '');
+    const defaultCaption = esc(vid.description || (vid.title || vid.filename || ''));
+
+    document.getElementById('metaModalBody').innerHTML = `
+      <div id="metaAlert"></div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:600">Connected Meta Page</label>
+        <select id="metaConnSelect" style="width:100%;padding:8px;border-radius:8px">
+          ${conns.map(c => `<option value="${c.id}">${esc(c.page_name)} ${c.instagram_username ? '· @' + esc(c.instagram_username) : ''}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:600">Select Target Platforms</label>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="metaDestFbVideo" checked style="width:auto">
+            <span>📘 Facebook Video</span>
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="metaDestFbReel" checked style="width:auto">
+            <span>📘 Facebook Reel</span>
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="metaDestIgReel" checked style="width:auto">
+            <span>📸 Instagram Reel</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:600">Title</label>
+        <input id="metaTitleInput" value="${defaultTitle}" style="width:100%;padding:8px;border-radius:8px" />
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:600">Caption / Description</label>
+        <textarea id="metaCaptionInput" rows="3" style="width:100%;padding:8px;border-radius:8px;font-family:inherit">${defaultCaption}</textarea>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-secondary" onclick="closeMetaModal()">Cancel</button>
+        <button id="metaSubmitBtn" class="btn btn-primary" onclick="submitMetaPublish(${id})">🚀 Publish to Meta Now</button>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('metaModalBody').innerHTML = `<div class="notice error">Failed to load Meta connections: ${esc(err.message)}</div>`;
+  }
+}
+
+function closeMetaModal() {
+  document.getElementById('metaPublishModal').classList.remove('open');
+  activeMetaVideoId = null;
+}
+
+async function submitMetaPublish(id) {
+  const connId = Number(document.getElementById('metaConnSelect')?.value);
+  const fbVid = !!document.getElementById('metaDestFbVideo')?.checked;
+  const fbReel = !!document.getElementById('metaDestFbReel')?.checked;
+  const igReel = !!document.getElementById('metaDestIgReel')?.checked;
+  const title = document.getElementById('metaTitleInput')?.value.trim() || '';
+  const caption = document.getElementById('metaCaptionInput')?.value.trim() || '';
+  const alertEl = document.getElementById('metaAlert');
+  const btn = document.getElementById('metaSubmitBtn');
+
+  if (!fbVid && !fbReel && !igReel) {
+    if (alertEl) alertEl.innerHTML = '<div class="notice error">Please select at least one platform (Facebook Video, Facebook Reel, or Instagram Reel).</div>';
+    return;
+  }
+  if (!title) {
+    if (alertEl) alertEl.innerHTML = '<div class="notice error">Title is required.</div>';
+    return;
+  }
+
+  const dests = [];
+  if (fbVid) dests.push({ key: 'Facebook Video', dest: 'facebook_video' });
+  if (fbReel) dests.push({ key: 'Facebook Reel', dest: 'facebook_reel' });
+  if (igReel) dests.push({ key: 'Instagram Reel', dest: 'instagram_reel' });
+
+  if (btn) btn.disabled = true;
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Uploading and publishing video to selected Meta destinations…</div>';
+
+  const results = [];
+  for (const { key, dest } of dests) {
+    try {
+      const res = await api('/api/meta/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection_id: connId,
+          video_id: id,
+          destination: dest,
+          title: title,
+          caption: caption,
+          approved: true
+        })
+      });
+      results.push(`✅ <strong>${esc(key)}:</strong> Published successfully! (ID: ${esc(res.result?.id || 'done')})`);
+    } catch (e) {
+      results.push(`❌ <strong>${esc(key)}:</strong> ${esc(e.message)}`);
+    }
+  }
+
+  if (alertEl) {
+    alertEl.innerHTML = `<div class="notice" style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;margin-bottom:12px">${results.join('<br>')}</div>`;
+  }
+  if (btn) btn.disabled = false;
+  await load(); // refresh row badges in main library table
+}
+
+/* ================================================================
+   COMMUNITY POST & TEASER MODAL
+   ================================================================ */
+let activeCommunityVideoId = null;
+let currentCommunityTeaser = null;
+
+async function openCommunityModal(id, title) {
+  activeCommunityVideoId = id;
+  const modal = document.getElementById('communityModal');
+  modal.classList.add('open');
+  document.getElementById('commModalTitle').textContent = `📢 Community Post: ${title || 'Video #' + id}`;
+  document.getElementById('communityModalBody').innerHTML = '<div style="text-align:center;padding:30px" class="muted">⏳ Generating high-engagement teaser & poll…</div>';
+
+  try {
+    const data = await api(`/api/community/generate/${id}`);
+    const teaser = data.teaser;
+    currentCommunityTeaser = teaser;
+    currentStudioCommunityUrl = data.studio_community_url || 'https://studio.youtube.com';
+
+    const optInputs = (teaser.poll_options || []).map((opt, i) => `
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+        <span style="font-weight:700;color:var(--brand);width:20px">${i+1}.</span>
+        <input class="comm-poll-opt" value="${esc(opt)}" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1" />
+      </div>
+    `).join('');
+
+    document.getElementById('communityModalBody').innerHTML = `
+      <div id="commAlert"></div>
+
+      ${data.is_short ? `
+        <div style="background:#fffbeb;border:1px solid #fde68a;padding:12px;border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#92400e;display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:20px;line-height:1">⚠️</span>
+          <div>
+            <strong>Notice: Long-Form Optimization Only</strong><br>
+            This video is recognized as a <strong>Short or Reel</strong>. Interactive community polls and teaser announcements are engineered specifically for <strong>Long-Form videos</strong>. Automated triggers bypass Shorts & Reels to maintain feed relevance.
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:12px;border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.5;color:#0369a1">
+        ℹ️ <strong>Multi-Platform Community Engine:</strong><br>
+        • <strong>Facebook Page Feed:</strong> Directly posts the announcement copy, interactive poll question, and link to your connected Facebook page.<br>
+        • <strong>YouTube Video Community Thread:</strong> Auto-pins this announcement and interactive poll at the very top of your video's comment section.<br>
+        • <strong>YouTube Channel Community Tab:</strong> YouTube's public API does not permit third-party bots to publish directly to the Community tab. Use the instant <strong>1-Click Copy &amp; Open Studio</strong> button below to paste your poll directly into YouTube Studio in seconds, or click <strong>Send to Telegram</strong> for mobile publishing.
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <label style="font-size:12px;font-weight:700">📢 Announcement Post Copy</label>
+          <span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px" title="Grounded strictly in actual video transcript and storyline, not fake templates">✓ 100% Video Grounded</span>
+        </div>
+        <textarea id="commPostText" rows="5" style="width:100%;padding:8px;border-radius:8px;font-family:inherit;font-size:13px;border:1px solid #cbd5e1">${esc(teaser.full_text || '')}</textarea>
+      </div>
+
+      <div style="margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-size:12px;font-weight:700">📊 Interactive Community Poll</label>
+          <span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px" title="Poll questions and choices directly reference real events in this video">✓ Video Grounded</span>
+        </div>
+        <div style="margin-bottom:8px">
+          <input id="commPollQuestion" value="${esc(teaser.poll_question || '')}" placeholder="Poll Question" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;font-weight:600" />
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:6px">Poll Choices:</div>
+        <div id="commPollOptsContainer">${optInputs}</div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:700">Select Auto-Publish Platforms</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="commDestFb" checked style="width:auto">
+            <span>📘 Facebook Page Feed</span>
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="commDestYtPin" checked style="width:auto">
+            <span>🔴 YouTube Pinned Community Comment</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid #e2e8f0;padding-top:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" id="btnAutoPostBrowser" onclick="autoPostInBrowserWindow(${id})" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#1d4ed8;font-weight:750" title="Open a new browser window and post community announcement & poll to YouTube automatically">
+            🚀 Auto-Post in Browser Window
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="copyYtCommunityPost(true)" title="Copy post & poll to clipboard and open YouTube Studio Community Tab in a new window" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:700">
+            📋 1-Click Copy &amp; Open Studio ↗
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="sendCommunityToTelegram(${id})" title="Send Community post notification with ready copy and direct link to your Telegram" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0;font-weight:700">
+            📱 Send to Telegram
+          </button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeCommunityModal()">Close</button>
+          <button id="commPublishBtn" class="btn btn-primary" onclick="submitCommunityPublish(${id})" style="background:#ea580c;border-color:#c2410c">
+            🚀 Auto-Publish Community Teaser
+          </button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('communityModalBody').innerHTML = `<div class="notice error">Failed to generate community teaser: ${esc(err.message)}</div>`;
+  }
+}
+
+function closeCommunityModal() {
+  document.getElementById('communityModal').classList.remove('open');
+  activeCommunityVideoId = null;
+}
+
+function safeCopyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+  } catch(e) {}
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) resolve();
+      else reject(new Error('copy command failed'));
+    } catch(err) {
+      document.body.removeChild(ta);
+      reject(err);
+    }
+  });
+}
+
+function copyYtCommunityPost(openStudio = false) {
+  const text = document.getElementById('commPostText')?.value || '';
+  const pollQ = document.getElementById('commPollQuestion')?.value || '';
+  const opts = Array.from(document.querySelectorAll('.comm-poll-opt')).map(inp => inp.value.trim()).filter(Boolean);
+
+  let ytText = `${text}\n\n📊 COMMUNITY POLL:\n❓ ${pollQ}\n` + opts.map((opt, i) => `  [${i+1}] ${opt}`).join('\n');
+  const alertEl = document.getElementById('commAlert');
+
+  // Trigger window.open immediately on user click to avoid browser popup blockers
+  if (openStudio && currentStudioCommunityUrl) {
+    window.open(currentStudioCommunityUrl, '_blank');
+  }
+
+  safeCopyTextToClipboard(ytText).then(() => {
+    if (alertEl) {
+      alertEl.innerHTML = '<div class="notice" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px;border-radius:6px;margin-bottom:12px">✅ <strong>Community Post &amp; Poll Copied to Clipboard!</strong> YouTube Studio Community Tab is opened in a new window.</div>';
+    }
+  }).catch(() => {
+    if (alertEl) {
+      alertEl.innerHTML = '<div class="notice" style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:10px;border-radius:6px;margin-bottom:12px">ℹ️ <strong>Window opened!</strong> Use Auto-Post in Browser Window or copy the text from the box below.</div>';
+    }
+  });
+}
+
+async function autoPostInBrowserWindow(id) {
+  const btn = document.getElementById('btnAutoPostBrowser');
+  const alertEl = document.getElementById('commAlert');
+  const text = document.getElementById('commPostText')?.value.trim() || '';
+  const pollQ = document.getElementById('commPollQuestion')?.value.trim() || '';
+  const pollOpts = Array.from(document.querySelectorAll('.comm-poll-opt')).map(inp => inp.value.trim()).filter(Boolean);
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Opening Browser & Posting…'; }
+  if (alertEl) alertEl.innerHTML = '<div class="notice" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px;border-radius:6px;margin-bottom:12px">⏳ <strong>Launching Chrome browser window…</strong> Navigating to YouTube Community tab and entering post & poll automatically.</div>';
+
+  try {
+    const res = await api(`/api/community/browser-post/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: text,
+        poll_question: pollQ,
+        poll_options: pollOpts
+      })
+    });
+
+    if (res.posted) {
+      if (alertEl) alertEl.innerHTML = `<div class="notice" style="background:#dcfce7;border:1px solid #bbf7d0;color:#15803d;padding:12px;border-radius:6px;margin-bottom:12px">🎉 <strong>Success!</strong> ${esc(res.message || 'Posted to YouTube Community Tab!')}</div>`;
+      if (btn) { btn.textContent = '✓ Successfully Posted!'; btn.style.background = '#15803d'; }
+    } else if (res.needs_login) {
+      if (alertEl) alertEl.innerHTML = `<div class="notice" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:12px;border-radius:6px;margin-bottom:12px">⚠️ <strong>Google Sign-In Required:</strong> A Chrome window has opened. Please log into your YouTube channel account in that window, then click <strong>Auto-Post in Browser Window</strong> again!</div>`;
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Retry Auto-Post After Sign-In'; }
+    } else {
+      if (alertEl) alertEl.innerHTML = `<div class="notice" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1;padding:12px;border-radius:6px;margin-bottom:12px">ℹ️ ${esc(res.message || 'Chrome window is open with text ready. Check the window to complete.')}</div>`;
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 Auto-Post in Browser Window'; }
+    }
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Failed browser automation: ${esc(err.message)}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Auto-Post in Browser Window'; }
+  }
+}
+
+async function sendCommunityToTelegram(id) {
+  const alertEl = document.getElementById('commAlert');
+  const postText = document.getElementById('commPostText')?.value.trim() || '';
+  const pollQ = document.getElementById('commPollQuestion')?.value.trim() || '';
+  const pollOpts = Array.from(document.querySelectorAll('.comm-poll-opt')).map(inp => inp.value.trim()).filter(Boolean);
+
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Sending Community Post to Telegram…</div>';
+
+  try {
+    const res = await api(`/api/community/notify-telegram/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: postText,
+        poll: {
+          question: pollQ,
+          options: pollOpts
+        }
+      })
+    });
+    if (alertEl) {
+      alertEl.innerHTML = `
+        <div class="notice" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:12px;border-radius:6px;margin-bottom:12px">
+          ✈️ <strong>Telegram Notification Sent!</strong> Check your Telegram for the formatted Community copy and direct 1-click YouTube Studio link.
+        </div>
+      `;
+    }
+  } catch (err) {
+    if (alertEl) {
+      alertEl.innerHTML = `<div class="notice error">Failed to send Telegram notification: ${esc(err.message)}</div>`;
+    }
+  }
+}
+
+async function submitCommunityPublish(id) {
+  const btn = document.getElementById('commPublishBtn');
+  const alertEl = document.getElementById('commAlert');
+  const postText = document.getElementById('commPostText')?.value.trim() || '';
+  const pollQ = document.getElementById('commPollQuestion')?.value.trim() || '';
+  const pollOpts = Array.from(document.querySelectorAll('.comm-poll-opt')).map(inp => inp.value.trim()).filter(Boolean);
+
+  const fbChecked = !!document.getElementById('commDestFb')?.checked;
+  const ytPinChecked = !!document.getElementById('commDestYtPin')?.checked;
+
+  const platforms = [];
+  if (fbChecked) platforms.push('facebook');
+  if (ytPinChecked) platforms.push('youtube');
+
+  if (!platforms.length) {
+    if (alertEl) alertEl.innerHTML = '<div class="notice error">Please select at least one platform (Facebook or YouTube Pinned Comment).</div>';
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (alertEl) alertEl.innerHTML = '<div class="notice">⏳ Publishing community teaser to selected platforms…</div>';
+
+  try {
+    const res = await api(`/api/community/publish/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platforms: platforms,
+        text: postText,
+        poll: {
+          question: pollQ,
+          options: pollOpts
+        }
+      })
+    });
+
+    const msgs = [];
+    if (res.published_platforms?.includes('facebook')) {
+      msgs.push('✅ <strong>Facebook Page:</strong> Community teaser posted successfully!');
+    }
+    if (res.published_platforms?.includes('youtube')) {
+      msgs.push('✅ <strong>YouTube Video:</strong> Community teaser and poll posted as top pinned comment!');
+    }
+    if (res.errors && Object.keys(res.errors).length > 0) {
+      for (const [p, err] of Object.entries(res.errors)) {
+        msgs.push(`⚠️ <strong>${esc(p)}:</strong> ${esc(err)}`);
+      }
+    }
+
+    if (alertEl) {
+      alertEl.innerHTML = `
+        <div class="notice" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px;margin-bottom:12px;color:#166534">
+          ${msgs.join('<br>')}
+          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #86efac;font-size:12px">
+            <strong>Ready for YouTube Community Tab?</strong><br>
+            <a href="${esc(res.youtube_community_url || 'https://studio.youtube.com')}" target="_blank" class="btn btn-secondary btn-sm" style="margin-top:6px;display:inline-block">
+              🌐 Open YouTube Studio Community Tab ↗
+            </a>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="notice error">Failed to publish community teaser: ${esc(err.message)}</div>`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ================================================================
+   AI VIDEO DIRECTOR QC REVIEW MODAL & APPROVAL PIPELINE
+   ================================================================ */
+let activeQCVideoId = null;
+
+async function openQCModal(id, title) {
+  activeQCVideoId = id;
+  const modal = document.getElementById('qcModal');
+  modal.classList.add('open');
+  document.getElementById('qcModalTitle').textContent = `QC Audit: ${title || 'Video #' + id}`;
+  document.getElementById('qcVerdictBadge').textContent = 'Analyzing…';
+  document.getElementById('qcVerdictBadge').style.background = '#e2e8f0';
+  document.getElementById('qcVerdictBadge').style.color = '#334155';
+  document.getElementById('qcModalBody').innerHTML = '<div style="padding:40px;text-align:center;color:#64748b"><span style="font-size:32px;display:block;margin-bottom:8px">⌛</span>Loading 28-phase QC inspection report…</div>';
+  document.getElementById('qcDownloadPdfBtn').style.display = 'none';
+
+  try {
+    const data = await api(`/api/video/${id}/review`);
+    const rev = data.review || {};
+    const scores = rev.scores || {};
+    const overall = Number(scores.overall_score || data.review_score || 0).toFixed(1);
+    const verdict = data.review_verdict || rev.professional_verdict || 'PENDING REVIEW';
+    
+    // Setup badge color
+    const vBadge = document.getElementById('qcVerdictBadge');
+    vBadge.textContent = `${verdict} (${overall}/10)`;
+    if (verdict.includes('READY') || verdict.includes('PROFESSIONAL') || data.review_status === 'approved') {
+      vBadge.style.background = '#dcfce7'; vBadge.style.color = '#15803d';
+    } else if (verdict.includes('GOOD')) {
+      vBadge.style.background = '#fef9c3'; vBadge.style.color = '#854d0e';
+    } else {
+      vBadge.style.background = '#fee2e2'; vBadge.style.color = '#b91c1c';
+    }
+
+    if (data.pdf_available || data.pdf_url) {
+      const pdfBtn = document.getElementById('qcDownloadPdfBtn');
+      pdfBtn.href = data.pdf_url || `/api/video/${id}/review/pdf`;
+      pdfBtn.style.display = 'inline-block';
+    }
+
+    // Build scorecard HTML
+    const scoreItems = [
+      ['Concept', scores.concept], ['Hook (0-3s)', scores.hook], ['Script & VO', scores.script],
+      ['Story Arc', scores.story], ['Character Lock', scores.character_consistency], ['Product Lock', scores.product_consistency],
+      ['Cinematography', scores.cinematography], ['Lighting & Color', scores.lighting_color], ['AI Realism', scores.ai_realism],
+      ['Motion/Physics', scores.physics_motion], ['Audio Mix', scores.audio_mix], ['Editing Rhythm', scores.editing_pacing],
+      ['Retention Potential', scores.retention_potential], ['Brand Integration', scores.brand_integration], ['Thumbnail & Pack', scores.thumbnail_packaging],
+      ['Overall Score', overall]
+    ];
+
+    const scorecardHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:16px">
+        ${scoreItems.map(s => `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:8px 10px;border-radius:8px">
+            <div class="muted tiny" style="font-size:10px">${s[0]}</div>
+            <strong style="font-size:14px;color:${Number(s[1]||0)>=8?'#15803d':(Number(s[1]||0)>=7?'#d97706':'#dc2626')}">${s[1] != null ? s[1] + '/10' : '—'}</strong>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Hook Analysis
+    const hook = rev.hook_analysis || {};
+    const hookHtml = `
+      <div style="background:#f1f5f9;border-left:4px solid #3b82f6;padding:12px 14px;border-radius:6px;margin-bottom:16px">
+        <strong style="color:#1e293b;font-size:13px">🎯 Hook Analysis (${hook.classification || 'N/A'})</strong>
+        <p style="margin:4px 0;font-size:12px"><strong>0-3s Assessment:</strong> ${esc(hook.first_3_seconds || '—')}</p>
+        <p style="margin:4px 0;font-size:12px"><strong>Identified Problem:</strong> ${esc(hook.current_hook_problem || '—')}</p>
+        <p style="margin:4px 0;font-size:12px;color:#1e40af"><strong>Director Better Hook:</strong> ${esc(hook.better_hook || '—')}</p>
+        <p style="margin:4px 0;font-size:12px;color:#047857"><strong>Recommended First 3s Replacement:</strong> ${esc(hook.better_first_3_seconds || '—')}</p>
+      </div>
+    `;
+
+    // Priority Fixes
+    const fixes = rev.top_10_priority_fixes || [];
+    const fixesHtml = fixes.length ? `
+      <div style="margin-bottom:16px">
+        <strong style="font-size:13px;display:block;margin-bottom:8px">⚡ Top Priority Director Action Fixes</strong>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#1e293b;color:#fff;text-align:left">
+              <th style="padding:6px 8px;width:30px">#</th>
+              <th style="padding:6px 8px;width:150px">Problem</th>
+              <th style="padding:6px 8px">Why It Matters</th>
+              <th style="padding:6px 8px">Exact Fix</th>
+              <th style="padding:6px 8px;width:60px">Impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fixes.slice(0, 6).map(f => `
+              <tr style="border-bottom:1px solid #e2e8f0">
+                <td style="padding:6px 8px;font-weight:700">${esc(f.priority || '')}</td>
+                <td style="padding:6px 8px"><strong>${esc(f.problem || '')}</strong></td>
+                <td style="padding:6px 8px;color:#475569">${esc(f.why_it_matters || '')}</td>
+                <td style="padding:6px 8px;color:#0f172a">${esc(f.exact_fix || '')}</td>
+                <td style="padding:6px 8px"><span class="badge ${f.impact==='HIGH'?'error':'pending'}" style="font-size:9.5px">${esc(f.impact||'HIGH')}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '';
+
+    // Strengths & Weaknesses
+    const working = rev.what_is_working || [];
+    const problems = rev.biggest_problems || [];
+    const prosConsHtml = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px;border-radius:8px">
+          <strong style="color:#166534;font-size:12.5px">✓ What Is Working:</strong>
+          <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:#1e293b">
+            ${working.map(w => `<li style="margin-bottom:4px">${esc(w)}</li>`).join('')}
+          </ul>
+        </div>
+        <div style="background:#fff1f2;border:1px solid #fecdd3;padding:12px;border-radius:8px">
+          <strong style="color:#9f1239;font-size:12.5px">⚠️ Retention Killers &amp; Weaknesses:</strong>
+          <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:#1e293b">
+            ${problems.map(p => `<li style="margin-bottom:4px">${esc(p)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('qcModalBody').innerHTML = `
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px">
+        <strong style="font-size:13px;display:block;margin-bottom:6px">📋 Executive Verdict</strong>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#334155">${esc(rev.executive_verdict || 'N/A')}</p>
+      </div>
+      ${scorecardHtml}
+      ${prosConsHtml}
+      ${hookHtml}
+      ${fixesHtml}
+    `;
+
+  } catch (err) {
+    document.getElementById('qcModalBody').innerHTML = `<div class="notice error">Failed to load QC audit: ${esc(err.message)}</div>`;
+  }
+}
+
+function closeQCModal() {
+  document.getElementById('qcModal').classList.remove('open');
+  activeQCVideoId = null;
+}
+
+async function quickApproveQC(id) {
+  try {
+    await api(`/api/video/${id}/review/approve`, { method: 'POST' });
+    setMessage('statusToast', `Video #${id} approved for publish!`, 'success');
+    await load();
+  } catch (e) {
+    setMessage('statusToast', `Approval failed: ${e.message}`, 'error');
+  }
+}
+
+async function approveCurrentQC() {
+  if (!activeQCVideoId) return;
+  await quickApproveQC(activeQCVideoId);
+  closeQCModal();
+}
+
+async function rejectCurrentQC() {
+  if (!activeQCVideoId) return;
+  const reason = prompt('Specify reasons or adjustments needed before release:') || 'Needs revision';
+  try {
+    await api(`/api/video/${activeQCVideoId}/review/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    setMessage('statusToast', `Video #${activeQCVideoId} marked for rework.`, 'warning');
+    closeQCModal();
+    await load();
+  } catch (e) {
+    setMessage('statusToast', `Action failed: ${e.message}`, 'error');
+  }
+}
+
+async function rerunCurrentQC() {
+  if (!activeQCVideoId) return;
+  document.getElementById('qcModalBody').innerHTML = '<div style="padding:40px;text-align:center;color:#64748b"><span style="font-size:32px;display:block;margin-bottom:8px">⌛</span>Re-running full 28-phase QC inspection and regenerating PDF package…</div>';
+  try {
+    await api(`/api/video/${activeQCVideoId}/review`, { method: 'POST' });
+    await openQCModal(activeQCVideoId, 'Refreshed Video');
+    await load();
+  } catch (e) {
+    document.getElementById('qcModalBody').innerHTML = `<div class="notice error">Re-run failed: ${esc(e.message)}</div>`;
+  }
+}
+
+let bulkAuditReport = null;
+
+async function openBulkOptimizerModal() {
+  const modal = document.getElementById('bulkOptimizerModal');
+  modal.classList.add('open');
+  document.getElementById('bulkLoading').style.display = 'block';
+  document.getElementById('bulkTable').style.display = 'none';
+
+  const chVal = document.getElementById('channel')?.value || '';
+  try {
+    const q = chVal ? `?channel_id=${encodeURIComponent(chVal)}` : '';
+    const d = await api(`/api/optimizer/old-videos/audit${q}`);
+    bulkAuditReport = d;
+
+    // Window banner
+    const win = d.operating_window || {};
+    const banner = document.getElementById('bulkWindowBanner');
+    const bText = document.getElementById('bulkWindowText');
+    const bTime = document.getElementById('bulkTimeText');
+
+    if (win.is_daytime) {
+      banner.style.background = '#f0fdf4';
+      banner.style.borderColor = '#bbf7d0';
+      banner.style.color = '#166534';
+      bText.innerHTML = `☀️ <strong>Daytime Window Active:</strong> Metadata updates permitted (${esc(win.start_time_12h)} – ${esc(win.end_time_12h)}).`;
+    } else {
+      banner.style.background = '#fef2f2';
+      banner.style.borderColor = '#fecaca';
+      banner.style.color = '#991b1b';
+      bText.innerHTML = `🌙 <strong>Night Protection Active:</strong> Updates will pause until ${esc(win.start_time_12h)}. Direct YouTube push blocked during night hours.`;
+    }
+    bTime.textContent = `Local Time: ${win.current_local_time || ''}`;
+
+    // Stats
+    document.getElementById('bulkScanned').textContent = d.total_scanned || 0;
+    document.getElementById('bulkFlagged').textContent = d.total_flagged || 0;
+    document.getElementById('bulkClean').textContent = d.total_clean || 0;
+
+    const flagged = d.flagged_videos || [];
+    const tbody = document.getElementById('bulkBody');
+
+    if (!flagged.length) {
+      document.getElementById('bulkLoading').innerHTML = '<div style="padding:40px;text-align:center;color:#16a34a">🎉 <strong>All videos are clean!</strong> No prompt leaks or repetitive template boilerplate detected in published videos.</div>';
+      document.getElementById('btnExecuteBulk').disabled = true;
+      return;
+    }
+
+    document.getElementById('bulkLoading').style.display = 'none';
+    document.getElementById('bulkTable').style.display = 'table';
+    document.getElementById('btnExecuteBulk').disabled = false;
+
+    tbody.innerHTML = flagged.map(v => {
+      const issuePills = (v.issues || []).map(iss => {
+        let label = iss;
+        let color = '#d97706';
+        let bg = '#fef3c7';
+        if (iss === 'ai_prompt_leak') { label = 'AI Prompt Leak'; color = '#dc2626'; bg = '#fee2e2'; }
+        else if (iss === 'boilerplate_suffix') { label = 'Boilerplate Suffix'; color = '#ea580c'; bg = '#ffedd5'; }
+        else if (iss === 'cliche_prefix') { label = 'Cliche Prefix'; color = '#d97706'; bg = '#fef3c7'; }
+        else if (iss === 'cliche_suffix') { label = 'Cliche Suffix'; color = '#ca8a04'; bg = '#fef9c3'; }
+        else if (iss === 'channel_branding_leak') { label = 'Channel Leak'; color = '#4f46e5'; bg = '#e0e7ff'; }
+        else if (iss === 'empty_or_too_short') { label = 'Empty Title'; color = '#b91c1c'; bg = '#fee2e2'; }
+        return `<span class="badge" style="background:${bg};color:${color};font-size:10px;font-weight:750;margin-right:4px">${label}</span>`;
+      }).join('') || '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:10px">Needs Cleanup</span>';
+
+      return `<tr style="border-bottom:1px solid #f1f5f9" data-vid="${v.video_id}">
+        <td style="padding:10px 8px;text-align:center">
+          <input type="checkbox" class="bulk-item-chk" value="${v.video_id}" checked />
+        </td>
+        <td style="padding:10px 8px;font-weight:600;max-width:280px;word-break:break-word">
+          <span style="color:#b91c1c;text-decoration:line-through;margin-right:4px"><s>${esc(v.current_title || '<EMPTY>')}</s></span>
+          ${v.youtube_video_id ? `<a href="https://youtu.be/${v.youtube_video_id}" target="_blank" style="font-size:10px;color:#2563eb;text-decoration:none">🔗 Watch</a>` : ''}
+        </td>
+        <td style="padding:10px 8px;white-space:nowrap">${issuePills}</td>
+        <td style="padding:10px 8px;font-weight:750;color:#15803d;max-width:320px;word-break:break-word">
+          <span style="background:#f0fdf4;padding:2px 6px;border-radius:4px;border:1px solid #bbf7d0">${esc(v.proposed_title || '')}</span>
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch (e) {
+    document.getElementById('bulkLoading').innerHTML = `<div class="notice error">Failed to scan old videos: ${esc(e.message)}</div>`;
+  }
+}
+
+function closeBulkOptimizerModal() {
+  document.getElementById('bulkOptimizerModal').classList.remove('open');
+}
+
+function toggleSelectAllBulk(checked) {
+  document.querySelectorAll('.bulk-item-chk').forEach(c => c.checked = checked);
+}
+
+async function executeBulkOptimization() {
+  const chks = document.querySelectorAll('.bulk-item-chk:checked');
+  const ids = Array.from(chks).map(c => Number(c.value));
+  if (!ids.length) {
+    alert('Select at least one video to optimize.');
+    return;
+  }
+
+  const autoApply = document.getElementById('chkAutoApplyYoutube').checked;
+  const btn = document.getElementById('btnExecuteBulk');
+  btn.disabled = true;
+  btn.textContent = `⏳ Optimizing ${ids.length} videos (1.5s gap)…`;
+
+  try {
+    const res = await api('/api/optimizer/old-videos/bulk-optimize', {
+      method: 'POST',
+      body: JSON.stringify({
+        video_ids: ids,
+        auto_apply_youtube: autoApply,
+        allow_night: false,
+        gap_seconds: 1.5
+      })
+    });
+
+    if (res.status === 'outside_daytime_window') {
+      alert(`⏸️ ${res.message}`);
+      btn.disabled = false;
+      btn.textContent = '⚡ Clean & Optimize Selected';
+      return;
+    }
+
+    setMessage('statusToast', `⚡ Successfully cleaned & optimized ${res.total_updated} videos!`, 'success');
+    closeBulkOptimizerModal();
+    await load();
+  } catch (e) {
+    alert(`Bulk optimization error: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Clean & Optimize Selected';
+  }
+}
+
+// =========================================================================
+// Batch Playlist Retrofit Client Handlers
+// =========================================================================
+
+let _rfPollTimer = null;
+
+async function openRetrofitPlaylistModal() {
+  const modal = document.getElementById('retrofitPlaylistModal');
+  modal.classList.add('open');
+
+  // Populate channels dropdown
+  const sel = document.getElementById('rfChannelSelect');
+  sel.innerHTML = '<option value="">All Configured Channels</option>';
+  try {
+    const channels = await api('/api/channels');
+    channels.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.channel_id;
+      opt.textContent = `${c.channel_name || c.channel_id}`;
+      sel.appendChild(opt);
+    });
+    // If current channel selected in library, pre-select it
+    const curCh = document.getElementById('channel').value;
+    if (curCh) sel.value = curCh;
+  } catch (e) {
+    console.warn('Could not load channels for retrofit modal:', e);
+  }
+
+  // Check if a task is already active
+  await pollRetrofitStatus(true);
+}
+
+function closeRetrofitPlaylistModal() {
+  document.getElementById('retrofitPlaylistModal').classList.remove('open');
+  if (_rfPollTimer) {
+    clearInterval(_rfPollTimer);
+    _rfPollTimer = null;
+  }
+}
+
+async function startBatchRetrofit() {
+  const btn = document.getElementById('btnExecuteRetrofit');
+  const chId = document.getElementById('rfChannelSelect').value;
+  const limitVal = Number(document.getElementById('rfLimitSelect').value) || 0;
+  const dryRun = document.getElementById('rfDryRun').checked;
+  const createSeries = document.getElementById('rfCreateSeries').checked;
+  const force = document.getElementById('rfForceAll').checked;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Starting Retrofit…';
+  document.getElementById('rfBadge').textContent = 'Starting…';
+  document.getElementById('rfBadge').style.background = '#fef3c7';
+  document.getElementById('rfBadge').style.color = '#b45309';
+
+  try {
+    const res = await api('/api/playlists/retrofit', {
+      method: 'POST',
+      body: JSON.stringify({
+        channel_id: chId || null,
+        dry_run: dryRun,
+        force: force,
+        limit: limitVal > 0 ? limitVal : null,
+        create_series_playlists: createSeries
+      })
+    });
+
+    document.getElementById('rfStatusMsg').textContent = res.message || 'Task active in background.';
+    if (!_rfPollTimer) {
+      _rfPollTimer = setInterval(pollRetrofitStatus, 1500);
+    }
+  } catch (e) {
+    alert(`Failed to start retrofit: ${e.message}`);
+    btn.disabled = false;
+    btn.textContent = '⚡ Run Batch Retrofit';
+  }
+}
+
+async function pollRetrofitStatus(single = false) {
+  try {
+    const data = await api('/api/playlists/retrofit/status');
+    const badge = document.getElementById('rfBadge');
+    const btn = document.getElementById('btnExecuteRetrofit');
+    const terminal = document.getElementById('rfTerminal');
+
+    if (data.status === 'running') {
+      badge.textContent = 'Running';
+      badge.style.background = '#dbeafe';
+      badge.style.color = '#1d4ed8';
+      btn.disabled = true;
+      btn.textContent = '⏳ Processing Library…';
+      if (!single && !_rfPollTimer) {
+        _rfPollTimer = setInterval(pollRetrofitStatus, 1500);
+      }
+    } else if (data.status === 'completed') {
+      badge.textContent = 'Completed';
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#15803d';
+      btn.disabled = false;
+      btn.textContent = '⚡ Run Batch Retrofit Again';
+      if (_rfPollTimer) { clearInterval(_rfPollTimer); _rfPollTimer = null; }
+    } else if (data.status === 'quota_limited') {
+      badge.textContent = 'Quota Paused';
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#b91c1c';
+      btn.disabled = false;
+      btn.textContent = '⚡ Resume Retrofit';
+      if (_rfPollTimer) { clearInterval(_rfPollTimer); _rfPollTimer = null; }
+    } else if (data.status === 'error') {
+      badge.textContent = 'Error';
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#b91c1c';
+      btn.disabled = false;
+      btn.textContent = '⚡ Run Batch Retrofit';
+      if (_rfPollTimer) { clearInterval(_rfPollTimer); _rfPollTimer = null; }
+    } else {
+      badge.textContent = 'Ready';
+      badge.style.background = '#e0e7ff';
+      badge.style.color = '#4338ca';
+      btn.disabled = false;
+      btn.textContent = '⚡ Run Batch Retrofit';
+    }
+
+    // Render stats
+    if (data.summary) {
+      const s = data.summary;
+      document.getElementById('rfStatEvaluated').textContent = s.total_evaluated || 0;
+      document.getElementById('rfStatAssigned').textContent = s.total_assigned || 0;
+      document.getElementById('rfStatReused').textContent = s.playlists_reused || 0;
+      document.getElementById('rfStatCreated').textContent = s.playlists_created || 0;
+      document.getElementById('rfStatSeries').textContent = s.series_detected || 0;
+    }
+
+    // Render logs
+    if (data.logs && data.logs.length) {
+      terminal.innerHTML = data.logs.map(l => {
+        let col = '#e2e8f0';
+        if (l.includes('Created new')) col = '#a78bfa';
+        else if (l.includes('Matched existing') || l.includes('Reusing')) col = '#4ade80';
+        else if (l.includes('Part') || l.includes('Series=')) col = '#f59e0b';
+        else if (l.includes('Error') || l.includes('quota')) col = '#f87171';
+        return `<div style="color:${col}">${esc(l)}</div>`;
+      }).join('');
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+  } catch (e) {
+    console.warn('Error polling retrofit status:', e);
+  }
+}
+
+init().catch(e => setMessage('statusToast', e.message, 'error'));
+</script>
+
+</body>
+</html>

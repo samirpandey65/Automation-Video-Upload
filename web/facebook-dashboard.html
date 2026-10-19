@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Facebook Performance Dashboard — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=25">
+  <style>
+    /* Facebook Professional Studio Embedded Aesthetics */
+    :root {
+      --fb-blue: #1877f2;
+      --fb-blue-hover: #166fe5;
+      --fb-bg-subtle: rgba(24, 119, 242, 0.08);
+      --fb-green: #31a24c;
+      --fb-green-bg: rgba(49, 162, 76, 0.1);
+      --fb-border: #e4e6eb;
+    }
+
+    .fb-week-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .fb-week-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .fb-days-left {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .fb-focus-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fb-focus-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .fb-focus-select {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .fb-progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .fb-progress-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .fb-progress-bar-bg {
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .fb-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1877f2, #00c6ff);
+      border-radius: 12px;
+      transition: width 0.4s ease;
+    }
+
+    /* Tasks 2x2 Grid */
+    .fb-tasks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .fb-task-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .fb-task-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+    .fb-task-card.completed {
+      border-color: rgba(49, 162, 76, 0.35);
+      background: #fbfdfc;
+    }
+
+    .fb-task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .fb-task-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .fb-task-card.completed .fb-task-icon-circle {
+      background: var(--fb-green-bg);
+    }
+    .fb-checkmark-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--fb-green);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 2px 4px rgba(49, 162, 76, 0.3);
+    }
+
+    .fb-task-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .fb-task-sub {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .fb-task-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    /* Two-column layout */
+    .fb-columns-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    @media (max-width: 960px) {
+      .fb-columns-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Live Feed items */
+    .fb-post-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+      transition: background 0.15s;
+    }
+    .fb-post-item:hover {
+      background: #f1f5f9;
+    }
+    .fb-post-thumb-wrap {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: #e2e8f0;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .fb-post-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .fb-post-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .fb-post-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fb-post-meta {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Verified Proof Chips */
+    .ig-verify-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1e40af;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 3px 9px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ig-verify-chip:hover {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    .ig-verify-chip.ig-verify-more {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+    .ig-verify-chip.ig-verify-more:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    /* Right Account Sidebar */
+    .fb-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+    }
+    .fb-status-row:last-child {
+      border-bottom: none;
+    }
+    .fb-status-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .fb-status-icon {
+      font-size: 18px;
+    }
+    .fb-status-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .fb-status-val {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .fb-status-val.green {
+      color: var(--fb-green);
+      font-weight: 700;
+    }
+
+    /* Modal styling */
+    .modal-box-fb {
+      max-width: 560px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Consistent Sidebar -->
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-logo">⚡</div>
+        <div>
+          <div class="brand-name">OmniCast</div>
+          <div class="brand-sub">Multi-Platform Publisher</div>
+        </div>
+      </div>
+      <div class="nav-group">
+        <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+        <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+        <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+        <a class="nav active" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+        <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+        <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+        <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+        <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+        <a class="nav" data-route="/analytics" href="/analytics">📊 <span>All-Platform Analytics</span></a>
+        <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+        <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+        <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+        <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+        <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+      </div>
+      <div class="sidebar-status">
+        <div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div>
+        <div class="status-detail">Local creator workspace</div>
+        <a href="/logs" class="sidebar-log-btn">Open Logs</a>
+      </div>
+    </aside>
+
+    <!-- Workspace -->
+    <div class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="mobile-brand">OmniCast</div>
+          <div>
+            <div class="top-greeting">Performance Check <span>✦</span></div>
+            <div class="top-subtitle">Facebook Page Performance &amp; Post Verification</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, posts..." /></div>
+          <button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button>
+          <div class="profile-chip">
+            <div class="profile-avatar" id="topAvatar">F</div>
+            <div class="profile-copy"><strong id="topPageName">Facebook Page</strong><span>Professional</span></div>
+            <span class="chevron">⌄</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Performance Check</div>
+            <h1 id="pageHeading">Facebook Performance Dashboard</h1>
+            <p>Real-time status inspection, weekly growth tasks, and live content verified via Meta Graph API.</p>
+          </div>
+          <div class="actions">
+            <!-- Account / Page Selector Dropdown -->
+            <select id="metaAccountSelect" class="btn btn-secondary" onchange="switchMetaAccount(this.value)" style="font-weight:600;">
+              <option value="">Loading Facebook Pages…</option>
+            </select>
+            <button class="btn btn-secondary" onclick="syncLiveMetrics()">↻ Sync Live</button>
+            <a id="openPageHeaderBtn" href="https://facebook.com" target="_blank" rel="noopener" class="plat-badge-link fb" style="font-size:13px;padding:7px 12px;text-decoration:none;">
+              <svg class="plat-svg" width="16" height="16" viewBox="0 0 24 24" fill="#1877f2" style="vertical-align:middle;flex-shrink:0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              <span id="topPageNameBtn">Open Facebook Page</span>
+              <span class="plat-badge-arrow">↗</span>
+            </a>
+          </div>
+        </div>
+
+        <div id="msg"></div>
+
+        <!-- Weekly Tasks Card -->
+        <div class="card">
+          <div class="fb-week-bar">
+            <div>
+              <div class="fb-week-title" id="weekTitle">Week of 11 Oct - 17 Oct</div>
+              <div class="fb-days-left" id="daysLeft">1 day left</div>
+            </div>
+            <div class="fb-focus-wrap">
+              <span class="fb-focus-label">This week's focus:</span>
+              <select class="fb-focus-select" id="focusSelector" onchange="changeWeeklyFocus(this.value)">
+                <option value="Reach more people">Reach more people</option>
+                <option value="Increase engagement">Increase engagement</option>
+                <option value="Grow your audience">Grow your audience</option>
+                <option value="Build a loyal community">Build a loyal community</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fb-progress-header">
+            <span class="fb-progress-label">This week's tasks</span>
+            <span class="badge" id="progressLabel" style="background:#e0f2fe;color:#0369a1;font-weight:800;">79% completed</span>
+          </div>
+          <div class="fb-progress-bar-bg">
+            <div class="fb-progress-bar-fill" id="progressBarFill" style="width: 79%;"></div>
+          </div>
+
+          <!-- Tasks 2x2 Grid -->
+          <div class="fb-tasks-grid" id="tasksGrid">
+            <!-- Populated dynamically via loadDashboard -->
+          </div>
+        </div>
+
+        <!-- Two Column Section -->
+        <div class="fb-columns-layout">
+          <!-- Left: Live Published Feed & Achievements -->
+          <div>
+            <!-- Live Feed Card -->
+            <div class="card" style="margin-bottom:20px;">
+              <div class="section-head">
+                <div>
+                  <h2>Live Published Posts &amp; Reels</h2>
+                  <div class="muted tiny">Verified live content on this Facebook Page via Meta Graph API</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="syncLiveMetrics()">↻ Refresh Feed</button>
+              </div>
+
+              <div id="publishedPostsList">
+                <div style="padding:32px;text-align:center;color:#64748b;">Loading live page posts and reels…</div>
+              </div>
+            </div>
+
+            <!-- Achievements Cards -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="card">
+                <div class="section-head">
+                  <div>
+                    <h2 style="font-size:15px;">Next Achievement</h2>
+                    <div class="muted tiny">Optional Creator Milestone</div>
+                  </div>
+                </div>
+                <div style="text-align:center;padding:12px 0;">
+                  <div style="font-size:36px;margin-bottom:4px;">🚀</div>
+                  <strong style="font-size:15px;color:#0f172a;">Level 2</strong>
+                  <div class="muted tiny" style="margin-top:4px;">Complete this week's tasks to unlock Level 2</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="section-head">
+                  <div>
+                    <h2 style="font-size:15px;">Earned Achievement</h2>
+                    <div class="muted tiny">Unlocked Milestone</div>
+                  </div>
+                </div>
+                <div style="text-align:center;padding:12px 0;">
+                  <div style="font-size:36px;margin-bottom:4px;">🌀</div>
+                  <strong style="font-size:15px;color:var(--fb-green);">Level 1 Completed</strong>
+                  <div class="muted tiny" style="margin-top:4px;">Welcome to Facebook Professional Mode</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Account Status & Shortcuts -->
+          <div>
+            <div class="card" style="margin-bottom:20px;">
+              <div class="section-head">
+                <div>
+                  <h2 style="font-size:15px;">Page Health &amp; Status</h2>
+                  <div class="muted tiny">Policy and monetisation check</div>
+                </div>
+              </div>
+
+              <div class="fb-status-row" onclick="showInfoToast('Monetisation eligibility requires 5,000 followers and 60,000 watch minutes.')">
+                <div class="fb-status-left">
+                  <span class="fb-status-icon">💵</span>
+                  <div>
+                    <div class="fb-status-name">Monetisation</div>
+                    <div class="fb-status-val" id="monetisationStatus">Not yet eligible</div>
+                  </div>
+                </div>
+                <span>›</span>
+              </div>
+
+              <div class="fb-status-row" onclick="showInfoToast('Your page has zero policy strikes and is fully recommendable.')">
+                <div class="fb-status-left">
+                  <span class="fb-status-icon">🛡️</span>
+                  <div>
+                    <div class="fb-status-name">Page Recommendation</div>
+                    <div class="fb-status-val green" id="pageRecStatus">● Recommendable</div>
+                  </div>
+                </div>
+                <span>›</span>
+              </div>
+
+              <div class="fb-status-row" onclick="showInfoToast('Meta Verified gives a verified badge and proactive account protection.')">
+                <div class="fb-status-left">
+                  <span class="fb-status-icon">🛡️</span>
+                  <div>
+                    <div class="fb-status-name">Meta Verified</div>
+                    <div class="fb-status-val" id="metaVerifiedStatus">Not subscribed</div>
+                  </div>
+                </div>
+                <span>›</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="section-head">
+                <div>
+                  <h2 style="font-size:15px;">Quick Actions</h2>
+                  <div class="muted tiny">Creator Tools</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-secondary" onclick="openBatchScheduleModal()" style="text-align:left;justify-content:space-between;">
+                  <span>⏱️ Anti-Spam Paced Uploads</span>
+                  <span>→</span>
+                </button>
+                <button class="btn btn-secondary" onclick="openCreatePostModal()" style="text-align:left;justify-content:space-between;">
+                  <span>🚀 Publish Post to Facebook</span>
+                  <span>→</span>
+                </button>
+                <a class="btn btn-secondary" href="/instagram-dashboard" style="text-align:left;justify-content:space-between;text-decoration:none;">
+                  <span>📸 Open Instagram Dashboard</span>
+                  <span>→</span>
+                </a>
+                <a class="btn btn-secondary" href="/analytics" style="text-align:left;justify-content:space-between;text-decoration:none;">
+                  <span>📊 All-Platform Analytics</span>
+                  <span>→</span>
+                </a>
+                <a class="btn btn-secondary" href="/connections" style="text-align:left;justify-content:space-between;text-decoration:none;">
+                  <span>🔗 Manage Meta API Tokens</span>
+                  <span>→</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal: Caption Clarification & AI Enhancement -->
+  <div id="captionModal" class="modal">
+    <div class="modal-box modal-box-fb">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Facebook Task</div>
+          <h2>Make your post caption clearer</h2>
+        </div>
+        <button class="modal-close" onclick="closeCaptionModal()">×</button>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+        Clear, engaging captions help viewers understand your video and boost audience watch retention.
+      </p>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;">Select Video to Optimize</label>
+        <select id="modalVideoSelector" class="fb-focus-select" style="width:100%;" onchange="onCaptionVideoSelect(this.value)">
+          <option value="">Latest published Facebook video</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;">Current Caption</label>
+        <textarea id="modalCurrentCaption" class="input" style="width:100%;min-height:75px;font-family:inherit;padding:10px;"></textarea>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <button type="button" class="btn btn-secondary btn-sm" id="aiEnhanceBtn" onclick="runAiCaptionEnhance()" style="width:100%;">
+          ⚡ Auto-Enhance Clarity with Gemini AI
+        </button>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;">Enhanced Caption &amp; Bullet Retention Hook</label>
+        <textarea id="modalEnhancedCaption" class="input" style="width:100%;min-height:100px;font-family:inherit;padding:10px;" placeholder="AI optimized caption will appear here..."></textarea>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="closeCaptionModal()">Cancel</button>
+        <button class="btn btn-primary" id="saveCaptionBtn" onclick="saveCaptionToFacebook()">
+          📤 Update on Facebook Page &amp; Complete Task
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Anti-Spam Paced Batch Scheduler -->
+  <div id="batchScheduleModal" class="modal">
+    <div class="modal-box modal-box-fb">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Anti-Spam Discipline</div>
+          <h2>Sequential Paced Scheduler</h2>
+        </div>
+        <button class="modal-close" onclick="closeBatchScheduleModal()">×</button>
+      </div>
+      <p style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:16px;">
+        Avoid mass-upload penalties and shadow-bans. The automated scheduler spaces out videos one by one with a healthy time buffer.
+      </p>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;">Number of Videos to Schedule</label>
+        <select id="batchPostCount" class="fb-focus-select" style="width:100%;">
+          <option value="2">2 Videos (Recommended daily pace)</option>
+          <option value="4">4 Videos</option>
+          <option value="10" selected>10 Videos (Weekly goal requirement)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;">Anti-Spam Time Buffer Between Videos</label>
+        <select id="batchPostGap" class="fb-focus-select" style="width:100%;">
+          <option value="2">2 Hours Gap (Safe high-frequency pace)</option>
+          <option value="4">4 Hours Gap (Optimal afternoon/evening spread)</option>
+          <option value="12">12 Hours Gap (2 videos per day - Morning + Evening)</option>
+          <option value="24" selected>24 Hours Gap (1 video per day - Maximum engagement)</option>
+        </select>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="closeBatchScheduleModal()">Cancel</button>
+        <button class="btn btn-primary" id="startBatchBtn" onclick="executePacedBatchSchedule()">
+          🚀 Schedule Sequential Paced Queue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create / Publish Post Modal -->
+  <div id="createPostModal" class="modal">
+    <div class="modal-box modal-box-fb">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Facebook Publishing</div>
+          <h2>Publish Post / Reel to Facebook Page</h2>
+        </div>
+        <button class="modal-close" onclick="closeCreatePostModal()">×</button>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+        Publish an approved local video directly to your connected Facebook Page.
+      </p>
+      <div class="actions" style="gap:10px;">
+        <button class="btn btn-primary" onclick="triggerPublishTask('posts'); closeCreatePostModal();">
+          🚀 Publish Standard Facebook Video
+        </button>
+        <button class="btn btn-secondary" onclick="triggerPublishTask('reels'); closeCreatePostModal();">
+          🎬 Publish Facebook Reel (9:16)
+        </button>
+      </div>
+  <!-- Modal: Facebook Task Verification & Proof Modal -->
+  <div class="modal" id="fbTaskVerificationModal">
+    <div class="modal-box" style="max-width:640px;">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow" id="fbvModalEyebrow">Live Facebook Page Verification</div>
+          <h2 id="fbvModalTitle" style="font-size:18px;margin-top:2px;">Task Verification</h2>
+        </div>
+        <button class="modal-close" onclick="closeFbTaskVerificationModal()">×</button>
+      </div>
+      
+      <div id="fbvModalHeaderSummary" style="background:#f1f5f9;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.5;color:#334155;border:1px solid #e2e8f0;">
+        <!-- Summary -->
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <span>Verified Live Content</span>
+        <span class="badge synced" style="font-size:11px;" id="fbvModalItemsCountBadge">0 Live Items</span>
+      </div>
+
+      <div id="fbvModalItemsList" style="display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto;padding-right:4px;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="actions" style="margin-top:16px;justify-content:space-between;border-top:1px solid #e2e8f0;padding-top:14px;gap:10px;flex-wrap:wrap;">
+        <a id="fbvModalAccountBtn" href="https://www.facebook.com/" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration:none;">
+          📘 Open Facebook Page ↗
+        </a>
+        <button class="btn btn-primary" onclick="closeFbTaskVerificationModal()">Done &amp; Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/common.js?v=25"></script>
+  <script>
+    let activeConnectionId = null;
+    let currentDashboardData = null;
+
+    async function loadDashboard(connectionId = null) {
+      try {
+        let url = '/api/facebook/professional-dashboard';
+        if (connectionId) url += '?connection_id=' + connectionId;
+        const res = await fetch(url);
+        const data = await res.json();
+        currentDashboardData = data;
+        renderDashboard(data);
+      } catch (err) {
+        showToast('Error loading Facebook status: ' + err.message, 'error');
+      }
+    }
+
+    function renderDashboard(data) {
+      if (!data.connected) {
+        document.getElementById('tasksGrid').innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #64748b;">
+            No connected Facebook Page. <br><br>
+            <a href="/connections" class="btn btn-primary">Connect Facebook Page</a>
+          </div>`;
+        return;
+      }
+
+      activeConnectionId = data.active_connection_id;
+
+      // Update account selector dropdown
+      const sel = document.getElementById('metaAccountSelect');
+      if (data.connections && data.connections.length) {
+        sel.innerHTML = data.connections.map(c => `
+          <option value="${c.id}" ${c.id === activeConnectionId ? 'selected' : ''}>
+            ${c.page_name || 'Facebook Page'}
+          </option>
+        `).join('');
+      }
+
+      // Top headers
+      const activeConn = data.connections ? data.connections.find(c => c.id === activeConnectionId) : null;
+      const pageName = (activeConn && activeConn.page_name) || 'Facebook Page';
+      const pageId = activeConn ? activeConn.page_id : '';
+
+      const topBtn = document.getElementById('topPageNameBtn');
+      if (topBtn) topBtn.textContent = 'Open ' + pageName;
+      const topNameEl = document.getElementById('topPageName');
+      if (topNameEl) topNameEl.textContent = pageName;
+      const topAvatarEl = document.getElementById('topAvatar');
+      if (topAvatarEl) topAvatarEl.textContent = pageName.trim().charAt(0).toUpperCase();
+
+      if (pageId) {
+        const headerBtn = document.getElementById('openPageHeaderBtn');
+        if (headerBtn) headerBtn.href = 'https://www.facebook.com/' + pageId;
+      }
+
+      // Week title & Focus
+      const weekTitleEl = document.getElementById('weekTitle');
+      if (weekTitleEl) weekTitleEl.textContent = data.week_title || "Week of 11 Oct - 17 Oct";
+      const daysLeftEl = document.getElementById('daysLeft');
+      if (daysLeftEl) daysLeftEl.textContent = data.days_left || "1 day left";
+      const focusSelectorEl = document.getElementById('focusSelector');
+      if (focusSelectorEl) focusSelectorEl.value = data.focus || "Reach more people";
+
+      // Progress bar
+      const pct = data.progress_pct != null ? data.progress_pct : 79;
+      const progressLabelEl = document.getElementById('progressLabel');
+      if (progressLabelEl) progressLabelEl.textContent = pct + "% completed";
+      const progressBarFillEl = document.getElementById('progressBarFill');
+      if (progressBarFillEl) progressBarFillEl.style.width = pct + "%";
+
+      // Tasks Grid
+      renderTasks(data.tasks || []);
+
+      // Published Posts
+      renderPublishedFeed(data.published_posts || []);
+
+      // Account status
+      if (data.account) {
+        const monEl = document.getElementById('monetisationStatus');
+        if (monEl) monEl.textContent = data.account.monetisation ? data.account.monetisation.status : 'Not yet eligible';
+        const recEl = document.getElementById('pageRecStatus');
+        if (recEl) recEl.textContent = '● ' + (data.account.page_recommendation ? data.account.page_recommendation.status : 'Recommendable');
+        const verEl = document.getElementById('metaVerifiedStatus');
+        if (verEl) verEl.textContent = data.account.meta_verified ? data.account.meta_verified.status : 'Not subscribed';
+      }
+    }
+
+    function renderTasks(tasks) {
+      const grid = document.getElementById('tasksGrid');
+      if (!grid) return;
+      if (!tasks.length) {
+        grid.innerHTML = '<div class="muted">No weekly tasks configured.</div>';
+        return;
+      }
+
+      grid.innerHTML = tasks.map(t => {
+        const verifiedItems = t.verified_items || [];
+        const hasItems = verifiedItems.length > 0;
+        const primaryLink = t.primary_link || '#';
+        const primaryLabel = t.primary_link_label || 'Verify on Facebook ↗';
+
+        let actionBtn = '';
+        if (t.id === 'caption_clearer') {
+          actionBtn = `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openCaptionModal()">✓ Caption Clear</button>`;
+        } else if (t.id === 'posts') {
+          actionBtn = `
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openCreatePostModal()">🚀 Publish Post</button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openBatchScheduleModal()" title="Paced Scheduler">⏱️ Paced Queue</button>
+          `;
+        } else if (t.id === 'reels') {
+          actionBtn = `
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); triggerPublishTask('reels')">🎬 Publish Reel</button>
+          `;
+        } else if (t.id === 'views' || t.id === 'stories' || t.id === 'comments' || t.id === 'interactions') {
+          actionBtn = `
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); syncLiveMetrics()">🔄 Refresh</button>
+          `;
+        }
+
+        return `
+          <div class="fb-task-card ${t.completed ? 'completed' : ''}" onclick="openFbTaskVerification('${t.id}')" style="cursor:pointer;transition:all 0.2s ease;">
+            <div style="flex:1;min-width:0;">
+              <div class="fb-task-header">
+                <div class="fb-task-icon-circle">${t.icon || '📌'}</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  ${t.completed ? '<span class="badge synced" style="font-size:10px;padding:2px 6px;">✓ Verified</span>' : ''}
+                  <a href="${primaryLink}" target="_blank" rel="noopener" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;text-decoration:none;" title="Verify live on Facebook">
+                    ${escapeHtml(primaryLabel)}
+                  </a>
+                </div>
+              </div>
+              <div class="fb-task-title">${escapeHtml(t.title)}</div>
+              <div class="fb-task-sub">${escapeHtml(t.subtitle)}</div>
+
+              ${hasItems ? `
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;" onclick="event.stopPropagation();">
+                  ${verifiedItems.slice(0, 2).map(item => `
+                    <a href="${item.url}" target="_blank" rel="noopener" class="ig-verify-chip" title="${escapeHtml(item.caption || item.title)}">
+                      ${item.media_type === 'Reel' ? '🎬' : '📹'} ${escapeHtml(item.title.length > 24 ? item.title.slice(0, 24) + '…' : item.title)} ↗
+                    </a>
+                  `).join('')}
+                  <button type="button" class="ig-verify-chip ig-verify-more" onclick="openFbTaskVerification('${t.id}')">
+                    ${verifiedItems.length > 2 ? `+${verifiedItems.length - 2} more · ` : ''}Verify Proof (${verifiedItems.length}) 🔍
+                  </button>
+                </div>
+              ` : `
+                <div style="margin:6px 0;">
+                  <a href="${primaryLink}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="font-size:11px;color:#2563eb;text-decoration:none;font-weight:600;">
+                    🔗 Inspect live on Facebook Page ↗
+                  </a>
+                </div>
+              `}
+            </div>
+            <div class="fb-task-actions">${actionBtn}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderPublishedFeed(posts) {
+      const container = document.getElementById('publishedPostsList');
+      if (!container) return;
+      if (!posts || !posts.length) {
+        container.innerHTML = `
+          <div style="padding:32px;text-align:center;color:#64748b;font-size:13px;">
+            No published posts or reels found on this Facebook Page yet.<br>
+            <button class="btn btn-primary btn-sm" onclick="openCreatePostModal()" style="margin-top:12px;">Publish First Post</button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = posts.map(p => {
+        const title = p.title || p.description || 'Facebook Content';
+        const isReel = (p.type || '').toLowerCase().includes('reel');
+        const url = p.permalink_url || p.url || '#';
+        const views = p.views != null ? p.views.toLocaleString() : '0';
+        const likes = p.likes != null ? p.likes.toLocaleString() : '0';
+
+        return `
+          <div class="fb-post-item">
+            <div class="fb-post-thumb-wrap">
+              ${isReel ? '🎬' : '📹'}
+            </div>
+            <div class="fb-post-content">
+              <div class="fb-post-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+              <div class="fb-post-meta">
+                <span><b>${views}</b> views</span>
+                <span><b>${likes}</b> likes</span>
+                <span class="badge ${isReel ? 'reels' : ''}" style="font-size:10px;text-transform:uppercase;">${isReel ? 'Reel' : 'Video'}</span>
+                <a href="${url}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;">
+                  Open on Facebook ↗
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openFbTaskVerification(taskId) {
+      if (!currentDashboardData || !currentDashboardData.tasks) return;
+      const task = currentDashboardData.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const activeConn = currentDashboardData.connections ? currentDashboardData.connections.find(c => c.id === activeConnectionId) : null;
+      const pageName = (activeConn && activeConn.page_name) || 'Facebook Page';
+
+      const eyebrow = document.getElementById('fbvModalEyebrow');
+      if (eyebrow) eyebrow.textContent = task.completed ? '✓ Live Page Verified' : 'Page Task Progress & Verification';
+      const title = document.getElementById('fbvModalTitle');
+      if (title) title.textContent = task.title;
+      
+      const summaryBox = document.getElementById('fbvModalHeaderSummary');
+      if (summaryBox) {
+        summaryBox.innerHTML = `
+          <div style="font-weight:700;margin-bottom:4px;color:#0f172a;">Status: ${escapeHtml(task.subtitle)}</div>
+          <div style="color:#475569;">${escapeHtml(task.verification_summary || task.subtitle)}</div>
+        `;
+      }
+
+      const items = task.verified_items || [];
+      const badge = document.getElementById('fbvModalItemsCountBadge');
+      if (badge) badge.textContent = `${items.length} Live Items`;
+
+      const listContainer = document.getElementById('fbvModalItemsList');
+      if (listContainer) {
+        if (items.length === 0) {
+          listContainer.innerHTML = `
+            <div style="text-align:center;padding:26px 16px;color:#64748b;font-size:13px;background:#f8fafc;border-radius:10px;border:1px dashed #cbd5e1;">
+              <div style="font-size:24px;margin-bottom:6px;">📘</div>
+              <div>No specific posts attached to this task yet.</div>
+              <div style="margin-top:12px;">
+                <a href="${task.primary_link}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="text-decoration:none;">
+                  ${escapeHtml(task.primary_link_label || 'Check Directly on Facebook ↗')}
+                </a>
+              </div>
+            </div>
+          `;
+        } else {
+          listContainer.innerHTML = items.map(it => {
+            const dateStr = it.timestamp ? new Date(it.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+            return `
+              <div class="gv-item-row">
+                <div class="gv-item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px;">
+                  ${it.media_type === 'Reel' ? '🎬' : '📹'}
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(it.title || 'Facebook Post')}">
+                    ${escapeHtml(it.title || 'Facebook Post')}
+                  </div>
+                  <div class="muted tiny" style="margin-top:2px;">
+                    ${dateStr ? dateStr + ' · ' : ''}👁️ ${it.views || 0} views · ❤️ ${it.likes || 0} likes · 💬 ${it.comments || 0} comments
+                  </div>
+                  ${it.caption && it.caption !== it.title ? `
+                    <div class="muted tiny" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;color:#64748b;margin-top:2px;" title="${escapeHtml(it.caption)}">
+                      ${escapeHtml(it.caption)}
+                    </div>
+                  ` : ''}
+                </div>
+                <a href="${it.url}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:5px 12px;font-size:12px;white-space:nowrap;text-decoration:none;font-weight:600;">
+                  Open on Facebook ↗
+                </a>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      const accBtn = document.getElementById('fbvModalAccountBtn');
+      if (accBtn) {
+        accBtn.href = task.account_url || `https://www.facebook.com/`;
+        accBtn.textContent = `📘 Open ${escapeHtml(pageName)} on Facebook ↗`;
+      }
+
+      const modal = document.getElementById('fbTaskVerificationModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeFbTaskVerificationModal() {
+      const modal = document.getElementById('fbTaskVerificationModal');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function switchMetaAccount(connId) {
+      if (!connId) return;
+      loadDashboard(connId);
+      showToast('Switched to selected Facebook Page', 'info');
+    }
+
+    async function changeWeeklyFocus(focus) {
+      showToast('Updating weekly focus to: ' + focus, 'info');
+      try {
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_focus', focus: focus, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok) {
+          showToast('Updated focus to ' + focus + '!', 'success');
+          loadDashboard(activeConnectionId);
+        }
+      } catch (e) {
+        showToast('Error changing focus: ' + e.message, 'error');
+      }
+    }
+
+    async function toggleTask(taskId) {
+      try {
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_task', task_id: taskId, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok) {
+          showToast('Task updated!', 'success');
+          loadDashboard(activeConnectionId);
+        }
+      } catch (e) {
+        showToast('Error updating task: ' + e.message, 'error');
+      }
+    }
+
+    async function triggerPublishTask(type) {
+      showToast('Publishing ' + type + ' to Facebook Page…', 'info');
+      try {
+        const action = type === 'reels' ? 'publish_reel' : 'publish_post';
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok) {
+          showToast(d.message || 'Published to Facebook successfully!', 'success');
+          loadDashboard(activeConnectionId);
+        } else {
+          showToast(d.message || 'Publishing error', 'error');
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
+    /* Paced Scheduler Modal */
+    function openBatchScheduleModal() {
+      document.getElementById('batchScheduleModal').classList.add('open');
+    }
+    function closeBatchScheduleModal() {
+      document.getElementById('batchScheduleModal').classList.remove('open');
+    }
+
+    async function executePacedBatchSchedule() {
+      const count = document.getElementById('batchPostCount').value;
+      const gap = document.getElementById('batchPostGap').value;
+      const btn = document.getElementById('startBatchBtn');
+      btn.disabled = true;
+      btn.textContent = 'Scheduling…';
+
+      try {
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'schedule_paced_batch', count: count, gap_hours: gap, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok) {
+          showToast(d.message || 'Sequential batch scheduled successfully!', 'success');
+          closeBatchScheduleModal();
+          loadDashboard(activeConnectionId);
+        } else {
+          showToast(d.message || 'Batch scheduling failed', 'error');
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Schedule Sequential Paced Queue';
+      }
+    }
+
+    /* Caption Modal & Gemini AI */
+    function openCaptionModal() {
+      const sel = document.getElementById('modalVideoSelector');
+      if (currentDashboardData && currentDashboardData.recent_videos) {
+        sel.innerHTML = currentDashboardData.recent_videos.map(v => `
+          <option value="${v.id}">${v.title || v.description || 'Facebook Video'}</option>
+        `).join('') || '<option value="">Latest video</option>';
+      }
+      document.getElementById('captionModal').classList.add('open');
+    }
+    function closeCaptionModal() {
+      document.getElementById('captionModal').classList.remove('open');
+    }
+
+    async function runAiCaptionEnhance() {
+      const current = document.getElementById('modalCurrentCaption').value;
+      const btn = document.getElementById('aiEnhanceBtn');
+      btn.disabled = true;
+      btn.textContent = '⚡ Enhancing with AI…';
+
+      try {
+        const vId = document.getElementById('modalVideoSelector').value;
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'enhance_caption', caption: current, facebook_video_id: vId, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok && d.enhanced_caption) {
+          document.getElementById('modalEnhancedCaption').value = d.enhanced_caption;
+          showToast('Caption enhanced for clarity with Gemini AI!', 'success');
+        }
+      } catch (e) {
+        showToast('Error enhancing caption: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Auto-Enhance Clarity with Gemini AI';
+      }
+    }
+
+    async function saveCaptionToFacebook() {
+      const vId = document.getElementById('modalVideoSelector').value;
+      const enhanced = document.getElementById('modalEnhancedCaption').value;
+      if (!enhanced) {
+        showToast('Please generate or enter an enhanced caption first', 'error');
+        return;
+      }
+      const saveBtn = document.getElementById('saveCaptionBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Updating Facebook…';
+
+      try {
+        const res = await fetch('/api/facebook/professional-dashboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'enhance_caption', caption: enhanced, facebook_video_id: vId, connection_id: activeConnectionId })
+        });
+        const d = await res.json();
+        if (d.ok) {
+          showToast('Caption updated & weekly task completed!', 'success');
+          closeCaptionModal();
+          loadDashboard(activeConnectionId);
+        }
+      } catch (e) {
+        showToast('Error updating caption: ' + e.message, 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '📤 Update on Facebook Page & Complete Task';
+      }
+    }
+
+    function openCreatePostModal() {
+      document.getElementById('createPostModal').classList.add('open');
+    }
+    function closeCreatePostModal() {
+      document.getElementById('createPostModal').classList.remove('open');
+    }
+
+    async function syncLiveMetrics() {
+      setMessage('msg', 'Syncing latest live metrics from Meta Graph API…', 'notice');
+      await loadDashboard(activeConnectionId);
+      setMessage('msg', 'Facebook Page metrics synced successfully!', 'success');
+    }
+
+    function showToast(msg, type = 'info') {
+      setMessage('msg', msg, type === 'error' ? 'error' : (type === 'success' ? 'success' : 'notice'));
+    }
+    function showInfoToast(msg) {
+      showToast(msg, 'info');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initialize on page load
+    loadDashboard();
+  </script>
+</body>
+</html>
