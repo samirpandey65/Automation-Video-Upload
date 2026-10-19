@@ -1,0 +1,50 @@
+{
+   "AppendLinkTargetToExistingPDF": {
+      "message": "ผนวกหน้าเว็บที่ลิงก์ไปเข้ากับ PDF อื่น"
+   },
+   "AppendToExistingPDF": {
+      "message": "ผนวกเข้ากับ PDF อื่น"
+   },
+   "ConvertLinkTargetToPDF": {
+      "message": "แปลงหน้าเว็บที่ลิงก์ไปเป็น Foxit PDF"
+   },
+   "ConvertToFoxitPDF": {
+      "message": "แปลงเป็น Foxit PDF"
+   },
+   "CreateAndEmail": {
+      "message": "สร้างและส่งอีเมล"
+   },
+   "OptionsTitle": {
+      "message": "ตัวเลือก"
+   },
+   "Preferences": {
+      "message": "การตั้งค่า"
+   },
+   "Reinstall": {
+      "message": "ติดตั้งใหม่"
+   },
+   "Uninstall": {
+      "message": "ถอนการติดตั้ง"
+   },
+   "UninstallSuccessTip": {
+      "message": "ถอนการติดตั้งสำเร็จ การเปลี่ยนแปลงจะมีผลหลังจากรีสตาร์ตเบราว์เซอร์ของคุณ"
+   },
+   "UninstallSureTip": {
+      "message": "การถอนการติดตั้งจะไม่สามารถกู้คืนได้ คุณแน่ใจหรือไม่ว่าต้องการถอนการติดตั้ง?"
+   },
+   "UninstallTip": {
+      "message": "การถอนการติดตั้งจะไม่สามารถกู้คืนได้ โปรดดำเนินการด้วยความระมัดระวัง!"
+   },
+   "ViewPDFResults": {
+      "message": "ดูผลลัพธ์ PDF"
+   },
+   "default_title": {
+      "message": "แปลงหน้าเว็บเป็น Foxit PDF"
+   },
+   "extDesc": {
+      "message": "แปลงหน้าเว็บเป็น Foxit PDF"
+   },
+   "extName": {
+      "message": "Foxit PDF Creator"
+   }
+}

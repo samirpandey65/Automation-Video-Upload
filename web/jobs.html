@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload Queue & Failure Recovery — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=26">
+  <style>
+    .diag-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: box-shadow 0.15s ease;
+    }
+    .diag-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .diag-card.resolved {
+      border-left: 4px solid #10b981;
+    }
+    .diag-card.blocked {
+      border-left: 4px solid #ef4444;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-resolved { background: #d1fae5; color: #065f46; }
+    .badge-blocked { background: #fee2e2; color: #991b1b; }
+    .badge-category { background: #e0e7ff; color: #3730a3; }
+    .badge-status { background: #f1f5f9; color: #475569; }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .metric-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+    }
+    .details-box {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-logo">⚡</div>
+      <div>
+        <div class="brand-name">OmniCast</div>
+        <div class="brand-sub">Multi-Platform Publisher</div>
+      </div>
+    </div>
+    <div class="nav-group">
+      <a class="nav" href="/">⌂ <span>Dashboard</span></a>
+      <a class="nav" href="/upload">↥ <span>Upload Studio</span></a>
+      <a class="nav" href="/library">▣ <span>Video Library</span></a>
+      <a class="nav" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+      <a class="nav" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+      <a class="nav" href="/scheduler">◷ <span>Account Automation</span></a>
+      <a class="nav" href="/channels">◉ <span>Channels & Accounts</span></a>
+      <a class="nav" href="/connections">⌘ <span>Connections</span></a>
+      <a class="nav" href="/analytics">▥ <span>Performance Check</span></a>
+      <a class="nav" href="/setup-guide">❔ <span>Setup Guide</span></a>
+      <a class="nav active" href="/jobs">☷ <span>Upload Queue</span></a>
+      <a class="nav" href="/logs">≡ <span>Logs</span></a>
+      <a class="nav" href="/settings">⚙ <span>Settings</span></a>
+      <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <main class="main">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+        <div>
+          <h1>Upload Queue & Diagnostics</h1>
+          <p class="muted">Track uploads, diagnose failure root causes, and automatically retry once issues are resolved.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" onclick="autoRetryResolved()" id="btn-auto-retry">⚡ Auto-Retry All Fixed Issues</button>
+          <button class="btn btn-secondary" onclick="refreshCurrentTab()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div id="msg"></div>
+
+      <!-- Proactive Daily Quota Tracker Card -->
+      <div id="quota-card" style="padding:14px 18px; margin-bottom:16px; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">📊</span>
+            <strong style="font-size:13px; color:#1e293b;">YouTube Daily API Quota Tracker:</strong>
+            <span id="quota-usage-text" style="font-size:13px; font-weight:700; color:#2563eb;">Loading...</span>
+          </div>
+          <div style="font-size:11.5px; color:#64748b; font-weight:600;" id="quota-reset-text">
+            Resets at midnight Pacific Time (~07:00 UTC)
+          </div>
+        </div>
+        <div style="width:100%; height:8px; background:#e2e8f0; border-radius:99px; overflow:hidden;">
+          <div id="quota-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #3b82f6); transition:width 0.3s ease, background 0.3s ease;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:11px; color:#64748b;">
+          <span id="quota-safety-text">Safe threshold: 9,800 / 10,000 units (Proactive queue pause enabled)</span>
+          <span id="quota-remaining-est" style="font-weight:700; color:#334155;">—</span>
+        </div>
+      </div>
+
+      <!-- Quick Summary Metrics -->
+      <div class="metric-grid">
+        <div class="metric-box">
+          <div class="metric-num" id="stat-total-failed">0</div>
+          <div class="metric-label">Total Failed / Stalled</div>
+        </div>
+        <div class="metric-box" style="border-left:4px solid #10b981;">
+          <div class="metric-num" id="stat-ready-retry" style="color:#059669;">0</div>
+          <div class="metric-label">Ready to Auto-Retry (Fixed)</div>
+        </div>
+        <div class="metric-box" style="border-left:4px solid #ef4444;">
+          <div class="metric-num" id="stat-action-needed" style="color:#dc2626;">0</div>
+          <div class="metric-label">Action Required</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-num" id="stat-active-queue">0</div>
+          <div class="metric-label">Active / Pending Jobs</div>
+        </div>
+      </div>
+
+      <!-- View Selector -->
+      <div class="tab-nav">
+        <button class="tab-btn active" id="tab-failed-btn" onclick="switchTab('failed')">🔍 Failed Videos & Diagnostics</button>
+        <button class="tab-btn" id="tab-all-btn" onclick="switchTab('all')">📋 All Jobs Queue</button>
+      </div>
+
+      <!-- Tab 1: Failed Videos & Diagnostics Tracker -->
+      <div id="view-failed">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="font-weight:600; font-size:14px;">Diagnosed Failure Tracker</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span class="muted tiny">Filter by Category:</span>
+              <select id="filter-category" onchange="renderFailedCards()" style="padding:4px 8px; font-size:12px;">
+                <option value="">All Categories</option>
+                <option value="TOKEN_EXPIRED">Token Expired / Auth</option>
+                <option value="QUOTA_EXCEEDED">Daily Quota / Rate Limit</option>
+                <option value="META_PERMISSION">Meta Page Permission</option>
+                <option value="NETWORK_TRANSIENT">Network Disconnect</option>
+                <option value="AI_METADATA_ERROR">AI Metadata Failed</option>
+                <option value="FILE_MISSING">File Missing</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="failed-list">Loading failure diagnostics...</div>
+      </div>
+
+      <!-- Tab 2: All Jobs Queue -->
+      <div id="view-all" style="display:none;">
+        <div class="card">
+          <div class="row" style="margin-bottom:16px;">
+            <label style="font-size:13px; font-weight:600;">Status:</label>
+            <select id="status" onchange="loadAllJobs()">
+              <option value="">All Statuses</option>
+              <option value="failed">failed</option>
+              <option value="retry_pending">retry_pending</option>
+              <option value="uploading">uploading</option>
+              <option value="pending">pending</option>
+              <option value="completed">completed</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadAllJobs()">Filter</button>
+          </div>
+          <div id="jobs">Loading all jobs...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="/static/common.js?v=26"></script>
+<script>
+let currentTab = 'failed';
+let cachedFailedJobs = [];
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-failed-btn').classList.toggle('active', tab === 'failed');
+  document.getElementById('tab-all-btn').classList.toggle('active', tab === 'all');
+  document.getElementById('view-failed').style.display = tab === 'failed' ? 'block' : 'none';
+  document.getElementById('view-all').style.display = tab === 'all' ? 'block' : 'none';
+  refreshCurrentTab();
+}
+
+function refreshCurrentTab() {
+  if (currentTab === 'failed') {
+    loadFailedDiagnostics();
+  } else {
+    loadAllJobs();
+  }
+}
+
+async function loadFailedDiagnostics() {
+  try {
+    const d = await api('/api/jobs/failed?limit=200');
+    cachedFailedJobs = d.failed_jobs || [];
+    if (d.quota) renderQuota(d.quota);
+    renderFailedCards();
+    updateMetrics();
+  } catch (e) {
+    document.getElementById('failed-list').innerHTML = `<div class="notice error">${esc(e.message)}</div>`;
+  }
+}
+
+function renderQuota(quota) {
+  if (!quota) return;
+  const usedText = document.getElementById('quota-usage-text');
+  if (usedText) {
+    usedText.innerText = `${(quota.used_units || 0).toLocaleString()} / ${(quota.max_units || 10000).toLocaleString()} units (${quota.used_percentage || 0}%)`;
+    usedText.style.color = quota.used_percentage > 85 ? '#dc2626' : (quota.used_percentage > 60 ? '#d97706' : '#2563eb');
+  }
+  const pbar = document.getElementById('quota-progress-bar');
+  if (pbar) {
+    pbar.style.width = `${Math.min(100, quota.used_percentage || 0)}%`;
+    pbar.style.background = quota.used_percentage > 85
+      ? '#ef4444'
+      : (quota.used_percentage > 60 ? '#f59e0b' : 'linear-gradient(90deg, #10b981, #3b82f6)');
+  }
+  const resetText = document.getElementById('quota-reset-text');
+  if (resetText) {
+    resetText.innerText = `⏱️ Resets in ~${quota.reset_hours_remaining} hrs (Midnight PT / ~07:00 UTC)`;
+  }
+  const remEst = document.getElementById('quota-remaining-est');
+  if (remEst) {
+    remEst.innerText = `~${quota.est_uploads_remaining || 0} uploads remaining today`;
+  }
+}
+
+function renderFailedCards() {
+  const container = document.getElementById('failed-list');
+  const catFilter = document.getElementById('filter-category').value;
+  let items = cachedFailedJobs;
+  if (catFilter) {
+    items = items.filter(j => j.category === catFilter);
+  }
+
+  if (!items.length) {
+    container.innerHTML = `<div class="card" style="text-align:center; padding:32px; color:#64748b;">
+      <div style="font-size:24px; margin-bottom:8px;">🎉</div>
+      <div style="font-weight:600;">No failed upload jobs in this view!</div>
+      <div class="tiny muted" style="margin-top:4px;">All scheduled uploads are either completed or running healthy.</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(j => {
+    const isResolved = Boolean(j.is_resolved);
+    const cardClass = isResolved ? 'diag-card resolved' : 'diag-card blocked';
+    const statusBadge = isResolved
+      ? `<span class="badge badge-resolved">✓ Issue Resolved</span>`
+      : `<span class="badge badge-blocked">⚠ Action Required</span>`;
+
+    return `
+      <div class="${cardClass}" id="diag-card-${j.job_id}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-size:14px; font-weight:700; color:#0f172a;">
+              #${j.job_id} · ${esc(j.filename)}
+            </div>
+            <div class="tiny muted" style="margin-top:3px;">
+              Channel: <strong>${esc(j.channel_name || j.channel_id)}</strong> · Attempts: <strong>${j.attempt_count}</strong> · Status: <span class="badge badge-status">${esc(j.job_status)}</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span class="badge badge-category">${esc(j.category_title || j.category)}</span>
+            ${statusBadge}
+          </div>
+        </div>
+
+        <div class="details-box">
+          <div style="margin-bottom:4px;">
+            <strong>Issue Root Cause:</strong> ${esc(j.root_cause || j.last_error)}
+          </div>
+          <div style="color:${isResolved ? '#047857' : '#b91c1c'}; font-weight:600; margin-bottom:4px;">
+            Resolution State: ${esc(j.resolve_reason || '')}
+          </div>
+          <div style="color:#64748b;">
+            💡 <strong>Next Step:</strong> ${esc(j.suggested_action || 'Review and retry.')}
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="retryJob(${j.job_id})">
+            ${isResolved ? '🚀 Retry Upload Now' : '↻ Retry Anyway'}
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="diagnoseSingleJob(${j.job_id})">
+            🔍 Re-check Issue
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelJob(${j.job_id})">
+            ✕ Cancel Job
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function updateMetrics() {
+  const ready = cachedFailedJobs.filter(j => j.is_resolved).length;
+  const blocked = cachedFailedJobs.length - ready;
+  document.getElementById('stat-total-failed').innerText = cachedFailedJobs.length;
+  document.getElementById('stat-ready-retry').innerText = ready;
+  document.getElementById('stat-action-needed').innerText = blocked;
+
+  const btnAuto = document.getElementById('btn-auto-retry');
+  if (btnAuto) {
+    btnAuto.innerText = ready > 0 ? `⚡ Auto-Retry All Fixed (${ready} ready)` : '⚡ Auto-Retry All Fixed';
+  }
+
+  // Also query active queue count
+  try {
+    const d = await api('/api/jobs?limit=500');
+    const all = d.jobs || [];
+    const active = all.filter(j => ['pending', 'retry_pending', 'uploading'].includes(j.status)).length;
+    document.getElementById('stat-active-queue').innerText = active;
+  } catch (e) {}
+}
+
+async function loadAllJobs() {
+  try {
+    const st = document.getElementById('status').value;
+    const d = await api('/api/jobs' + (st ? '?status=' + encodeURIComponent(st) : ''));
+    const rows = d.jobs || [];
+    document.getElementById('jobs').innerHTML = rows.length ? rows.map(j => `
+      <div style="padding:12px 0; border-bottom:1px solid #edf0f5; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <strong>#${j.id}</strong> · <span class="badge badge-status">${esc(j.status)}</span> · attempts: ${j.attempt_count || 0}<br>
+          <span class="muted tiny">Video #${esc(String(j.video_id || ''))} · Channel: ${esc(j.channel_id || '')} ${j.last_error ? `· <span style="color:#dc2626;">${esc(j.last_error.slice(0, 150))}</span>` : ''}</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          ${['failed', 'retry_pending', 'cancelled'].includes(j.status) ? `<button class="btn btn-primary btn-sm" onclick="retryJob(${j.id})">Retry</button>` : ''}
+          ${['pending', 'uploading', 'retry_pending'].includes(j.status) ? `<button class="btn btn-secondary btn-sm" onclick="cancelJob(${j.id})">Cancel</button>` : ''}
+        </div>
+      </div>
+    `).join('') : '<div class="muted">No jobs matching this filter.</div>';
+  } catch (e) {
+    document.getElementById('jobs').innerHTML = `<div class="notice error">${esc(e.message)}</div>`;
+  }
+}
+
+async function retryJob(id) {
+  try {
+    await api('/api/jobs/' + id + '/retry', {method: 'POST'});
+    setMessage('msg', `Job #${id} successfully re-queued for upload.`, 'success');
+    refreshCurrentTab();
+  } catch (e) {
+    setMessage('msg', e.message, 'error');
+  }
+}
+
+async function diagnoseSingleJob(id) {
+  try {
+    const res = await api('/api/jobs/' + id + '/diagnose', {method: 'POST'});
+    const diag = res.diagnostic;
+    setMessage('msg', `Diagnostic for #${id}: ${diag.category_title} — ${diag.resolve_reason}`, diag.is_resolved ? 'success' : 'error');
+    refreshCurrentTab();
+  } catch (e) {
+    setMessage('msg', e.message, 'error');
+  }
+}
+
+async function cancelJob(id) {
+  try {
+    await api('/api/jobs/' + id + '/cancel', {method: 'POST'});
+    setMessage('msg', `Job #${id} cancelled.`, 'success');
+    refreshCurrentTab();
+  } catch (e) {
+    setMessage('msg', e.message, 'error');
+  }
+}
+
+async function autoRetryResolved() {
+  try {
+    const res = await api('/api/jobs/retry-all-resolved', {method: 'POST'});
+    const count = res.recovered_count || 0;
+    if (count > 0) {
+      setMessage('msg', `Successfully recovered and re-queued ${count} jobs whose issues were fixed!`, 'success');
+    } else {
+      setMessage('msg', 'All failed jobs were checked. No additional resolved jobs were ready to retry.', 'info');
+    }
+    refreshCurrentTab();
+  } catch (e) {
+    setMessage('msg', e.message, 'error');
+  }
+}
+
+// Initial load
+loadFailedDiagnostics();
+</script>
+</body>
+</html>

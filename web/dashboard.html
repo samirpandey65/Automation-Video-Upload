@@ -1,0 +1,620 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard — OmniCast Studio</title><link rel="stylesheet" href="/static/layout.css?v=24"></head>
+<body><div class="app"><aside class="sidebar">
+  <div class="brand-block"><div class="brand-logo">⚡</div><div><div class="brand-name">OmniCast</div><div class="brand-sub">Multi-Platform Publisher</div></div></div>
+  <div class="nav-group">
+    <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+    <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+    <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+    <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+    <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+    <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+    <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+    <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+    <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a><a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+    <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a><a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+    <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+    <a class="nav admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+  </div>
+  <div class="sidebar-status"><div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div><div class="status-detail">Local creator workspace</div><a href="/logs" class="sidebar-log-btn">Open Logs</a></div>
+</aside><div class="workspace"><header class="topbar"><div class="topbar-left"><div class="mobile-brand">OmniCast</div><div><div class="top-greeting">Creator Control Center <span>✦</span></div><div class="top-subtitle">Manage your channels, videos and automated uploads</div></div></div><div class="topbar-right"><div class="global-search">⌕ <input aria-label="Search" placeholder="Search videos, channels..." /></div><button class="icon-btn" title="Notifications">♢<span class="notification-dot"></span></button><div class="profile-chip"><div class="profile-avatar">C</div><div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div><span class="chevron">⌄</span></div></div></header><main class="main">
+<div class="page-head"><div><div class="eyebrow">Workspace overview</div><h1>Dashboard</h1><p>Everything important at a glance — local library, YouTube sync, uploads and performance.</p></div><div class="actions"><button id="syncBtn" class="btn btn-primary" onclick="syncYouTube()">☁️ Sync YouTube</button></div></div>
+<div id="reauthAlerts" style="display:none;margin:0 0 18px"></div>
+<div id="communityAlerts" style="display:none;margin:0 0 18px"></div>
+<div class="grid dashboard-kpis">
+<div class="card stat-card" onclick="showDetails('')"><div class="stat-top"><div class="muted">Total Videos</div><div class="stat-icon">🎬</div></div><div id="total" class="metric">0</div><div class="muted tiny">In your library · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('pending')"><div class="stat-top"><div class="muted">Pending</div><div class="stat-icon">⏳</div></div><div id="pending" class="metric">0</div><div class="muted tiny">Yet to upload · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('uploaded')"><div class="stat-top"><div class="muted">Uploaded</div><div class="stat-icon">✓</div></div><div id="uploaded" class="metric">0</div><div class="muted tiny">Successfully uploaded · View details →</div></div>
+<div class="card stat-card" onclick="showDetails('failed')"><div class="stat-top"><div class="muted">Failed</div><div class="stat-icon">✕</div></div><div id="failed" class="metric">0</div><div class="muted tiny">Failed uploads · View details →</div></div>
+<div class="card stat-card" onclick="openFirstChannelOrPage()"><div class="stat-top"><div class="muted">YouTube Channels</div><div class="stat-icon">👥</div></div><div id="remoteCount" class="metric">0</div><div class="muted tiny">Connected / indexed videos →</div></div>
+</div>
+
+<div class="channel-hero card"><div class="channel-hero-copy"><div class="eyebrow" style="color:#b9b2ff">YouTube Channels</div><h2>One dashboard. Every channel separated.</h2><p>Manage uploads, videos, sync and performance independently from one creator workspace.</p></div><div class="channel-hero-status"><span class="sync-dot"></span><strong id="syncStatus">Ready</strong><div id="syncError" class="tiny"></div></div></div>
+
+<div class="dashboard-content-grid">
+  <div class="dashboard-left">
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>YouTube Channels</h2><div class="muted tiny">Manage each connected channel independently.</div></div><button id="channelSyncBtn" class="btn btn-primary" onclick="syncYouTube()">☁️ Sync YouTube</button></div><div id="channelCards" class="channel-card-grid"></div></div>
+    <div class="card dashboard-panel">
+      <div class="section-head" style="flex-wrap:wrap;gap:10px">
+        <div>
+          <h2>Upcoming Uploads</h2>
+          <div id="upcomingSub" class="muted tiny">Scheduled uploads for the next 12 hours</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <select id="upcomingHorizon" style="padding:4px 8px;font-size:12px;border-radius:6px" onchange="loadUpcoming()">
+            <option value="1h">Next 1 Hour</option>
+            <option value="5h">Next 5 Hours</option>
+            <option value="12h" selected>Next 12 Hours</option>
+            <option value="24h">Next 24 Hours</option>
+            <option value="3d">Next 3 Days</option>
+            <option value="7d">Next 7 Days</option>
+            <option value="14d">Next 14 Days</option>
+            <option value="30d">Next 30 Days</option>
+          </select>
+          <select id="upcomingChannelFilter" style="padding:4px 8px;font-size:12px;border-radius:6px" onchange="loadUpcoming()">
+            <option value="">All Channels</option>
+          </select>
+          <a class="btn btn-ghost btn-sm" href="/scheduler">Manage schedules →</a>
+        </div>
+      </div>
+      <div id="schedulerStatusBanner" style="margin:0 0 14px"></div>
+      <div id="upcoming" class="upcoming-list">Loading…</div>
+    </div>
+    <div class="card dashboard-panel dashboard-health"><div class="section-head"><div><h2>System Health</h2><div class="muted tiny">Application services</div></div><a class="btn btn-ghost" href="/logs">📜 Logs</a></div><div id="health" class="health-grid">Checking…</div></div>
+  </div>
+  <aside class="dashboard-right">
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>Quick Actions</h2><div class="muted tiny">Shortcuts</div></div></div><div class="quick-actions"><a href="/upload">⬆️ <span>Upload New Video</span></a><a href="/scheduler">⏰ <span>Open Scheduler</span></a><a href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a><a href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a><a href="/analytics">📊 <span>All-Platform Analytics</span></a><a href="/library">📁 <span>Video Library</span></a></div></div>
+    <div class="card dashboard-panel"><div class="section-head"><div><h2>Recent Activity</h2><div class="muted tiny">Latest workspace events</div></div></div><div id="activity" class="recent-activity"><div class="activity-item"><i class="activity-dot"></i><div><strong>Workspace ready</strong><span>Local creator control center is online</span></div></div><div class="activity-item"><i class="activity-dot"></i><div><strong>Channel sync</strong><span id="activitySync">Waiting for the latest sync</span></div></div><div class="activity-item"><i class="activity-dot"></i><div><strong>Channel isolation</strong><span>Each connected YouTube channel is managed separately</span></div></div></div></div>
+  </aside>
+</div>
+
+<!-- Stat card details modal -->
+<div id="detailsModal" class="modal"><div class="modal-box details-modal-box"><div class="channel-modal-header"><div class="channel-modal-title-wrap"><div id="detailsModalIcon" class="channel-modal-avatar">🎬</div><div><div class="eyebrow" id="detailsModalEyebrow">Library Details</div><h2 id="detailsModalTitle">Videos</h2><div id="detailsModalSub" class="muted tiny">Loading…</div></div></div><div class="modal-header-actions"><span id="detailsModalCount" class="modal-sync-pill">0 videos</span><button class="modal-close" onclick="closeDetailsModal()" title="Close (Esc)">×</button></div></div><div class="details-modal-toolbar"><div class="global-search" style="flex:1;max-width:380px">⌕ <input id="detailsSearch" placeholder="Filter by title, channel, or path…" oninput="filterDetailsTable()" /></div><div class="actions"><button id="detailsRefreshBtn" class="btn btn-ghost btn-sm" onclick="showDetails(currentDetailsStatus)">↻ Refresh</button><a id="detailsOpenLibraryBtn" class="btn btn-primary btn-sm" href="/library">▣ Open in Video Library →</a></div></div><div class="table-wrap" style="margin:0 22px 22px;max-height:460px;overflow:auto"><table><thead><tr><th>Video / File</th><th>Channel</th><th>Status</th><th>AI</th><th>Privacy</th><th>YouTube</th></tr></thead><tbody id="detailsModalBody"><tr><td colspan="6" class="muted" style="text-align:center;padding:36px">Loading video data…</td></tr></tbody></table></div></div></div>
+
+<div id="channelModal" class="modal"><div class="modal-box channel-modal-box" style="width:min(1150px,96%)"><div class="channel-modal-header"><div class="channel-modal-title-wrap"><div id="channelModalAvatar" class="channel-modal-avatar">C</div><div><div class="eyebrow">Channel workspace</div><h2 id="channelModalTitle">Channel Details</h2><div id="channelModalSub" class="muted tiny"></div></div></div><div class="modal-header-actions"><span id="channelModalSync" class="modal-sync-pill">● Synced</span><button class="modal-close" onclick="closeChannelModal()">×</button></div></div><div id="channelModalStats" class="channel-modal-stats"></div><div class="channel-toolbar"><div><strong>Channel videos</strong><div class="muted tiny">All platform videos (YouTube, Facebook, Instagram) belonging to this channel workspace.</div></div><div class="actions"><button id="modalSyncBtn" class="btn btn-ghost btn-sm">↻ Refresh</button><button id="modalOpenChannelBtn" class="btn btn-primary btn-sm">↗ YouTube Channel</button></div></div><div class="table-wrap channel-video-table"><table><thead><tr><th>Video / File</th><th>Platforms</th><th>Status</th><th>Published</th><th>Views</th><th>Likes</th><th>Platform Links &amp; Actions</th></tr></thead><tbody id="channelVideoBody"></tbody></table></div></div></div>
+
+<!-- Video analytics modal -->
+<div id="analyticsModal" class="modal modal-front"><div class="modal-box analytics-modal-box"><div class="channel-modal-header"><div><div class="eyebrow">Video analytics</div><h2 id="analyticsModalTitle">Analytics</h2><div id="analyticsModalSub" class="muted tiny">Last 28 days</div></div><button class="modal-close" onclick="closeAnalyticsModal()">×</button></div><div id="analyticsContent" class="analytics-content">Loading…</div></div></div>
+
+</main></div></div><script src="/static/common.js?v=24"></script><script>
+function statNum(x){return Number(x||0).toLocaleString()}
+function ytUrl(id){return 'https://www.youtube.com/watch?v='+encodeURIComponent(id)}
+let currentDetailsVideos = [];
+let currentDetailsStatus = '';
+
+async function showDetails(status) {
+  currentDetailsStatus = status || '';
+  const modal = document.getElementById('detailsModal');
+  modal.classList.add('open');
+
+  const titles = {
+    '': 'All Videos (Library & Remote)',
+    'pending': 'Pending Uploads',
+    'uploaded': 'Uploaded Videos',
+    'failed': 'Failed Uploads'
+  };
+  const icons = {
+    '': '🎬',
+    'pending': '⏳',
+    'uploaded': '✓',
+    'failed': '✕'
+  };
+  const title = titles[currentDetailsStatus] || 'Video Details';
+  const icon = icons[currentDetailsStatus] || '📁';
+
+  document.getElementById('detailsModalTitle').textContent = title;
+  document.getElementById('detailsModalIcon').textContent = icon;
+  document.getElementById('detailsModalEyebrow').textContent = currentDetailsStatus ? (currentDetailsStatus.toUpperCase() + ' VIDEOS') : 'WORKSPACE INVENTORY';
+  document.getElementById('detailsModalSub').textContent = 'Fetching video records from library…';
+  document.getElementById('detailsModalCount').textContent = 'Loading…';
+  document.getElementById('detailsModalBody').innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center;padding:36px">Loading video records…</td></tr>';
+  document.getElementById('detailsSearch').value = '';
+  document.getElementById('detailsOpenLibraryBtn').href = currentDetailsStatus ? ('/library?status=' + encodeURIComponent(currentDetailsStatus)) : '/library';
+
+  try {
+    const url = '/api/dashboard/details' + (currentDetailsStatus ? ('?status=' + encodeURIComponent(currentDetailsStatus)) : '');
+    const d = await api(url);
+    currentDetailsVideos = d.videos || [];
+    document.getElementById('detailsModalSub').textContent = `${statNum(currentDetailsVideos.length)} video(s) found in workspace`;
+    document.getElementById('detailsModalCount').textContent = `${statNum(currentDetailsVideos.length)} videos`;
+    renderDetailsTable(currentDetailsVideos);
+  } catch (e) {
+    document.getElementById('detailsModalBody').innerHTML = `<tr><td colspan="6" class="notice error">${esc(e.message)}</td></tr>`;
+    document.getElementById('detailsModalSub').textContent = 'Error loading records';
+  }
+}
+
+function renderDetailsTable(videos) {
+  const tbody = document.getElementById('detailsModalBody');
+  if (!videos.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-table">No matching videos found for this status.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = videos.map(v => {
+    const isRemoteOnly = !v.local_file;
+    const displayName = esc(v.title || v.filename || 'Untitled');
+    const pathOrRemote = isRemoteOnly ? 'Remote YouTube upload' : esc(v.file_path || '');
+    const ytId = v.youtube_video_id;
+    const statusClass = v.status === 'uploaded' ? 'uploaded' : v.status === 'failed' ? 'failed' : 'pending';
+    const ytLink = ytId ? `<a href="${ytUrl(ytId)}" target="_blank" class="btn btn-ghost btn-sm" title="Open on YouTube">↗ ${esc(ytId)}</a>` : '—';
+
+    return `<tr>
+      <td>
+        <div class="video-cell">
+          <div class="video-mini-thumb">${isRemoteOnly ? '☁' : '▶'}</div>
+          <div>
+            <strong title="${displayName}">${displayName}</strong>
+            <span class="muted tiny" title="${pathOrRemote}">${pathOrRemote}</span>
+          </div>
+        </div>
+      </td>
+      <td><strong>${esc(v.channel_name || '—')}</strong></td>
+      <td><span class="badge ${statusClass}">${esc(v.status || 'unknown')}</span></td>
+      <td><span class="badge ${v.ai_status === 'completed' ? 'synced' : ''}">${esc(v.ai_status || 'not_analyzed')}</span></td>
+      <td><span class="tiny muted">${esc(v.privacy_status || '—')}</span></td>
+      <td>${ytLink}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDetailsTable() {
+  const q = (document.getElementById('detailsSearch').value || '').trim().toLowerCase();
+  if (!q) {
+    renderDetailsTable(currentDetailsVideos);
+    document.getElementById('detailsModalCount').textContent = `${statNum(currentDetailsVideos.length)} videos`;
+    return;
+  }
+  const filtered = currentDetailsVideos.filter(v => {
+    return (v.title || '').toLowerCase().includes(q) ||
+           (v.filename || '').toLowerCase().includes(q) ||
+           (v.file_path || '').toLowerCase().includes(q) ||
+           (v.channel_name || '').toLowerCase().includes(q) ||
+           (v.youtube_video_id || '').toLowerCase().includes(q);
+  });
+  renderDetailsTable(filtered);
+  document.getElementById('detailsModalCount').textContent = `${statNum(filtered.length)} of ${statNum(currentDetailsVideos.length)}`;
+}
+
+function closeDetailsModal() {
+  document.getElementById('detailsModal').classList.remove('open');
+}
+
+function openFirstChannelOrPage() {
+  const firstCard = document.querySelector('.channel-card');
+  if (firstCard && firstCard.dataset.channelId) {
+    openChannel(firstCard.dataset.channelId);
+  } else {
+    window.location.href = '/channels';
+  }
+}
+function safeJson(s){try{return JSON.parse(s||'{}')}catch{return {}}}
+function channelStats(videos){let views=0,likes=0,comments=0;videos.forEach(v=>{const st=safeJson(v.statistics_json);views+=Number(st.viewCount||0);likes+=Number(st.likeCount||0);comments+=Number(st.commentCount||0)});return {videos:videos.length,views,likes,comments}}
+function syncLabel(c){return c.last_sync_status==='success'?'Synced':c.last_sync_status==='error'?'Sync failed':'Not synced'}
+function syncIcon(c){return c.last_sync_status==='success'?'🟢':c.last_sync_status==='error'?'🔴':'🟡'}
+
+async function loadReauthAlerts(){
+  try{
+    const d=await api('/api/youtube/reauth-alerts'); const rows=d.alerts||[]; const el=document.getElementById('reauthAlerts');
+    if(!rows.length){el.style.display='none';return;}
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:4px solid #c62828;padding:16px 18px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><strong>⚠ Action Required — YouTube authentication</strong><div class="muted tiny">These accounts may stop scheduled work until Google authentication is restored.</div></div><a class="btn btn-primary btn-sm" href="/connections">Open Connections</a></div><div style="margin-top:12px">'+rows.map(x=>{const required=!!x.reauth_required||String(x.status||'').toLowerCase()==='reauth_required';const days=x.days_remaining==null?null:Math.ceil(Number(x.days_remaining));const text=required?'Re-authentication required now':`Re-auth reminder in ${Math.max(0,days)} day${Math.max(0,days)===1?'':'s'}`;return `<div style="padding:9px 0;border-top:1px solid #eee;display:flex;justify-content:space-between;gap:10px"><div><strong>${esc(x.account_name)}</strong><div class="muted tiny">${esc(x.account_email||'')} · ${Number(x.channel_count||0)} channel(s)</div></div><span class="badge ${required?'error':'error'}">${esc(text)}</span></div>`}).join('')+'</div></div>';
+  }catch(e){console.warn('Re-auth alert load failed',e)}
+}
+
+async function loadCommunityAlerts(){
+  try{
+    const d=await api('/api/community/pending-alerts'); const rows=d.alerts||[]; const el=document.getElementById('communityAlerts');
+    if(!rows.length){el.style.display='none';return;}
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border-left:4px solid #3b82f6;padding:16px 18px;background:#f8fafc"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong style="color:#1d4ed8">📢 Community Teasers &amp; Polls (Long-Form Videos)</strong><div class="muted tiny">YouTube API restricts 3rd-party bots from auto-publishing to the channel Community tab. OmniCast provides pre-generated teasers and interactive polls for long-form videos so you can publish in seconds. (Shorts &amp; Reels are bypassed).</div></div><a class="btn btn-secondary btn-sm" href="/library">View Full Library →</a></div><div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">'+rows.slice(0, 3).map(x=>{
+      const ytText = `${x.teaser?.full_text || ''}\n\n📊 COMMUNITY POLL:\n❓ ${x.teaser?.poll_question || ''}\n` + (x.teaser?.poll_options || []).map((opt, i) => `  [${i+1}] ${opt}`).join('\n');
+      const studioUrl = x.studio_community_url || 'https://studio.youtube.com';
+      return `<div style="padding:10px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="min-width:200px;flex:1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:11px">${esc(x.channel_name)}</span>
+            <span class="badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px">✓ Video Grounded</span>
+            <strong>${esc(x.title)}</strong>
+          </div>
+          <div class="muted tiny" style="margin-top:3px">${esc(x.teaser?.headline || '')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="autoPostCommunityFromDashboard(${x.id}, this)" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#1d4ed8;font-weight:750" title="Open a new browser window and post community announcement & poll automatically">
+            🚀 Auto-Post in Browser
+          </button>
+          <button class="btn btn-secondary btn-sm" data-yt-text="${esc(ytText)}" data-studio-url="${esc(studioUrl)}" onclick="copyAndOpenCommunityFromDashboard(this)" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:700" title="Copy poll copy to clipboard and open Studio Community tab in a new window">
+            📋 1-Click Copy &amp; Open Studio ↗
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="sendCommunityDashboardTelegram(${x.id}, this)" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0;font-weight:700" title="Send ready-to-post notification to Telegram">
+            📱 Send to Telegram
+          </button>
+          <a class="btn btn-ghost btn-sm" href="/library?id=${x.id}">▣ Library</a>
+        </div>
+      </div>`;
+    }).join('')+'</div></div>';
+  }catch(e){console.warn('Community alert load failed',e)}
+}
+
+function safeCopyDashboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+  } catch(e) {}
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) resolve();
+      else reject(new Error('copy command failed'));
+    } catch(err) {
+      document.body.removeChild(ta);
+      reject(err);
+    }
+  });
+}
+
+function copyAndOpenCommunityFromDashboard(btn){
+  const text = btn.dataset.ytText || '';
+  const studioUrl = btn.dataset.studioUrl || '';
+  if (studioUrl) {
+    window.open(studioUrl, '_blank');
+  }
+  safeCopyDashboard(text).then(()=>{
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied & Opened!';
+    btn.style.background = '#dcfce7';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = '#eff6ff'; }, 3000);
+  }).catch(()=>{
+    if (studioUrl) window.open(studioUrl, '_blank');
+  });
+}
+
+async function autoPostCommunityFromDashboard(id, btn){
+  if(btn){btn.disabled=true;btn.textContent='⏳ Opening Browser & Posting…';}
+  try{
+    const res = await api(`/api/community/browser-post/${id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+    if(res.posted){
+      if(btn){btn.textContent='🎉 Posted to YouTube!';btn.style.background='#15803d';btn.style.color='#fff';}
+      setTimeout(()=>{loadCommunityAlerts();}, 4000);
+    } else if(res.needs_login){
+      alert('⚠️ Google sign-in required in the opened Chrome window. Log in and click Auto-Post in Browser again!');
+      if(btn){btn.disabled=false;btn.textContent='🔄 Retry After Sign-In';}
+    } else {
+      alert(res.message || 'Browser opened with text ready. Check the window to finish.');
+      if(btn){btn.disabled=false;btn.textContent='🚀 Auto-Post in Browser';}
+    }
+  }catch(e){
+    alert('Failed browser automation: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='🚀 Auto-Post in Browser';}
+  }
+}
+
+async function sendCommunityDashboardTelegram(id, btn){
+  if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
+  try{
+    await api(`/api/community/notify-telegram/${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
+    if(btn){btn.textContent='✓ Sent to Telegram!';btn.style.background='#dcfce7';}
+  }catch(e){
+    alert('Failed to send Telegram notification: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='📱 Send to Telegram';}
+  }
+}
+
+async function loadSchedulerBanner(){
+  try{
+    const d = await api('/api/scheduler/mode');
+    const el = document.getElementById('schedulerStatusBanner');
+    if (!el) return;
+    const isAuto = d.mode === 'auto';
+    const status = d.status || {};
+    const hold = status.hold || {};
+    const isHeld = !!hold.is_held;
+    const holdUntil = hold.hold_until || '';
+    const traffic = status.traffic || {};
+    const isDev = !!d.is_dev;
+
+    let subMsg = '';
+    if (isHeld) {
+      subMsg = `⏸️ <strong>Uploads On Hold For Today</strong> · Next uploads will start tomorrow (<strong>${esc(holdUntil)}</strong> at 08:30 AM Morning Peak).`;
+    } else if (isAuto) {
+      if (traffic.in_peak) {
+        subMsg = `🔥 <strong>${esc(traffic.window_name)} Active (${esc(traffic.time_range)})</strong> · Audience Traffic Score: <strong>${traffic.score}/100</strong> · ${traffic.minutes_remaining_in_window}m remaining in peak.`;
+      } else if (traffic.can_upload) {
+        subMsg = `⚡ <strong>Standard Daytime Traffic</strong> · Next peak: <strong>${esc(traffic.next_peak_name || 'Peak')}</strong> at ${esc(traffic.next_peak_time || '08:30')} (in ${traffic.next_peak_in_minutes}m).`;
+      } else {
+        subMsg = `🌙 <strong>Night Off-Peak Paused</strong> (protecting CTR) · Next upload window opens at ${esc(traffic.next_peak_time || '08:30')}.`;
+      }
+    } else {
+      subMsg = `📋 Running on <strong>Manual Weekly Schedule Slots</strong>. Videos publish only at user-configured day/time slots.`;
+    }
+
+    if (isDev) {
+      subMsg += ` <span style="display:inline-block;margin-left:6px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:11px">🛡️ Dev Mode (Background loop paused)</span>`;
+    }
+
+    el.innerHTML = `
+      <div style="border-left:4px solid ${isAuto ? '#6366f1' : '#0ea5e9'};padding:12px 16px;border-radius:8px;background:${isAuto ? '#f8faff' : '#f0f9ff'};border:1px solid ${isAuto ? '#e0e7ff' : '#bae6fd'};border-left-width:4px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:16px">${isAuto ? '🤖' : '📋'}</span>
+            <strong style="color:#0f172a;font-size:13.5px">Active Scheduler: ${isAuto ? 'Smart Auto Traffic Agent' : 'Manual Schedule Slots'}</strong>
+            <span class="badge ${isHeld ? 'pending' : (isAuto ? 'synced' : '')}" style="font-size:11px">
+              ${isHeld ? '⏸️ Today Held' : (isAuto ? '🔥 Peak Traffic Engine' : 'Fixed Slots')}
+            </span>
+          </div>
+          <div class="muted tiny" style="margin-top:4px;line-height:1.4">${subMsg}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="toggleDashboardHold(${isHeld})" style="background:${isHeld ? '#dcfce7' : '#fef2f2'};color:${isHeld ? '#166534' : '#991b1b'};border-color:${isHeld ? '#bbf7d0' : '#fecaca'};font-weight:700">
+            ${isHeld ? '▶️ Resume Today’s Uploads' : '⏸️ Hold Today (Start Tomorrow)'}
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleDashboardSchedulerMode('${isAuto ? 'manual' : 'auto'}')" style="font-weight:600">
+            ${isAuto ? 'Switch to 📋 Manual Slots' : 'Switch to 🤖 Smart Traffic'}
+          </button>
+        </div>
+      </div>
+    `;
+  }catch(e){console.warn('Failed to load scheduler banner', e);}
+}
+
+async function toggleDashboardHold(isCurrentlyHeld){
+  try{
+    await api('/api/scheduler/hold', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({hold_today: !isCurrentlyHeld})
+    });
+    await loadSchedulerBanner();
+    await loadUpcoming();
+  }catch(e){alert('Failed to update hold status: ' + e.message);}
+}
+
+async function toggleDashboardSchedulerMode(newMode){
+  try{
+    await api('/api/scheduler/mode', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({mode: newMode})
+    });
+    await loadSchedulerBanner();
+    await loadUpcoming();
+  }catch(e){alert('Failed to switch scheduler mode: ' + e.message);}
+}
+
+async function load(){
+  const d=await api('/api/dashboard'); const s=d.stats||{};
+  ['total','pending','uploaded','failed'].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent=statNum(s[k])});
+  document.getElementById('remoteCount').textContent=statNum(d.remote_count||0);
+  const channels=d.channels||[], grid=document.getElementById('channelCards');
+
+  // Populate channel dropdown in upcoming uploads filter
+  const chFilter = document.getElementById('upcomingChannelFilter');
+  if (chFilter) {
+    const curVal = chFilter.value;
+    chFilter.innerHTML = '<option value="">All Channels</option>' + channels.map(c => `<option value="${esc(c.channel_id)}">${esc(c.channel_name || 'Channel')}</option>`).join('');
+    chFilter.value = curVal;
+  }
+
+  grid.innerHTML=channels.length?channels.map(c=>{
+    const name=esc(c.channel_name||'YouTube Channel'), email=esc(c.google_email||c.channel_id||'');
+    const status=syncLabel(c), initial=esc((c.channel_name||'YT').slice(0,1).toUpperCase());
+    
+    // Connected platforms badges: Show platform logos with links to accounts.
+    // If all account names are same -> logo only; if different -> logo + name
+    let platBadges = '';
+    const chBadges = (c.connected_badges && c.connected_badges.length) ? c.connected_badges : [
+      { platform: 'youtube', name: c.channel_name || 'YouTube Channel', url: (c.channel_handle ? 'https://www.youtube.com/' + c.channel_handle : 'https://www.youtube.com/channel/' + c.channel_id) }
+    ];
+    platBadges = renderAccountPlatformBadgesGroup(chBadges);
+
+    return `<button class="channel-card" data-channel-id="${esc(c.channel_id)}"><div class="channel-card-accent"></div><div class="channel-card-top"><div class="channel-avatar">${initial}</div><div class="channel-card-heading"><div class="channel-card-name">${name}</div><div class="muted tiny">${email}</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${platBadges}</div></div><span class="channel-arrow">↗</span></div><div class="channel-mini-stats"><div><strong>${statNum(c.remote_video_count||0)}</strong><span>Videos</span></div><div><strong>${status}</strong><span>Sync status</span></div></div><div class="channel-card-footer"><span class="tiny">${c.last_sync_at?'Synced '+esc(new Date(c.last_sync_at).toLocaleString()):'Ready to connect'}</span><strong>Open workspace →</strong></div></button>`;
+  }).join(''):`<div class="empty-channel"><div class="empty-icon">📺</div><strong>No YouTube channel connected</strong><span>Connect a channel from Connections to see it here.</span><a class="btn btn-primary btn-sm" href="/connections">Connect YouTube</a></div>`;
+  const c=channels[0];
+  if(c){document.getElementById('syncStatus').textContent=c.last_sync_status==='success'?'Last sync successful':c.last_sync_status==='error'?'Sync failed':'Ready';document.getElementById('syncError').textContent=c.last_sync_error||''}; const act=document.getElementById('activitySync'); if(act) act.textContent=c.last_sync_at ? ('Last successful sync · '+new Date(c.last_sync_at).toLocaleString()) : 'No sync recorded yet';
+  await loadUpcoming(); await loadHealth(); await loadReauthAlerts(); await loadCommunityAlerts(); await loadSchedulerBanner();
+}
+
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.channel-card'); if(card){openChannel(card.dataset.channelId);return;}
+  if(e.target===document.getElementById('detailsModal'))closeDetailsModal();
+  if(e.target===document.getElementById('channelModal'))closeChannelModal();
+  if(e.target===document.getElementById('analyticsModal'))closeAnalyticsModal();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closeDetailsModal();
+    closeChannelModal();
+    closeAnalyticsModal();
+  }
+});
+
+async function openChannel(channelId){
+  const modal=document.getElementById('channelModal'); modal.classList.add('open');
+  document.getElementById('channelModalTitle').textContent='Loading…';
+  document.getElementById('channelModalSub').textContent='Loading channel workspace';
+  document.getElementById('channelVideoBody').innerHTML='<tr><td colspan="7" class="muted">Loading channel data…</td></tr>';
+  try{
+    const d=await api('/api/dashboard?channel_id='+encodeURIComponent(channelId)); const c=(d.channels||[])[0]; if(!c)throw new Error('Channel not found');
+    const videos=(d.workspace_videos && d.workspace_videos.length) ? d.workspace_videos : (d.remote_videos||[]);
+    const st=channelStats(d.remote_videos || videos), status=syncLabel(c);
+    const ytChannelUrl = c.channel_handle ? ('https://www.youtube.com/' + c.channel_handle) : ('https://www.youtube.com/channel/' + c.channel_id);
+    document.getElementById('channelModalTitle').innerHTML=`<a href="${esc(ytChannelUrl)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none" title="Open YouTube Channel">${esc(c.channel_name||'YouTube Channel')} ↗</a>`;
+    document.getElementById('channelModalSub').textContent=(c.google_email||'')+' · '+(c.channel_id||'');
+    document.getElementById('channelModalAvatar').textContent=(c.channel_name||'YT').slice(0,1).toUpperCase();
+    document.getElementById('channelModalSync').textContent=syncIcon(c)+' '+status;
+    document.getElementById('channelModalStats').innerHTML=`<div class="modal-stat"><span>Videos</span><strong>${statNum(videos.length)}</strong></div><div class="modal-stat"><span>Views</span><strong>${statNum(st.views)}</strong></div><div class="modal-stat"><span>Likes</span><strong>${statNum(st.likes)}</strong></div><div class="modal-stat"><span>Comments</span><strong>${statNum(st.comments)}</strong></div>`;
+
+    const channelMeta = {
+      channelName: c.channel_name || '',
+      fbPageName: (c.meta_pages || [])[0] || '',
+      igUsername: (c.instagram_accounts || [])[0] || ''
+    };
+
+    document.getElementById('channelVideoBody').innerHTML=videos.length?videos.map(v=>{
+      const x=safeJson(v.statistics_json);
+      const views = v.views != null ? v.views : Number(x.viewCount || 0);
+      const likes = v.likes != null ? v.likes : Number(x.likeCount || 0);
+
+      // Smart multi-platform video links
+      const platHtml = renderVideoPlatformLinks(v, channelMeta);
+
+      // Platform action links
+      const actionLinks = [];
+      const yUrl = v.youtube_url || (v.youtube_video_id ? ytUrl(v.youtube_video_id) : '');
+      if (yUrl) {
+        actionLinks.push(`<a class="btn btn-secondary btn-sm" href="${esc(yUrl)}" target="_blank" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;padding:3px 8px;font-size:11px;text-decoration:none;font-weight:700" title="Watch on YouTube">▶ YouTube ↗</a>`);
+      }
+      
+      const fbUrl = v.facebook_url || (yUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(yUrl)}` : '');
+      if (fbUrl) {
+        actionLinks.push(`<a class="btn btn-secondary btn-sm" href="${esc(fbUrl)}" target="_blank" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe;padding:3px 8px;font-size:11px;text-decoration:none;font-weight:700" title="Watch on Facebook">📘 Facebook ↗</a>`);
+      }
+
+      const igUrl = v.instagram_url || (v.id ? `/library?meta=${encodeURIComponent(v.id)}` : 'https://www.instagram.com/');
+      actionLinks.push(`<a class="btn btn-secondary btn-sm" href="${esc(igUrl)}" target="_blank" style="background:#fce7f3;color:#be185d;border-color:#fbcfe8;padding:3px 8px;font-size:11px;text-decoration:none;font-weight:700" title="Watch on Instagram Reel">📸 Instagram ↗</a>`);
+
+      if (v.youtube_video_id) {
+        actionLinks.push(`<button class="btn btn-primary btn-sm video-analytics" data-channel-id="${esc(channelId)}" data-video-id="${esc(v.youtube_video_id)}" data-title="${esc(v.title||'Video')}" style="padding:3px 8px;font-size:11px">📊 Analytics</button>`);
+      }
+
+      if (v.id) {
+        actionLinks.push(`<a class="btn btn-secondary btn-sm" href="/library?id=${encodeURIComponent(v.id)}" style="background:#fef3c7;color:#92400e;border-color:#fde68a;padding:3px 8px;font-size:11px;text-decoration:none;font-weight:700" title="Audit performance & auto A/B test metadata/thumbnails">⚡ Optimize ${v.auto_optimized_count ? `(${v.auto_optimized_count})` : ''}</a>`);
+      } else if (v.youtube_video_id) {
+        actionLinks.push(`<a class="btn btn-secondary btn-sm" href="/library?search=${encodeURIComponent(v.youtube_video_id)}" style="background:#fef3c7;color:#92400e;border-color:#fde68a;padding:3px 8px;font-size:11px;text-decoration:none;font-weight:700" title="Audit performance & auto A/B test metadata/thumbnails">⚡ Optimize</a>`);
+      }
+
+      return `<tr>
+        <td>
+          <div class="video-cell">
+            <div class="video-mini-thumb">${plats.includes('facebook')?'📘':(plats.includes('instagram')?'📸':'▶')}</div>
+            <div>
+              <strong>${esc(v.title||v.filename||'Untitled')}</strong>
+              <span class="muted tiny">${esc(v.filename || v.youtube_video_id || '')}</span>
+            </div>
+          </div>
+        </td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">${platHtml}</div></td>
+        <td><span class="badge ${v.status==='uploaded'||v.privacy_status==='public'?'synced':''}">${esc(v.status||v.privacy_status||'uploaded')}</span></td>
+        <td>${v.published_at?esc(new Date(v.published_at).toLocaleDateString()):'—'}</td>
+        <td>${statNum(views)}</td>
+        <td>${statNum(likes)}</td>
+        <td><div class="table-actions" style="display:flex;gap:4px;flex-wrap:wrap">${actionLinks.join('')}</div></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="7"><div class="empty-table">No videos found for this channel workspace.</div></td></tr>`;
+    document.getElementById('modalSyncBtn').onclick=async()=>{await syncYouTube(channelId);await openChannel(channelId)};
+    document.getElementById('modalOpenChannelBtn').onclick=()=>window.open('https://www.youtube.com/channel/'+encodeURIComponent(channelId),'_blank');
+    modal.querySelectorAll('.video-analytics').forEach(b=>b.addEventListener('click',()=>openAnalytics(b.dataset.channelId,b.dataset.videoId,b.dataset.title)));
+  }catch(e){document.getElementById('channelVideoBody').innerHTML='<tr><td colspan="7" class="notice error">'+esc(e.message)+'</td></tr>'}
+}
+function closeChannelModal(){document.getElementById('channelModal').classList.remove('open')}
+
+async function openAnalytics(channelId,videoId,title){
+  const m=document.getElementById('analyticsModal');m.classList.add('open');document.getElementById('analyticsModalTitle').textContent=title;document.getElementById('analyticsContent').innerHTML='<div class="analytics-loading">Loading live analytics…</div>';
+  try{
+    const a=await api('/api/remote/'+encodeURIComponent(channelId)+'/'+encodeURIComponent(videoId)+'/analytics?days=28');
+    const x=a.summary||a.analytics?.summary||{};
+    const detailed=Boolean(a.analytics_available ?? a.analytics?.analytics_available);
+    document.getElementById('analyticsContent').innerHTML=`<div class="analytics-kpis"><div><span>Views</span><strong>${statNum(x.views)}</strong></div><div><span>Likes</span><strong>${statNum(x.likes)}</strong></div><div><span>Comments</span><strong>${statNum(x.comments)}</strong></div><div><span>Watch time</span><strong>${x.estimatedMinutesWatched!=null?statNum(x.estimatedMinutesWatched)+' min':'—'}</strong></div><div><span>Avg viewed</span><strong>${x.averageViewPercentage!=null?Number(x.averageViewPercentage).toFixed(1)+'%':'—'}</strong></div><div><span>Subscribers</span><strong>${x.subscribersGained!=null?statNum(x.subscribersGained):'—'}</strong></div></div><div class="analytics-note">${detailed?'Detailed YouTube Analytics data is available.':'Basic YouTube statistics are shown. (Live views, likes, and comments are updated in real-time. Watch-time and audience metrics will appear once processed by YouTube Analytics)'}</div><div class="analytics-actions"><button class="btn btn-ghost" onclick="closeAnalyticsModal()">Close</button><button class="btn btn-primary" onclick="window.open('${ytUrl(videoId)}','_blank')">↗ Open on YouTube</button></div>`;
+  }catch(e){document.getElementById('analyticsContent').innerHTML='<div class="notice error">Analytics unavailable: '+esc(e.message)+'</div>'}
+}
+function closeAnalyticsModal(){document.getElementById('analyticsModal').classList.remove('open')}
+
+async function syncYouTube(channelId){
+  const buttons=[document.getElementById('syncBtn'),document.getElementById('channelSyncBtn')].filter(Boolean);buttons.forEach(b=>{b.disabled=true;b.dataset.old=b.textContent;b.textContent='⟳ Syncing…'});
+  try{const url='/api/youtube/sync'+(channelId?'?channel_id='+encodeURIComponent(channelId):'');const d=await api(url);setMessage('syncMsg',`Sync complete · ${statNum(d.remote_videos)} videos indexed.`,'success');await load();return d}catch(e){setMessage('syncMsg','YouTube sync failed: '+e.message,'error');await load();throw e}finally{buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.old||'☁️ Sync'})}
+}
+async function loadUpcoming(){
+  try{
+    const horizon = document.getElementById('upcomingHorizon')?.value || '12h';
+    const channelId = document.getElementById('upcomingChannelFilter')?.value || '';
+    const subEl = document.getElementById('upcomingSub');
+    const horizonLabels = {
+      '1h': 'next 1 hour',
+      '5h': 'next 5 hours',
+      '12h': 'next 12 hours',
+      '24h': 'next 24 hours',
+      '3d': 'next 3 days',
+      '7d': 'next 7 days',
+      '14d': 'next 14 days',
+      '30d': 'next 30 days'
+    };
+    const periodLabel = horizonLabels[horizon] || `next ${horizon}`;
+    const qs = `?horizon=${encodeURIComponent(horizon)}` + (channelId ? `&channel_id=${encodeURIComponent(channelId)}` : '');
+    const d = await api('/api/dashboard/upcoming' + qs);
+    const isHeld = Boolean(d.hold && d.hold.is_held);
+    if (subEl) {
+      const modeText = d.mode === 'auto' ? ' · 🤖 Smart Auto Traffic Agent (Peak-Optimized)' : ' · 📋 Manual Schedule Slots';
+      const holdNote = isHeld ? ' · ⏸️ Today Held (Showing tomorrow)' : '';
+      subEl.textContent = `Scheduled uploads for the ${periodLabel}${modeText}${holdNote}`;
+    }
+
+    let html = '';
+    if (d.upcoming && d.upcoming.length) {
+      html += d.upcoming.map(x=>{
+        const dt = new Date(x.datetime);
+        const dateStr = dt.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+        const timeStr = dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        return `
+          <div class="upcoming-item">
+            <div>
+              <strong>${esc(dateStr)}, ${esc(timeStr)}</strong>
+              <span class="badge ${x.is_smart_agent ? 'synced' : 'pending'}">${esc(x.channel_name)}</span>
+              ${x.is_smart_agent ? `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px" title="Audience Traffic Score">${esc(x.traffic_peak || 'Peak')} (${x.traffic_score || 0}/100)</span>` : ''}
+              <br>
+              <span class="muted tiny">${esc(x.video)} · AI ${esc(x.ai_provider)} · ${esc(x.privacy_status)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      if (isHeld) {
+        html += `
+          <div class="muted" style="padding:16px 8px;text-align:center">
+            ⏸️ Uploads are held for today. No additional queued videos found in ${periodLabel}.
+            <div style="margin-top:8px">
+              <button class="btn btn-secondary btn-sm" onclick="setUpcomingHorizon('24h')">View Next 24 Hours</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleDashboardHold(true)">▶️ Resume Today</button>
+            </div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="muted" style="padding:16px 8px;text-align:center">
+            No scheduled upload in the selected period (${periodLabel}).
+            <div style="margin-top:8px">
+              <button class="btn btn-ghost btn-sm" onclick="setUpcomingHorizon('24h')">View Next 24 Hours</button>
+              <a class="btn btn-ghost btn-sm" href="/scheduler">Manage Schedules →</a>
+            </div>
+          </div>
+        `;
+      }
+    }
+    document.getElementById('upcoming').innerHTML = html;
+  }catch(e){
+    document.getElementById('upcoming').innerHTML='<div class="notice error">'+esc(e.message)+'</div>';
+  }
+}
+
+function setUpcomingHorizon(val){
+  const el = document.getElementById('upcomingHorizon');
+  if (el) {
+    el.value = val;
+    loadUpcoming();
+  }
+}
+async function loadHealth(){try{const d=await api('/api/health');const items=[['Application',d.ok!==false,'Online'],['Database',!!d.database_exists,'Ready'],['FFmpeg',Boolean(d.ffmpeg&&d.ffmpeg!=='not_found'),'Available'],['FFprobe',Boolean(d.ffprobe&&d.ffprobe!=='not_found'),'Available'],['Python',true,d.python||'Running']];document.getElementById('health').innerHTML=items.map(i=>`<div class="health-item"><span class="health-icon ${i[1]?'good':'bad'}">${i[1]?'✓':'!'}</span><div><strong>${i[0]}</strong><span>${esc(String(i[2]))}</span></div></div>`).join('')}catch(e){document.getElementById('health').innerHTML='<div class="health-item"><span class="health-icon bad">!</span><div><strong>Health check</strong><span>Unavailable</span></div></div>'}}
+load();
+</script></body></html>

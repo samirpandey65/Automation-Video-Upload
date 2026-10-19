@@ -1,0 +1,24 @@
+{
+  "project_type": "FastAPI + SQLite Python backend, vanilla JS HTML frontend (no build step)",
+  "language": "Python 3.11+",
+  "build_system": "No build step. Run server with: python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080. DO NOT run the dev server during implementation.",
+  "test_framework": "No automated test suite found. Verification is done via python -c import checks and syntax checks.",
+  "build_command": "python -c \"from app.main import app; print('ok')\"",
+  "test_command": "python -c \"from app.main import app; from app.thumbnail import generate_thumbnails; from app.playlist import assign_playlist, classify_genre; from app.youtube import list_playlists, create_playlist, add_to_playlist; print('all imports ok')\"",
+  "verification_instructions": "1. From workspace root e:\\Testing\\YouTubeLocalAutoUploader\\YouTubeLocalAutoUploader, activate .venv. 2. Run: python -c \"from app.main import app; print('ok')\". 3. Run: python -c \"import ast; ast.parse(open('app/main.py').read()); print('syntax ok')\". 4. Run: python -c \"from app.thumbnail import generate_thumbnails; print('ok')\". 5. Run: python -c \"from app.playlist import classify_genre; print(classify_genre('{\\\"summary\\\":\\\"funny video\\\"}'))\". Should print Comedy.",
+  "snapshot_or_generated_files": "thumbnails/ directory — created at runtime when generate_thumbnails() is first called. Added to BASE_DIR in config.py. Not checked in.",
+  "environment_constraints": "Windows 10/11. Do NOT start the dev server (uvicorn). PowerShell terminal — use python not python3. Venv at .venv\\Scripts\\python.exe. Font path for Windows: C:/Windows/Fonts/arialbd.ttf.",
+  "contribution_requirements": "No AGENTS.md or CONTRIBUTING.md found. Follow existing code style: no type annotations in plain functions (only in Pydantic models), same logging pattern log.info('[TAG] message: key=value'), same try/except with logging.exception(), same HTTPException(status_code=N, detail=str) pattern.",
+  "key_patterns": "1. DB migrations: vcols = {row['name'] for row in conn.execute('PRAGMA table_info(video_inventory)').fetchall()}; if 'col' not in vcols: conn.execute('ALTER TABLE video_inventory ADD COLUMN col TEXT DEFAULT \"\"'). 2. Gemini call: from .gemini import load_credentials, _base_headers, _parse_json; conn = get_ai_connection(connection_id); creds = load_credentials(conn); project = conn.get('project_id') or ''; headers = {**_base_headers(creds, project), 'Content-Type': 'application/json'}; r = requests.post(f'{GEMINI_BASE_URL}/models/{model}:generateContent', headers=headers, json=body, timeout=60). 3. API endpoint style: @app.post('/api/path/{id}') async def fn(id: int, request: Request): row = get_inventory_by_id(id); if not row: raise HTTPException(404, 'not found'); try: result = await asyncio.to_thread(sync_fn, ...); return {...} except Exception as exc: logging.exception('msg'); raise HTTPException(400, str(exc)). 4. update_video kwargs — must check what kwargs are accepted.",
+  "relevant_files": [
+    "app/database.py — migration pattern, update_video function signature",
+    "app/gemini.py — load_credentials, _base_headers, _parse_json, GEMINI_BASE_URL import",
+    "app/auth.py — get_youtube_service(channel_id)",
+    "app/youtube.py — append list_playlists, create_playlist, add_to_playlist",
+    "app/main.py — imports block, endpoint style, add 4 new endpoints",
+    "app/config.py — BASE_DIR, GEMINI_BASE_URL, THUMBNAILS_DIR to add",
+    "web/library.html — render() JS function, add modal + buttons",
+    "requirements.txt — add Pillow>=10,<12"
+  ],
+  "directory_structure": "workspace root: app/ (Python modules), web/ (HTML+CSS+JS static files), data/ (SQLite DB), logs/, credentials/tokens/, thumbnails/ (new, runtime-created). Config: app/config.py defines BASE_DIR=workspace root."
+}

@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "AI Thumbnail Generator: add Pillow to requirements, add thumbnail_path column to DB, create app/thumbnail.py, add THUMBNAILS_DIR to config, expose POST/GET /api/video/{id}/thumbnail endpoints, add Thumbnail button + modal to web/library.html.",
+  "status": "pending",
+  "steps": [
+    "1. Add 'Pillow>=10,<12' to requirements.txt after the 'requests>=2.32,<3' line.",
+    "2. In app/config.py, add 'THUMBNAILS_DIR = BASE_DIR / \"thumbnails\"' after the LOG_DIR line, and include THUMBNAILS_DIR in the 'for d in (...)' mkdir loop that already creates WEB_DIR, DATA_DIR, LOG_DIR, CREDENTIALS_DIR, TOKEN_DIR.",
+    "3. In app/database.py inside init_db(), find the vcols migration block (the one that checks and adds hashtags, tags, ai_status, ai_summary, transcript, analysis_json). After the closing loop for that block, add two more guarded ALTER TABLE calls: 'if \"thumbnail_path\" not in vcols: conn.execute(\"ALTER TABLE video_inventory ADD COLUMN thumbnail_path TEXT DEFAULT \\'\\'\")' and 'if \"youtube_playlist_id\" not in vcols: conn.execute(\"ALTER TABLE video_inventory ADD COLUMN youtube_playlist_id TEXT DEFAULT \\'\\'\")'. Also add 'thumbnail_path' and 'youtube_playlist_id' to the allowed set in the update_video() function.",
+    "4. Create app/thumbnail.py with: imports (os, logging, json, Path from pathlib; PIL Image/ImageDraw/ImageFont; load_credentials/_base_headers/_parse_json from .gemini; get_ai_connection from .database; GEMINI_BASE_URL/THUMBNAILS_DIR from .config; requests). Define COLOR_SCHEMES = {'yellow_red': [(255,220,0),(220,30,0)], 'blue_purple': [(0,100,255),(120,0,200)], 'green_orange': [(0,180,50),(255,120,0)]}. Define _load_font(size): try arialbd.ttf on C:/Windows/Fonts/, then /usr/share/fonts/truetype/noto/NotoSans-Bold.ttf, then ImageFont.load_default(). Define _get_concept(analysis_json, filename, connection_id): if connection_id is not None, call get_ai_connection(connection_id), load_credentials, build a short Gemini generateContent request asking for JSON {title, color_scheme, emoji, layout}; on any exception return fallback. Fallback is {title: filename[:40].upper() or 'VIDEO', color_scheme: 'yellow_red', emoji: '🔥', layout: 'center'}. Define _draw_thumbnail(concept, variant_idx, out_path): create 1280x720 RGBA Image. Draw gradient background by iterating rows 0..719 and lerping between scheme colors offset by variant_idx*30 degrees. Draw dark semi-transparent vignette over bottom 30% (y>504) using RGBA (0,0,0,160). Wrap title text at 22 chars, pick font size 90 (reduce to 60 if >2 lines). Draw black shadow offset +4,+4 then white text, both centered. Draw emoji in top-right at font size 100. Save as PNG. Define generate_thumbnails(video_id, analysis_json, filename, connection_id=None): ensure THUMBNAILS_DIR exists; get concept; loop variant_idx 0..2; call _draw_thumbnail saving to THUMBNAILS_DIR/video_{video_id}_v{variant+1}.png; return list of str(path) for each saved file.",
+    "5. In app/main.py, add 'from .thumbnail import generate_thumbnails' to the imports block after the gemini imports. Add two new endpoints at the bottom of the file: POST /api/video/{video_id}/thumbnail (calls asyncio.to_thread(generate_thumbnails, ...), calls update_video(video_id, thumbnail_path=paths[0]), returns {ok, paths, count}) and GET /api/video/{video_id}/thumbnail (reads row.thumbnail_path, returns FileResponse with media_type='image/png').",
+    "6. In web/library.html, inside the render() function's template literal for the Actions <td>, append after the Analytics button: a '🖼️ Thumbnail' button that calls showThumbnail(v.id). Add a thumbModal div after the analytics modal div. Add showThumbnail(id) async function: calls POST /api/video/{id}/thumbnail, then renders <img src='/api/video/{id}/thumbnail?v=timestamp'> plus a download <a> link. Add closeThumb() function."
+  ],
+  "acceptance_criteria": [
+    "python -c \"from app.thumbnail import generate_thumbnails; print('ok')\" prints ok",
+    "python -c \"from app.config import THUMBNAILS_DIR; print(THUMBNAILS_DIR)\" prints the thumbnails directory path",
+    "python -c \"import ast; ast.parse(open('app/main.py').read()); print('syntax ok')\" prints syntax ok",
+    "python -c \"import ast; ast.parse(open('app/thumbnail.py').read()); print('syntax ok')\" prints syntax ok",
+    "python -c \"from app.database import update_video; update_video.__doc__; import inspect; src=inspect.getsource(update_video); assert 'thumbnail_path' in src; print('ok')\" prints ok",
+    "web/library.html contains the string 'showThumbnail' and 'thumbModal'"
+  ],
+  "verification": [
+    "python -c \"from app.main import app; from app.thumbnail import generate_thumbnails; print('FEAT-001 ok')\"",
+    "python -c \"import ast; ast.parse(open('app/main.py').read()); ast.parse(open('app/thumbnail.py').read()); print('syntax ok')\"",
+    "python -c \"import inspect; from app.database import update_video; src=inspect.getsource(update_video); assert 'thumbnail_path' in src and 'youtube_playlist_id' in src; print('columns ok')\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

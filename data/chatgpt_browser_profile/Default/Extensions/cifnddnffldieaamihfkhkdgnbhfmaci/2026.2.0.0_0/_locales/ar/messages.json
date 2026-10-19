@@ -1,0 +1,50 @@
+{
+   "AppendLinkTargetToExistingPDF": {
+      "message": "إلحاق الصفحة المرتبطة بملف PDF آخر"
+   },
+   "AppendToExistingPDF": {
+      "message": "إلحاق بملف PDF آخر"
+   },
+   "ConvertLinkTargetToPDF": {
+      "message": "تحويل الصفحة المرتبطة إلى Foxit PDF"
+   },
+   "ConvertToFoxitPDF": {
+      "message": "تحويل إلى Foxit PDF"
+   },
+   "CreateAndEmail": {
+      "message": "إنشاء وإرسال بالبريد الإلكتروني"
+   },
+   "OptionsTitle": {
+      "message": "الخيارات"
+   },
+   "Preferences": {
+      "message": "التفضيلات"
+   },
+   "Reinstall": {
+      "message": "إعادة التثبيت"
+   },
+   "Uninstall": {
+      "message": "إلغاء التثبيت"
+   },
+   "UninstallSuccessTip": {
+      "message": "تم إلغاء التثبيت بنجاح، وسيصبح ساري المفعول بعد إعادة تشغيل المتصفح."
+   },
+   "UninstallSureTip": {
+      "message": "سيكون إلغاء التثبيت غير قابل للاسترداد، هل أنت متأكد من إلغاء التثبيت؟"
+   },
+   "UninstallTip": {
+      "message": "سيكون إلغاء التثبيت غير قابل للاسترداد، يرجى توخي الحذر في التنفيذ!"
+   },
+   "ViewPDFResults": {
+      "message": "عرض نتيجة PDF"
+   },
+   "default_title": {
+      "message": "لتحويل صفحة الويب إلى Foxit PDF"
+   },
+   "extDesc": {
+      "message": "لتحويل صفحة الويب إلى Foxit PDF"
+   },
+   "extName": {
+      "message": "Foxit PDF Creator"
+   }
+}

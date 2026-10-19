@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Features & Roadmap — OmniCast Studio</title>
+  <link rel="stylesheet" href="/static/layout.css?v=26">
+  <style>
+    .roadmap-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .badge-implemented {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-pending {
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .badge-future {
+      background: #f5f3ff;
+      color: #5b21b6;
+      border: 1px solid #ddd6fe;
+    }
+    .feature-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .feature-card:hover {
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      border-color: #cbd5e1;
+    }
+    .feature-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .feature-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .feature-letter {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      display: inline-grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    }
+    .feature-body {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #475569;
+    }
+    .feature-body ul {
+      margin: 8px 0 10px 20px;
+      padding: 0;
+    }
+    .feature-body li {
+      margin: 4px 0;
+    }
+    .file-tag {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-family: ui-monospace, monospace;
+      margin-right: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 16px 0 24px;
+    }
+    .filter-pill {
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-pill:hover {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .filter-pill.active {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #ffffff;
+      border-color: #4f46e5;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+    .search-input-box {
+      width: 100%;
+      max-width: 420px;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input-box:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+    }
+    .summary-card strong {
+      font-size: 22px;
+      color: #0f172a;
+      display: block;
+      margin-top: 4px;
+    }
+    .summary-card span {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .code-snippet {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-logo">⚡</div>
+      <div>
+        <div class="brand-name">OmniCast</div>
+        <div class="brand-sub">Multi-Platform Publisher</div>
+      </div>
+    </div>
+    <div class="nav-group">
+      <a class="nav" data-route="/" href="/">⌂ <span>Dashboard</span></a>
+      <a class="nav" data-route="/upload" href="/upload">↥ <span>Upload Studio</span></a>
+      <a class="nav" data-route="/library" href="/library">▣ <span>Video Library</span></a>
+      <a class="nav" data-route="/facebook-dashboard" href="/facebook-dashboard">📘 <span>Facebook Dashboard</span></a>
+      <a class="nav" data-route="/instagram-dashboard" href="/instagram-dashboard">📸 <span>Instagram Dashboard</span></a>
+      <a class="nav" data-route="/scheduler" href="/scheduler">◷ <span>Account Automation</span></a>
+      <a class="nav" data-route="/channels" href="/channels">◉ <span>Channels & Accounts</span></a>
+      <a class="nav" data-route="/connections" href="/connections">⌘ <span>Connections</span></a>
+      <a class="nav" data-route="/analytics" href="/analytics">▥ <span>Performance Check</span></a>
+      <a class="nav" data-route="/setup-guide" href="/setup-guide">❔ <span>Setup Guide</span></a>
+      <a class="nav" data-route="/jobs" href="/jobs">☷ <span>Upload Queue</span></a>
+      <a class="nav" data-route="/logs" href="/logs">≡ <span>Logs</span></a>
+      <a class="nav" data-route="/settings" href="/settings">⚙ <span>Settings</span></a>
+      <a class="nav active admin-only" data-role="admin" data-route="/features-roadmap" href="/features-roadmap">📖 <span>Roadmap & Index</span></a>
+    </div>
+    <div class="sidebar-status">
+      <div class="status-line"><span class="online-dot"></span><strong>System Online</strong></div>
+      <div class="status-detail">Local creator workspace</div>
+      <a href="/logs" class="sidebar-log-btn">Open Logs</a>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="mobile-brand">OmniCast</div>
+        <div>
+          <div class="top-greeting">Feature Index & System Roadmap <span style="font-size:11px; font-weight:750; background:rgba(99,102,241,0.12); color:#4f46e5; border:1px solid #c7d2fe; padding:2px 8px; border-radius:6px; margin-left:6px; letter-spacing:0.02em;">🔒 Admin Only</span> <span>✦</span></div>
+          <div class="top-subtitle">Complete architectural blueprint, implemented capabilities, and upcoming releases</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="profile-chip">
+          <div class="profile-avatar">C</div>
+          <div class="profile-copy"><strong>Creator</strong><span>Workspace</span></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="roadmap-container">
+        
+        <!-- Top Metrics Cards -->
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span>CORE SUBSYSTEMS</span>
+            <strong>16 Implemented</strong>
+          </div>
+          <div class="summary-card">
+            <span>DATABASE ARCHITECTURE</span>
+            <strong>Decoupled (.env)</strong>
+          </div>
+          <div class="summary-card">
+            <span>VAULT TOKEN REFRESH</span>
+            <strong>Automated (&le;2d Alert)</strong>
+          </div>
+          <div class="summary-card">
+            <span>FAILURE RECOVERY</span>
+            <strong>Self-Healing Active</strong>
+          </div>
+        </div>
+
+        <!-- Controls & Filters -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <input type="text" id="searchInput" class="search-input-box" placeholder="Search features, files, or subsystems..." oninput="filterCards()">
+          <div style="font-size:12px; color:#64748b;">
+            Also available as <a href="/FEATURES_ROADMAP.md" target="_blank" style="color:#6366f1; font-weight:700;">FEATURES_ROADMAP.md</a>
+          </div>
+        </div>
+
+        <div class="filter-pills">
+          <button class="filter-pill active" onclick="setFilter('all', this)">All Subsystems</button>
+          <button class="filter-pill" onclick="setFilter('implemented', this)">✅ Implemented (A to Z)</button>
+          <button class="filter-pill" onclick="setFilter('pending', this)">⏳ Pending Enhancements</button>
+          <button class="filter-pill" onclick="setFilter('future', this)">🔮 Future Roadmap</button>
+          <button class="filter-pill" onclick="setFilter('architecture', this)">⚙️ Architecture & DB</button>
+        </div>
+
+        <div id="featureList">
+
+          <!-- ARCHITECTURE -->
+          <div class="feature-card" data-category="architecture implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">🏛️</span>
+                System Architecture & Dynamic Database Decoupling
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Local-first creator workstation engineered in Python (FastAPI backend + Vanilla JS/CSS UI) running SQLite without external cloud databases.</p>
+              <ul>
+                <li><strong>Dynamic DB Path (<code>YLA_DB_PATH</code>)</strong>: Database can reside at the project root or any external SSD / partition (e.g. <code>D:\YouTubeData\uploader.db</code>). Configurable via <code>.env</code>.</li>
+                <li><strong>Dual-OS Portability</strong>: 100% identical codebase and execution across Windows 11 and Ubuntu Linux.</li>
+                <li><strong>RBAC Security</strong>: Built-in User Role engine (<code>admin</code>, <code>editor</code>, <code>viewer</code>) with bcrypt hashing and tamper-proof sessions.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/config.py</span>
+                <span class="file-tag">app/database.py</span>
+                <span class="file-tag">.env</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- A -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">A</span>
+                Authentication & Multi-Channel Account Management
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Multi-Account YouTube OAuth: Connect multiple Google accounts and channels under distinct or shared client secrets.</li>
+                <li>Headless & Desktop Login: Interactive browser authentication via <code>InstalledAppFlow</code>, desktop Keyring, and headless token fallbacks.</li>
+                <li>Gemini AI OAuth Accounts: Dedicated Google connection manager for Gemini quotas (<code>ai_connections</code>).</li>
+                <li>Meta Graph API Connections: Facebook Pages & Instagram Professional accounts with app ID and secret verification.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/auth.py</span>
+                <span class="file-tag">app/local_auth.py</span>
+                <span class="file-tag">web/connections.html</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- B -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">B</span>
+                Background Scheduler & Multi-Slot Automation
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Weekly Multi-Slot Scheduler: Configure upload schedules per weekday (e.g. Monday 10:00, 18:00, Friday 20:00) with independent channel mappings.</li>
+                <li>Durable Queue Processor: Sequential background queue with non-blocking worker locks and hash duplicate verification before every upload.</li>
+                <li>Missed Window Protection: 120-minute catch-up logic skips stale slots if PC was asleep, avoiding burst upload cascades.</li>
+                <li>Scheduled Meta Auto-Publishing: Dispatches Facebook Video/Reel & Instagram Reel distribution immediately after YouTube upload succeeds.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/scheduler.py</span>
+                <span class="file-tag">web/scheduler.html</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">C</span>
+                Credential Vault Agent & Automated Token Refresh
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Unified JSON Vault: Central configuration in <code>credentials/vault.json</code> indexing all YouTube, Facebook, and Instagram tokens.</li>
+                <li>Automated Background Token Refresh: Auto-refreshes Google OAuth and Meta 60-day tokens via <code>fb_exchange_token</code>.</li>
+                <li>Telegram Notification Gating (&le; 2 Days): Tokens with &gt; 2 days remaining refresh silently. Alerts are sent strictly when remaining time is &le; 2 days, throttled to 24h intervals.</li>
+                <li>Restricted File Permissions: Refreshed token files are strictly chmodded (<code>0o600</code>).</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/credential_manager.py</span>
+                <span class="file-tag">credentials/vault.json</span>
+                <span class="file-tag">scripts/refresh_credentials.py</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- D -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">D</span>
+                Duplicate Protection & Cryptographic Indexing
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>SHA-256 Fingerprinting: Computes content hashes for every local video file.</li>
+                <li>Remote Tag Marker Indexing: Embeds invisible <code>yla_hash_&lt;sha256&gt;</code> markers into YouTube video tags.</li>
+                <li>Sync & Remote Reconciliation: Scans YouTube Data API and maps <code>youtube_remote_videos</code>. Detects previously uploaded videos even after complete database re-installations.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/video_utils.py</span>
+                <span class="file-tag">app/youtube.py</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- E -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">E</span>
+                Error Tracking, Failure Diagnosis & Auto-Recovery
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Failure Taxonomy: Structured classification for <code>TOKEN_EXPIRED</code>, <code>QUOTA_EXCEEDED</code>, <code>META_PERMISSION</code>, <code>NETWORK_TRANSIENT</code>, <code>AI_METADATA_ERROR</code>, and <code>FILE_MISSING</code>.</li>
+                <li>Dynamic Resolution Checker: Evaluates real-time state to verify if the blocking condition has cleared.</li>
+                <li>Scheduler Auto-Recovery Daemon: Automatically identifies resolved issues and re-queues them as <code>retry_pending</code>.</li>
+                <li>Dedicated Web UI: Real-time stat counters, issue filters, one-click <strong>"⚡ Auto-Retry All Fixed Issues"</strong>, and granular per-job retry controls in <code>web/jobs.html</code>.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/failure_tracker.py</span>
+                <span class="file-tag">web/jobs.html</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- G -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">G</span>
+                Genre & Category Playlist Auto-Assignment Engine
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Multi-Signal Classification: Evaluates folder names (e.g. <code>Fifa world cup edit</code>, <code>Viral-Desi-Food-Stories</code>, <code>ChalaakKahaniya</code>), video titles, tags, hashtags, and AI summaries.</li>
+                <li>15+ Curated Taxonomies: Football & Sports, Food & Recipes, Animated Stories & Kahaniya, Gaming, Comedy & Fun, Movie Recaps, Horror Stories, Tech Tutorials, Motivation, Music, etc.</li>
+                <li>Smart Deduplication: Matches existing channel playlists before creating duplicates.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/playlist.py</span>
+                <span class="file-tag">app/youtube.py</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- M -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">M</span>
+                Meta Multi-Platform Publishing (Facebook & Instagram)
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Simultaneous Multi-Destination Publishing: YouTube Chunked Video, Facebook Page Video, Facebook Reel, and Instagram Reel.</li>
+                <li>Platform ID Tracking: Tracks <code>facebook_video_id</code>, <code>facebook_reel_id</code>, and <code>instagram_media_id</code> to prevent cross-platform duplication.</li>
+                <li>Interactive Meta Dashboard: Real-time status inspection in <code>web/meta-dashboard.html</code>.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/meta.py</span>
+                <span class="file-tag">web/meta-dashboard.html</span>
+                <span class="file-tag">web/setup.html</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- P -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">P</span>
+                Platform & Brand Identity (OmniCast Studio)
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <ul>
+                <li>Unified OmniCast Studio Brand: Modern brand identity reflecting multi-platform publishing (YouTube, Facebook, Instagram, and future platforms).</li>
+                <li>Universal Navigation: Consistent layout headers and sidebars across all 15 web interface screens.</li>
+                <li>Modern Design Tokens: Vibrant multi-platform gradient (Indigo, Violet, Pink) in <code>web/layout.css</code>.</li>
+              </ul>
+              <div>
+                <span class="file-tag">web/layout.css</span>
+                <span class="file-tag">web/*.html</span>
+                <span class="file-tag">run.py</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PENDING / NEAR TERM -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">P</span>
+                Batch Playlist Retrofit Script &amp; Multi-Part Pacing
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>A one-click admin utility to automatically evaluate the ~7,700 previously uploaded videos in <code>video_inventory</code>, group same-type videos together without mixing content, sequence multi-part series (Part 1 ➔ Part 2 ➔ Part 3), and assign them to matching genre/series playlists while strictly reusing existing YouTube playlists.</p>
+              <div>
+                <span class="file-tag">scripts/retrofit_playlists.py</span>
+                <span class="file-tag">app/playlist.py</span>
+                <span class="file-tag">app/scheduler.py</span>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Q -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">Q</span>
+                Proactive Quota Tracker & Rate Limit Daemon
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Automated YouTube API quota monitoring (10,000 units/day) with timezone-aware Pacific Time reset window and proactive queue pausing.</p>
+              <ul>
+                <li><strong>Pre-Upload Safety Gate</strong>: Checks <code>(used_today + 1600) &le; 9800</code> safe ceiling before dispatching uploads; eliminates 403 <code>uploadLimitExceeded</code> errors.</li>
+                <li><strong>Self-Healing Midnight PT Reset</strong>: Queue automatically pauses and auto-resumes once midnight Pacific Time passes.</li>
+                <li><strong>Live UI Monitor & Telegram Alerts</strong>: Real-time progress bar in <code>web/jobs.html</code> and throttled alert bot notifications.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/quota_tracker.py</span>
+                <span class="file-tag">web/jobs.html</span>
+                <span class="file-tag">app/scheduler.py</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="pending">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">⏳</span>
+                Smart Multi-Platform Cleaner & Archiver
+              </div>
+              <span class="badge-status badge-pending">⏳ Planned</span>
+            </div>
+            <div class="feature-body">
+              <p>Sync-verified storage staging tool where <strong>deletions NEVER happen automatically</strong>. Files are staged only after 100% verified publication across all destinations, missing uploads are scheduled at <strong>1–2 videos per day</strong> (no mass dumping), and purging requires explicit manual creator approval.</p>
+              <ul class="feature-list">
+                <li><strong>Zero Silent / Automatic Deletion</strong>: Files are never deleted automatically in the background. Once verified across all platforms, videos enter an <em>"Eligible for Cleanup"</em> staging state requiring explicit creator confirmation.</li>
+                <li><strong>Anti-Mass Upload Throttling (1–2 Videos/Day)</strong>: Strictly prevents bulk upload flooding. Missing Facebook/Instagram catch-up uploads or folder queues are paced at 1 to 2 videos per day across peak engagement windows.</li>
+                <li><strong>Multi-Platform Verification Gate</strong>: Queries YouTube Data API and Meta Graph API to verify live status before marking any file eligible for deletion.</li>
+                <li><strong>Missing Platform Protection & Auto-Catchup</strong>: If a video is on YouTube but missing on FB or IG, <em>cleanup is strictly locked</em> and the system auto-schedules paced uploads for the missing platforms.</li>
+                <li><strong>Dedicated Deleted Videos Library</strong>: Separate library view in <code>web/library.html</code> listing all deleted/archived videos, complete with connected account names, platform icons, live post URLs, and reclaimed storage statistics.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/cleaner.py</span>
+                <span class="file-tag">app/scheduler.py</span>
+                <span class="file-tag">web/library.html</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PHASE 10: YOUTUBE GROWTH & VIEWS OPTIMIZATION SUITE -->
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter" style="background:linear-gradient(135deg, #ef4444, #f97316);">🚀</span>
+                Hook-First Title Engine &amp; Anti-Boilerplate Sanitizer
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Eliminates repetitive boilerplate suffixes (e.g. <code>— The Moment Everything Changed! ⚡</code>, <code>— The Funniest Reaction You'll See! 🤣</code>) and enforces a 30-character mobile Shorts rule so viewers see the subject before mobile screen truncation.</p>
+              <ul>
+                <li><strong>Anti-Spam De-Duplication</strong>: Automatically detects and collapses recursive prefix stacking (e.g. <code>The Shocking Truth About The Shocking Truth...</code>).</li>
+                <li><strong>Prompt Leakage Shield</strong>: Catches and blocks raw prompt instructions from entering public video titles.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/thumbnail.py</span>
+                <span class="file-tag">app/gemini.py</span>
+                <span class="file-tag">app/analyzer.py</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter" style="background:linear-gradient(135deg, #f59e0b, #eab308);">🔄</span>
+                Old Video Bulk Optimization &amp; Metadata Rescue Engine
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Scans already-published YouTube videos across all connected channels, identifies titles with repetitive boilerplate or low CTR, and updates them live on YouTube via YouTube Data API v3.</p>
+              <div>
+                <span class="file-tag">app/optimizer.py</span>
+                <span class="file-tag">app/main.py</span>
+                <span class="file-tag">web/analytics.html</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter" style="background:linear-gradient(135deg, #10b981, #06b6d4);">🎬</span>
+                Shorts High-Impact First-Frame Hook Engine
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Ensures vertical Shorts begin at 0.0s on a vibrant, expressive visual frame rather than a dark, blurry, or blank transition frame, bypassing mobile YouTube Shorts custom thumbnail feed limitations.</p>
+              <div>
+                <span class="file-tag">app/video_utils.py</span>
+                <span class="file-tag">app/clipper.py</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter" style="background:linear-gradient(135deg, #6366f1, #a855f7);">🤖</span>
+                Dual-Mode Scheduler: Manual Slot vs. Smart Auto Traffic Agent
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Enables creators to toggle between <strong>Manual Slot Mode</strong> (fixed weekday/time slots) and an autonomous, data-driven <strong>Smart Auto Traffic Agent</strong>. The smart agent optimizes upload timing across South Asian / Indian peak traffic windows while enforcing algorithmic collision guardrails:</p>
+              <ul style="margin:8px 0 10px 18px;font-size:13px;line-height:1.6;color:#cbd5e1">
+                <li><strong>🔥 Evening Peak (17:30–19:30 IST / 100/100):</strong> Maximum viewer traffic for Shorts &amp; Reels.</li>
+                <li><strong>🍱 Lunch Break Peak (12:30–14:30 IST / 95/100):</strong> Midday work and college engagement peak.</li>
+                <li><strong>🌙 Night Prime Peak (20:30–22:30 IST / 90/100):</strong> Prime leisure browsing window.</li>
+                <li><strong>🌅 Morning Peak (08:30–10:30 IST / 85/100):</strong> Wake-up and morning commute consumption.</li>
+                <li><strong>⏸️ Night Rest Protection (22:30–08:00 IST / 0/100):</strong> Off-peak paused to protect initial 2-hour CTR.</li>
+                <li><strong>🛡️ Triple-Lock Guardrails:</strong> Max 2 uploads/day per channel + 45-min cross-channel collision spacing + 4–5-hour same-channel pacing.</li>
+                <li><strong>📊 Live Radar &amp; Dynamic Horizon Simulation:</strong> Real-time telemetry on <code>/scheduler</code> and forward projections on Dashboard.</li>
+              </ul>
+              <div>
+                <span class="file-tag">app/scheduler.py</span>
+                <span class="file-tag">web/scheduler.html</span>
+                <span class="file-tag">app/main.py</span>
+                <span class="file-tag">web/dashboard.html</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="implemented">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter" style="background:linear-gradient(135deg, #ec4899, #f43f5e);">⚡</span>
+                Automated Initial Velocity &amp; Cross-Platform Syndication Engine
+              </div>
+              <span class="badge-status badge-implemented">✅ Implemented</span>
+            </div>
+            <div class="feature-body">
+              <p>Triggers within 15 minutes of upload to drive initial 30–50 views: auto-generates YouTube Community Tab teaser polls and syndicates video links to connected Facebook Pages &amp; Instagram.</p>
+              <div>
+                <span class="file-tag">app/scheduler.py</span>
+                <span class="file-tag">app/community.py</span>
+                <span class="file-tag">app/cross_syndication.py</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FUTURE ROADMAP -->
+          <div class="feature-card" data-category="future">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">🔮</span>
+                TikTok Content Posting API Integration
+              </div>
+              <span class="badge-status badge-future">🔮 Future Roadmap</span>
+            </div>
+            <div class="feature-body">
+              <p>Direct cross-publishing to TikTok Creator accounts alongside YouTube Shorts and Instagram Reels.</p>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="future">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">🔮</span>
+                AI Short-Form Video Clipper (app/clipper.py)
+              </div>
+              <span class="badge-status badge-future">🔮 Future Roadmap</span>
+            </div>
+            <div class="feature-body">
+              <p>Automatic detection of highlights, action scenes, and punchlines in long videos (10–30 min) to generate 30–60s 9:16 vertical Shorts with animated subtitles.</p>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="future">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">🔮</span>
+                Multi-Platform Teasers & Community Announcements (YouTube, Facebook & Instagram)
+              </div>
+              <span class="badge-status badge-future">🔮 Future Roadmap</span>
+            </div>
+            <div class="feature-body">
+              <p>Schedule teaser keyframes, countdown graphics, polls, and premiere announcements across <strong>YouTube Community Tab</strong>, <strong>Facebook Page Feed</strong>, and <strong>Instagram Feed/Stories</strong> 2–3 hours before scheduled video uploads go live to maximize launch day audience turnout.</p>
+            </div>
+          </div>
+
+          <div class="feature-card" data-category="future">
+            <div class="feature-header">
+              <div class="feature-title">
+                <span class="feature-letter">🔮</span>
+                Multi-Platform Automated A/B Packaging Switcher (YouTube, Facebook & Instagram)
+              </div>
+              <span class="badge-status badge-future">🔮 Future Roadmap</span>
+            </div>
+            <div class="feature-body">
+              <p>Automated multi-platform performance optimization daemon. If initial performance falls below target thresholds after 7 days (e.g. &lt; 4% CTR or low Meta reach), it automatically hot-swaps the <strong>complete presentation package</strong> across all networks:</p>
+              <ul>
+                <li><strong>YouTube</strong>: Title variations + Thumbnail image (High-Contrast Keyframe) + Top description hook lines.</li>
+                <li><strong>Facebook</strong>: Post caption hook + Video poster thumbnail frame + Engagement CTA.</li>
+                <li><strong>Instagram</strong>: Reel caption hook + Cover frame + First comment hashtags.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  let activeFilter = 'all';
+
+  function setFilter(cat, btn) {
+    activeFilter = cat;
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterCards();
+  }
+
+  function filterCards() {
+    const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('.feature-card');
+    cards.forEach(card => {
+      const cat = card.dataset.category || '';
+      const text = card.textContent.toLowerCase();
+      const matchCat = (activeFilter === 'all') || cat.includes(activeFilter);
+      const matchSearch = !q || text.includes(q);
+      card.style.display = (matchCat && matchSearch) ? 'block' : 'none';
+    });
+  }
+</script>
+<script src="/static/common.js?v=26"></script>
+</body>
+</html>
