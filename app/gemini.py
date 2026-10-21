@@ -238,14 +238,38 @@ def _list_models(creds, project, email=None):
 
 
 def test_connection(connection_id):
+    from .database import get_conn, now_iso
     conn = get_ai_connection(connection_id)
     if not conn or conn.get("provider") != "gemini":
         raise RuntimeError("Gemini connection not found.")
+
+    def _mark_failed(status_val):
+        try:
+            db = get_conn()
+            db.execute(
+                "UPDATE ai_connections SET status=?, last_verified_at=? WHERE id=?",
+                (status_val, now_iso(), connection_id),
+            )
+            db.commit()
+            db.close()
+        except Exception:
+            pass
+
     creds = load_credentials(conn)
     if not creds:
-        raise RuntimeError("No saved Gemini credentials found for this account.")
+        _mark_failed("reauth_required")
+        raise RuntimeError("No saved Gemini credentials found for this account. Reconnect this account.")
+
     project = conn.get("project_id") or _project_id(conn.get("client_secret_path"))
-    models = _list_models(creds, project, email=conn.get("account_email"))
+    try:
+        models = _list_models(creds, project, email=conn.get("account_email"))
+    except Exception as e:
+        err_msg = str(e).lower()
+        if "unauthorized" in err_msg or "expired" in err_msg or "revoked" in err_msg or "invalid_grant" in err_msg or "401" in err_msg:
+            _mark_failed("reauth_required")
+        else:
+            _mark_failed("error")
+        raise
 
     preferred_models = [
         "gemini-flash-latest", "gemini-flash-lite-latest",
@@ -259,7 +283,6 @@ def test_connection(connection_id):
     else:
         usable = configured
 
-    from .database import get_conn, now_iso
     db = get_conn()
     db.execute(
         "UPDATE ai_connections SET status='connected', model=?, last_verified_at=? WHERE id=?",

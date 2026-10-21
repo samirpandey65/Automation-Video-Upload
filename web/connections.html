@@ -45,68 +45,92 @@
 <p class="muted">All platforms are grouped under each YouTube account. Select an account to manage its YouTube channels, Facebook Pages and Instagram accounts.</p>
 <div id="msg"></div>
 
-<div class="card" style="margin-top:18px">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <h2 style="margin:0">Accounts</h2>
-    <button class="btn btn-primary" onclick="openAdd()">+ Add YouTube Account</button>
+<div style="display:flex;gap:8px;margin-top:14px;margin-bottom:18px;flex-wrap:wrap">
+  <button id="tabBtnAccounts" class="btn btn-primary" onclick="switchConnTab('accounts')">👥 YouTube &amp; Meta Accounts</button>
+  <button id="tabBtnGemini" class="btn btn-secondary" onclick="switchConnTab('gemini')">✨ Gemini AI</button>
+  <button id="tabBtnOpenAI" class="btn btn-secondary" onclick="switchConnTab('openai')">🔵 OpenAI / ChatGPT</button>
+  <button id="tabBtnClaude" class="btn btn-secondary" onclick="switchConnTab('claude')">🟣 Anthropic / Claude</button>
+</div>
+
+<div id="tabAccounts" class="conn-tab-pane">
+  <div class="card" style="margin-top:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:14px;border-bottom:1px solid #f1f5f9">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;min-width:280px">
+        <label style="font-weight:750;color:#475569;margin:0">Select Account:</label>
+        <select id="accountFilterSel" onchange="filterAccountsView()" style="padding:9px 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;font-weight:700;background:#fff;color:#1e293b;min-width:260px;cursor:pointer">
+          <option value="all">📂 All Accounts</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="openAdd()">+ Add YouTube Account</button>
+    </div>
+    <div id="accountsList" style="margin-top:16px"></div>
   </div>
-  <div id="accountsList" style="margin-top:12px"></div>
 </div>
 
-<div class="card" style="margin-top:18px">
-  <h2>✨ Gemini</h2>
-  <p class="muted">Separate Google OAuth connection for video analysis and metadata generation. Multiple accounts supported.</p>
-  <button class="btn btn-primary" onclick="openGeminiAdd()">+ Add Gemini Account</button>
-  <div id="gemini" style="margin-top:16px"></div>
-  <div class="notice" style="margin-top:16px"><strong>Google Cloud:</strong> Enable the Generative Language API in the project shown by your OAuth client. If the OAuth app is in Testing mode, add each Gemini Google account under Test Users.</div>
-</div>
-
-<div class="card" style="margin-top:18px">
-  <h2>🔵 OpenAI / ChatGPT</h2>
-  <p class="muted">Connect your OpenAI API key to enable ChatGPT-powered metadata generation. Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
-  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin-top:14px">
+<div id="tabGemini" class="conn-tab-pane" style="display:none">
+  <div class="card" style="margin-top:0">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div>
-        <strong style="font-size:13px;display:block">🌐 Option 1: Browser Login (Username &amp; Password)</strong>
-        <span class="muted" style="font-size:12px">Opens a clean Chrome window to <code>chatgpt.com</code>. Enter your email/username &amp; password directly in the browser. Zero credential storage; session is preserved locally.</span>
+        <h2 style="margin:0">✨ Gemini (Google AI)</h2>
+        <p class="muted" style="margin:4px 0 0">Separate Google OAuth connection for video analysis and metadata generation. Multiple accounts supported.</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="openChatgptBrowserSession()">🌐 Open ChatGPT Window &amp; Log In</button>
-        <button class="btn btn-secondary" onclick="checkChatgptSession()">🔄 Check Status</button>
-      </div>
+      <button class="btn btn-primary" onclick="openGeminiAdd()">+ Add Gemini Account</button>
     </div>
-    <div id="chatgptSessionBadge" style="margin-top:10px;font-size:12px"></div>
+    <div id="gemini" style="margin-top:16px"></div>
+    <div class="notice" style="margin-top:16px"><strong>Google Cloud:</strong> Enable the Generative Language API in the project shown by your OAuth client. If the OAuth app is in Testing mode, add each Gemini Google account under Test Users.</div>
   </div>
-
-  <div style="margin-top:16px">
-    <strong style="font-size:13px;display:block">🔑 Option 2: OpenAI API Key (Optional)</strong>
-    <p class="muted" style="font-size:12px;margin:4px 0 8px">Use your OpenAI API key directly if you prefer API usage over browser automation.</p>
-  </div>
-  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
-    <div style="flex:2;min-width:220px"><label>API Key</label><input id="oaiKey" type="password" placeholder="sk-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
-    <div style="flex:1;min-width:140px"><label>Model</label><select id="oaiModel" style="width:100%;margin-top:6px"><option value="gpt-4o" selected>gpt-4o (Vision)</option><option value="gpt-4o-mini">gpt-4o-mini (Fast Vision)</option><option value="gpt-4-turbo">gpt-4-turbo</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option></select></div>
-  </div>
-  <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="oaiEnabled" style="width:auto"> Enable OpenAI API Key</label></div>
-  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-    <button class="btn btn-secondary" onclick="oaiTest()">⚡ Test API Key</button>
-    <button class="btn btn-primary" onclick="oaiSave()">💾 Save OpenAI Config</button>
-  </div>
-  <div id="oaiMsg" style="margin-top:10px"></div>
 </div>
 
-<div class="card" style="margin-top:18px">
-  <h2>🟣 Anthropic / Claude</h2>
-  <p class="muted">Connect your Anthropic API key to enable Claude-powered metadata generation. Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
-  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">
-    <div style="flex:2;min-width:220px"><label>Claude API Key</label><input id="claudeKey" type="password" placeholder="sk-ant-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
-    <div style="flex:1;min-width:140px"><label>Model</label><select id="claudeModel" style="width:100%;margin-top:6px"><option value="claude-3-5-sonnet-20241022" selected>claude-3-5-sonnet (High Intelligence)</option><option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet (Hybrid Reasoning)</option><option value="claude-3-5-haiku-20241022">claude-3-5-haiku (Lightning Fast)</option><option value="claude-3-opus-20240229">claude-3-opus</option></select></div>
+<div id="tabOpenAI" class="conn-tab-pane" style="display:none">
+  <div class="card" style="margin-top:0">
+    <h2>🔵 OpenAI / ChatGPT</h2>
+    <p class="muted">Connect your OpenAI API key to enable ChatGPT-powered metadata generation. Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>.</p>
+    <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <strong style="font-size:13px;display:block">🌐 Option 1: Browser Login (Username &amp; Password)</strong>
+          <span class="muted" style="font-size:12px">Opens a clean Chrome window to <code>chatgpt.com</code>. Enter your email/username &amp; password directly in the browser. Zero credential storage; session is preserved locally.</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="openChatgptBrowserSession()">🌐 Open ChatGPT Window &amp; Log In</button>
+          <button class="btn btn-secondary" onclick="checkChatgptSession()">🔄 Check Status</button>
+        </div>
+      </div>
+      <div id="chatgptSessionBadge" style="margin-top:10px;font-size:12px"></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <strong style="font-size:13px;display:block">🔑 Option 2: OpenAI API Key (Optional)</strong>
+      <p class="muted" style="font-size:12px;margin:4px 0 8px">Use your OpenAI API key directly if you prefer API usage over browser automation.</p>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+      <div style="flex:2;min-width:220px"><label>API Key</label><input id="oaiKey" type="password" placeholder="sk-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
+      <div style="flex:1;min-width:140px"><label>Model</label><select id="oaiModel" style="width:100%;margin-top:6px"><option value="gpt-4o" selected>gpt-4o (Vision)</option><option value="gpt-4o-mini">gpt-4o-mini (Fast Vision)</option><option value="gpt-4-turbo">gpt-4-turbo</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option></select></div>
+    </div>
+    <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="oaiEnabled" style="width:auto"> Enable OpenAI API Key</label></div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="oaiTest()">⚡ Test API Key</button>
+      <button class="btn btn-primary" onclick="oaiSave()">💾 Save OpenAI Config</button>
+    </div>
+    <div id="oaiMsg" style="margin-top:10px"></div>
   </div>
-  <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="claudeEnabled" style="width:auto"> Enable Anthropic / Claude</label></div>
-  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-    <button class="btn btn-secondary" onclick="claudeTest()">⚡ Test Connection</button>
-    <button class="btn btn-primary" onclick="claudeSave()">💾 Save Claude Config</button>
+</div>
+
+<div id="tabClaude" class="conn-tab-pane" style="display:none">
+  <div class="card" style="margin-top:0">
+    <h2>🟣 Anthropic / Claude</h2>
+    <p class="muted">Connect your Anthropic API key to enable Claude-powered metadata generation. Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">
+      <div style="flex:2;min-width:220px"><label>Claude API Key</label><input id="claudeKey" type="password" placeholder="sk-ant-..." autocomplete="off" style="width:100%;margin-top:6px"></div>
+      <div style="flex:1;min-width:140px"><label>Model</label><select id="claudeModel" style="width:100%;margin-top:6px"><option value="claude-3-5-sonnet-20241022" selected>claude-3-5-sonnet (High Intelligence)</option><option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet (Hybrid Reasoning)</option><option value="claude-3-5-haiku-20241022">claude-3-5-haiku (Lightning Fast)</option><option value="claude-3-opus-20240229">claude-3-opus</option></select></div>
+    </div>
+    <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="claudeEnabled" style="width:auto"> Enable Anthropic / Claude</label></div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="claudeTest()">⚡ Test Connection</button>
+      <button class="btn btn-primary" onclick="claudeSave()">💾 Save Claude Config</button>
+    </div>
+    <div id="claudeMsg" style="margin-top:10px"></div>
   </div>
-  <div id="claudeMsg" style="margin-top:10px"></div>
 </div>
 
 </main></div></div>
@@ -173,6 +197,17 @@ function closeAdd(){ document.getElementById('addAccountModal').classList.remove
 function closeMetaAdd(){ document.getElementById('metaModal').classList.remove('open'); }
 function closeMetaPage(){ document.getElementById('metaPageModal').classList.remove('open'); }
 function closeGeminiAdd(){ document.getElementById('geminiModal').classList.remove('open'); }
+function switchConnTab(tab) {
+  const tabs = ['accounts', 'gemini', 'openai', 'claude'];
+  tabs.forEach(t => {
+    const pane = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (pane) pane.style.display = (t === tab) ? 'block' : 'none';
+    if (btn) {
+      btn.className = (t === tab) ? 'btn btn-primary' : 'btn btn-secondary';
+    }
+  });
+}
 function setMetaRedirect(){ const el=document.getElementById('metaRedirect'); if(el) el.value=window.location.origin+'/api/meta/oauth/callback'; }
 
 async function uploadSecret(input, kind){
@@ -200,8 +235,36 @@ async function refresh(){
   }catch(e){ setMessage('msg',e.message,'error'); }
 }
 
+let selectedAccountFilter = 'all';
+
+function filterAccountsView(){
+  const sel = document.getElementById('accountFilterSel');
+  if(!sel) return;
+  selectedAccountFilter = sel.value;
+  const cards = document.querySelectorAll('#accountsList .account-card[data-account-id]');
+  cards.forEach(card => {
+    const accId = card.getAttribute('data-account-id');
+    if(selectedAccountFilter === 'all' || selectedAccountFilter === accId){
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
 function renderAccounts(accounts, unlinkedMeta){
   const el = document.getElementById('accountsList');
+  const sel = document.getElementById('accountFilterSel');
+  if(sel){
+    const prevVal = sel.value || selectedAccountFilter || 'all';
+    sel.innerHTML = '<option value="all">📂 All Accounts (' + accounts.length + ')</option>' +
+      accounts.map(a => `<option value="${a.id}">${esc(a.account_name)}</option>`).join('');
+    if(Array.from(sel.options).some(o => o.value === prevVal)){
+      sel.value = prevVal;
+      selectedAccountFilter = prevVal;
+    }
+  }
+
   if(!accounts.length){ el.innerHTML='<p class="muted">No YouTube accounts connected.</p>'; return; }
   el.innerHTML = accounts.map(a => {
     const status = String(a.status||'connected').toLowerCase();
@@ -234,9 +297,10 @@ function renderAccounts(accounts, unlinkedMeta){
       const igBadge = m.instagram_username
         ? `<a href="${esc(igUrl)}" target="_blank" rel="noopener" class="plat-badge-link ig" style="font-size:12px;padding:4px 9px" title="Open Instagram Profile">${PLATFORM_SVGS.instagram} <strong>@${esc(m.instagram_username)}</strong> <span class="plat-badge-arrow">↗</span></a>`
         : '';
-      const mActions = ms==='logged_out'
-        ? `<button class="btn btn-primary" onclick="openMetaAdd(${a.id})">↻ Reconnect</button>`
-        : `<button class="btn btn-secondary" onclick="testMeta(${m.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutMeta(${m.id})">↪ Logout</button>`;
+      const needsReconnect = ms === 'logged_out' || ms === 'error' || !m.token_available;
+      const mActions = needsReconnect
+        ? `<button class="btn btn-primary" onclick="openMetaAdd(${a.id})">↻ Reconnect</button> <button class="btn btn-secondary" onclick="deleteMeta(${m.id})">Delete</button>`
+        : `<button class="btn btn-secondary" onclick="testMeta(${m.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutMeta(${m.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="deleteMeta(${m.id})">Delete</button>`;
       return `<div class="conn-row">
         <div class="conn-info">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -276,7 +340,7 @@ function renderAccounts(accounts, unlinkedMeta){
     });
     const headerBadgesHtml = renderAccountPlatformBadgesGroup(connectedAccountBadges);
 
-    return `<div class="account-card open" id="acc-${a.id}">
+    return `<div class="account-card open" id="acc-${a.id}" data-account-id="${a.id}">
       <div class="account-header" onclick="toggleAccount(${a.id})">
         <div>
           <div class="acc-name">${esc(a.account_name)}</div>
@@ -319,10 +383,14 @@ function renderAccounts(accounts, unlinkedMeta){
             ${igBadge}
           </div>
         </div>
-        <div class="conn-actions">
+        <div class="conn-actions" style="display:flex;align-items:center;gap:8px">
           <span class="badge ${mb}">${ms.toUpperCase()}</span>
-          <select id="linkAccSel-${m.id}" style="margin-left:8px">${accounts.map(a=>`<option value="${a.id}">${esc(a.account_name)}</option>`).join('')}</select>
-          <button class="btn btn-secondary" onclick="linkMetaToAccount(${m.id})">Link to Account</button>
+          <select id="linkAccSel-${m.id}" style="padding:7px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;background:#fff;color:#1e293b;max-width:200px">
+            <option value="">Select YouTube Account...</option>
+            ${accounts.map(a=>`<option value="${a.id}">${esc(a.account_name)}</option>`).join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="linkMetaToAccount(${m.id})">Link to Account</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteMeta(${m.id})">Delete</button>
         </div>
       </div>`;
     }).join('');
@@ -331,6 +399,7 @@ function renderAccounts(accounts, unlinkedMeta){
       <div class="account-body">${unlinkedHtml}</div>
     </div>`;
   }
+  filterAccountsView();
 }
 
 function toggleAccount(id){
@@ -340,10 +409,11 @@ function toggleAccount(id){
 function renderGemini(rows){
   document.getElementById('gemini').innerHTML = rows.map(x => {
     const status = String(x.status||'connected').toLowerCase();
-    const label = status==='logged_out'?'LOGGED OUT':status.toUpperCase();
-    const badgeClass = status==='connected'?'uploaded': status==='error'?'error':'';
-    const actions = status==='logged_out'
-      ? `<button class="btn btn-primary" onclick="reconnectGemini(${x.id})">↻ Reconnect</button>`
+    const needsReconnect = status==='logged_out' || status==='reauth_required' || status==='error';
+    const label = status==='logged_out' ? 'LOGGED OUT' : status==='reauth_required' ? 'RE-AUTH REQUIRED' : status.toUpperCase();
+    const badgeClass = (status==='reauth_required'||status==='error') ? 'error' : status==='connected' ? 'uploaded' : '';
+    const actions = needsReconnect
+      ? `<button class="btn btn-primary" onclick="reconnectGemini(${x.id})">↻ Reconnect</button> <button class="btn btn-secondary" onclick="removeGemini(${x.id})">Remove</button>`
       : `<button class="btn btn-secondary" onclick="testGemini(${x.id},this)">⚡ Test</button> <button class="btn btn-danger" onclick="logoutGemini(${x.id})">↪ Logout</button> <button class="btn btn-secondary" onclick="removeGemini(${x.id})">Remove</button>`;
     return `<div class="conn-row">
       <div class="conn-info">
@@ -459,12 +529,10 @@ async function finishMetaAuthorization(type, message=''){
   const d=await api('/api/meta/oauth/pages'); metaPages=d.pages||[];
   if(!metaPages.length) throw new Error('Meta returned no Facebook Pages. Check Page access and pages_show_list permission.');
 
-  // Grey out pages already connected under any account
-  const connectedPageIds=new Set(overviewData.flatMap(a=>(a.meta_connections||[]).map(m=>String(m.page_id))));
+  // Show pages list without disabling, so users can reconnect or update tokens for existing pages
   document.getElementById('metaPageChoice').innerHTML=metaPages.map((x,i)=>{
-    const already=connectedPageIds.has(String(x.id));
     const ig=x.instagram_business_account?.username?' — Instagram @'+esc(x.instagram_business_account.username):'';
-    return `<option value="${i}" ${already?'disabled':''}>${esc(x.name)}${ig}${already?' (already connected)':''}`;
+    return `<option value="${i}">${esc(x.name)}${ig}</option>`;
   }).join('');
   updateMetaPageInfo();
   document.getElementById('metaPageChoice').onchange=updateMetaPageInfo;
@@ -499,10 +567,16 @@ async function logoutMeta(id){
   catch(e){ setMessage('msg',e.message,'error'); }
 }
 
+async function deleteMeta(id){
+  if(!confirm('Delete this Meta connection?')) return;
+  try{ await api('/api/meta/connections/'+id,{method:'DELETE'}); await refresh(); setMessage('msg','Meta connection removed.','success'); }
+  catch(e){ setMessage('msg',e.message,'error'); }
+}
+
 async function linkMetaToAccount(metaId){
   const accountId=document.getElementById('linkAccSel-'+metaId)?.value;
-  if(!accountId) return;
-  try{ await api('/api/meta/connections/'+metaId+'/link',{method:'POST',body:JSON.stringify({account_id:Number(accountId)})}); await refresh(); setMessage('msg','Meta connection linked to account.','success'); }
+  if(!accountId) return setMessage('msg','Please select a YouTube Account to link with this Meta connection.','error');
+  try{ await api('/api/meta/connections/'+metaId+'/link',{method:'POST',body:JSON.stringify({account_id:Number(accountId)})}); await refresh(); setMessage('msg','Meta connection linked to account successfully.','success'); }
   catch(e){ setMessage('msg',e.message,'error'); }
 }
 
