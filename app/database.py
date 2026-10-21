@@ -693,6 +693,20 @@ def get_inventory_by_hash(channel_id, sha256):
     conn.close()
     return dict(row) if row else None
 
+def get_inventory_by_sha_any_channel(sha256):
+    """Find any video record across ALL channels matching the SHA-256 hash."""
+    if not sha256:
+        return None
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT * FROM video_inventory
+        WHERE sha256=?
+        ORDER BY CASE WHEN status='uploaded' OR COALESCE(youtube_video_id, '') != '' THEN 0 ELSE 1 END, id ASC
+        LIMIT 1
+    """, (sha256,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def list_pending_inventory(channel_id=None, limit=50):
     conn = get_conn()
     if channel_id:
@@ -726,6 +740,10 @@ def get_last_upload_time(channel_id=None):
             SELECT MAX(updated_at) as last_upload
             FROM video_inventory
             WHERE status='uploaded' AND youtube_video_id != '' AND youtube_video_id IS NOT NULL
+        """, (channel_id,)).fetchone() if False else conn.execute("""
+            SELECT MAX(updated_at) as last_upload
+            FROM video_inventory
+            WHERE status='uploaded' AND youtube_video_id != '' AND youtube_video_id IS NOT NULL
         """).fetchone()
     conn.close()
     return (row["last_upload"] if row else None) or None
@@ -749,19 +767,53 @@ def upsert_video(channel_id, file_path, filename, sha256, size_bytes,
                  modified_at, status="pending"):
     now = now_iso()
     conn = get_conn()
+
+    # Cross-system & cross-channel content deduplication:
+    # If the video binary (SHA256) was already uploaded or analyzed under ANY channel,
+    # inherit the remote video IDs, uploaded status, and platforms published so renaming
+    # or rescanning under another channel or folder never causes a duplicate upload.
+    existing_any = conn.execute("""
+        SELECT * FROM video_inventory
+        WHERE sha256=?
+        ORDER BY CASE WHEN status='uploaded' OR COALESCE(youtube_video_id, '') != '' THEN 0 ELSE 1 END, id ASC
+        LIMIT 1
+    """, (sha256,)).fetchone()
+
+    remote_yt = conn.execute(
+        "SELECT youtube_video_id FROM youtube_remote_videos WHERE hash_marker=? LIMIT 1",
+        (sha256,)
+    ).fetchone()
+
+    yt_id = (existing_any["youtube_video_id"] if existing_any and existing_any["youtube_video_id"] else "") or (remote_yt["youtube_video_id"] if remote_yt else "")
+    fb_vid = existing_any["facebook_video_id"] if existing_any and "facebook_video_id" in existing_any.keys() and existing_any["facebook_video_id"] else ""
+    fb_reel = existing_any["facebook_reel_id"] if existing_any and "facebook_reel_id" in existing_any.keys() and existing_any["facebook_reel_id"] else ""
+    ig_reel = existing_any["instagram_media_id"] if existing_any and "instagram_media_id" in existing_any.keys() and existing_any["instagram_media_id"] else ""
+    plat_pub = existing_any["platforms_published"] if existing_any and "platforms_published" in existing_any.keys() and existing_any["platforms_published"] else "[]"
+
+    effective_status = status
+    if (existing_any and existing_any["status"] == "uploaded") or yt_id:
+        effective_status = "uploaded"
+
     conn.execute("""
         INSERT INTO video_inventory
         (channel_id, file_path, filename, sha256, size_bytes, modified_at,
-         status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         status, youtube_video_id, facebook_video_id, facebook_reel_id, instagram_media_id, platforms_published,
+         created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(channel_id, sha256) DO UPDATE SET
             file_path=excluded.file_path,
             filename=excluded.filename,
             size_bytes=excluded.size_bytes,
             modified_at=excluded.modified_at,
+            status=CASE WHEN video_inventory.status='uploaded' THEN 'uploaded' ELSE excluded.status END,
+            youtube_video_id=CASE WHEN COALESCE(video_inventory.youtube_video_id, '') != '' THEN video_inventory.youtube_video_id ELSE excluded.youtube_video_id END,
+            facebook_video_id=CASE WHEN COALESCE(video_inventory.facebook_video_id, '') != '' THEN video_inventory.facebook_video_id ELSE excluded.facebook_video_id END,
+            facebook_reel_id=CASE WHEN COALESCE(video_inventory.facebook_reel_id, '') != '' THEN video_inventory.facebook_reel_id ELSE excluded.facebook_reel_id END,
+            instagram_media_id=CASE WHEN COALESCE(video_inventory.instagram_media_id, '') != '' THEN video_inventory.instagram_media_id ELSE excluded.instagram_media_id END,
+            platforms_published=CASE WHEN COALESCE(video_inventory.platforms_published, '[]') != '[]' THEN video_inventory.platforms_published ELSE excluded.platforms_published END,
             updated_at=excluded.updated_at
     """, (channel_id, file_path, filename, sha256, size_bytes,
-          modified_at, status, now, now))
+          modified_at, effective_status, yt_id, fb_vid, fb_reel, ig_reel, plat_pub, now, now))
     conn.commit()
     row = conn.execute("""
         SELECT * FROM video_inventory

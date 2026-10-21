@@ -1275,31 +1275,25 @@ async def api_scan(payload: ScanRequest):
         hashed_new = 0
         reused = 0
         for f in files:
-            # Fast path: unchanged file at the same path does not need to be re-hashed.
+            # When scanning, verify file path or compute hash to ensure exact video deduplication
             existing_path = get_inventory_by_path(payload.channel_id, f["path"])
             if existing_path and int(existing_path.get("size_bytes", -1)) == int(f["size_bytes"]) and abs(float(existing_path.get("modified_at", -1)) - float(f["modified_at"])) < 1e-6:
+                sha = existing_path["sha256"]
                 row = existing_path
                 reused += 1
-                result.append({
-                    "id": row["id"], "filename": f["filename"], "path": f["path"], "file_path": f["path"],
-                    "size_bytes": f["size_bytes"], "sha256": row["sha256"],
-                    "status": row["status"], "youtube_video_id": row.get("youtube_video_id", ""),
-                    "title": row.get("title", ""), "description": row.get("description", ""),
-                    "hashtags": row.get("hashtags", ""), "tags": row.get("tags", ""),
-                    "ai_status": row.get("ai_status", "not_analyzed"), "ai_summary": row.get("ai_summary", ""),
-                    "analysis_json": row.get("analysis_json", "")
-                })
-                continue
+            else:
+                sha = await asyncio.to_thread(sha256_file, f["path"])
+                hashed_new += 1
+                row = upsert_video(payload.channel_id, f["path"], f["filename"], sha, f["size_bytes"], f["modified_at"], "pending")
 
-            sha = await asyncio.to_thread(sha256_file, f["path"])
-            hashed_new += 1
-            existing_hash = get_inventory_by_hash(payload.channel_id, sha)
-            status = existing_hash["status"] if existing_hash else "pending"
-            row = upsert_video(payload.channel_id, f["path"], f["filename"], sha, f["size_bytes"], f["modified_at"], status)
             result.append({
                 "id": row["id"], "filename": f["filename"], "path": f["path"], "file_path": f["path"],
-                "size_bytes": f["size_bytes"], "sha256": sha, "status": status,
-                "youtube_video_id": row.get("youtube_video_id", ""),
+                "size_bytes": f["size_bytes"], "sha256": sha,
+                "status": row["status"], "youtube_video_id": row.get("youtube_video_id", ""),
+                "facebook_video_id": row.get("facebook_video_id", ""),
+                "facebook_reel_id": row.get("facebook_reel_id", ""),
+                "instagram_media_id": row.get("instagram_media_id", ""),
+                "platforms_published": row.get("platforms_published", "[]"),
                 "title": row.get("title", ""), "description": row.get("description", ""),
                 "hashtags": row.get("hashtags", ""), "tags": row.get("tags", ""),
                 "ai_status": row.get("ai_status", "not_analyzed"), "ai_summary": row.get("ai_summary", ""),
@@ -2725,13 +2719,15 @@ def api_scheduler_mode_get():
     status = get_smart_scheduler_status()
     env = get_app_env()
     is_dev = is_dev_env()
+    allow_dev_bg = (get_app_setting("dev_background_tasks_enabled") or "1") == "1"
+    bg_active = ((not is_dev) or allow_dev_bg) and (get_app_setting("scheduler_paused") or "0") != "1"
     return {
         "ok": True,
         "mode": mode,
         "environment": env,
         "is_dev": is_dev,
         "is_prod": not is_dev,
-        "background_tasks_active": (not is_dev) and (get_app_setting("scheduler_paused") or "0") != "1",
+        "background_tasks_active": bg_active,
         "status": status
     }
 

@@ -1264,14 +1264,17 @@ def get_smart_scheduler_status():
     env_name = get_app_env()
     is_dev = is_dev_env()
 
+    allow_dev_bg = (get_app_setting("dev_background_tasks_enabled") or "1") == "1"
+    bg_active = ((not is_dev) or allow_dev_bg) and (get_app_setting("scheduler_paused") or "0") != "1" and (not held)
+
     return {
         "mode": mode,
         "is_auto": mode == "auto",
         "environment": env_name,
         "is_dev": is_dev,
         "is_prod": not is_dev,
-        "background_tasks_active": (not is_dev) and (get_app_setting("scheduler_paused") or "0") != "1" and (not held),
-        "env_notice": "Development mode active: automatic background tasks are disabled. Single-shot manual testing is enabled." if is_dev else None,
+        "background_tasks_active": bg_active,
+        "env_notice": ("Development mode active: automatic background tasks are ENABLED for testing." if allow_dev_bg else "Development mode active: automatic background tasks are paused. Single-shot manual testing is enabled.") if is_dev else None,
         "hold": {
             "is_held": held,
             "hold_until": hold_date,
@@ -1396,14 +1399,16 @@ def _loop():
                 continue
 
             # 3. Strict Environment Rule:
-            # If running in DEV environment, DO NOT execute any automatic/scheduled tasks in background.
-            # In DEV, tasks are only performed ONCE when explicitly triggered for testing.
+            # If running in DEV environment, check whether dev background execution is explicitly permitted.
+            # (By default or setting 'dev_background_tasks_enabled' == '1', DEV background tasks are allowed for testing).
             if is_dev_env():
-                now_ts = _time.time()
-                if now_ts - _last_dev_notice >= 3600:
-                    log.info("[SCHEDULER] Environment is '%s': Automatic scheduled background tasks are disabled. (One-shot testing available via manual trigger).", get_app_env())
-                    _last_dev_notice = now_ts
-                continue
+                allow_dev_bg = (get_app_setting("dev_background_tasks_enabled") or "1") == "1"
+                if not allow_dev_bg:
+                    now_ts = _time.time()
+                    if now_ts - _last_dev_notice >= 3600:
+                        log.info("[SCHEDULER] Environment is '%s': Automatic scheduled background tasks are disabled. (One-shot testing available via manual trigger).", get_app_env())
+                        _last_dev_notice = now_ts
+                    continue
         except Exception:
             pass
         except Exception:
